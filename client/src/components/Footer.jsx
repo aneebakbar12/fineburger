@@ -89,7 +89,7 @@ const Footer = () => {
                 </div>
 
                 <div className="footer-bottom">
-                    <p>&copy; 2024 Fine Burger. All rights reserved.</p>
+                    <p>&copy; 2026 Fine Burger. Aneeb Akbar.</p>
                 </div>
             </div>
         </footer>
