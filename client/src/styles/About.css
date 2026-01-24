@@ -1,0 +1,200 @@
+.about-page {
+    min-height: 100vh;
+}
+
+.about-hero {
+    background: linear-gradient(135deg, var(--color-accent) 0%, #FF8C00 100%);
+    padding: var(--spacing-3xl) 0;
+    margin-bottom: var(--spacing-3xl);
+    text-align: center;
+}
+
+.about-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 900;
+    color: var(--color-black);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-subtitle {
+    font-size: var(--font-size-xl);
+    color: var(--color-black);
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.about-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-3xl);
+    align-items: center;
+    margin-bottom: var(--spacing-3xl);
+    padding: var(--spacing-2xl) 0;
+}
+
+.about-section.reverse {
+    direction: rtl;
+}
+
+.about-section.reverse>* {
+    direction: ltr;
+}
+
+.about-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.content-title {
+    font-size: var(--font-size-3xl);
+    font-weight: 800;
+    color: var(--color-white);
+    margin-bottom: var(--spacing-sm);
+}
+
+.content-text {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+}
+
+.promise-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.promise-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+}
+
+.promise-list li::before {
+    content: '✓';
+    color: var(--color-accent);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    flex-shrink: 0;
+}
+
+.about-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-placeholder {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+    background: linear-gradient(135deg, var(--color-dark-gray) 0%, var(--color-medium-gray) 100%);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent);
+}
+
+.values-section {
+    padding: var(--spacing-3xl) 0;
+    text-align: center;
+}
+
+.section-heading {
+    font-size: var(--font-size-4xl);
+    font-weight: 800;
+    color: var(--color-white);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.values-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-xl);
+    margin-top: var(--spacing-2xl);
+}
+
+.value-card {
+    background-color: var(--color-dark-gray);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    transition: all var(--transition-base);
+    border: 2px solid transparent;
+}
+
+.value-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-xl);
+}
+
+.value-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--spacing-lg);
+    background-color: var(--color-medium-gray);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent);
+    transition: all var(--transition-base);
+}
+
+.value-card:hover .value-icon {
+    background-color: var(--color-accent);
+    color: var(--color-black);
+    transform: scale(1.1);
+}
+
+.value-title {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--color-white);
+    margin-bottom: var(--spacing-sm);
+}
+
+.value-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .about-hero {
+        padding: var(--spacing-2xl) 0;
+    }
+
+    .about-title {
+        font-size: var(--font-size-3xl);
+    }
+
+    .about-subtitle {
+        font-size: var(--font-size-lg);
+    }
+
+    .about-section {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xl);
+    }
+
+    .about-section.reverse {
+        direction: ltr;
+    }
+
+    .content-title {
+        font-size: var(--font-size-2xl);
+    }
+
+    .values-grid {
+        grid-template-columns: 1fr;
+    }
+}

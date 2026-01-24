@@ -1,0 +1,149 @@
+import React, { useState, useEffect } from 'react';
+import '../styles/ItemModal.css';
+
+const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
+    const [quantity, setQuantity] = useState(1);
+    const [selectedVariations, setSelectedVariations] = useState({});
+
+    useEffect(() => {
+        if (isOpen) {
+            setQuantity(1);
+            setSelectedVariations({});
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen || !item) return null;
+
+    const handleVariationChange = (variationName, option) => {
+        setSelectedVariations(prev => ({
+            ...prev,
+            [variationName]: option
+        }));
+    };
+
+    const incrementQuantity = () => {
+        setQuantity(prev => prev + 1);
+    };
+
+    const decrementQuantity = () => {
+        setQuantity(prev => (prev > 1 ? prev - 1 : 1));
+    };
+
+    const handleAddToCart = () => {
+        const cartItem = {
+            ...item,
+            quantity,
+            selectedVariations,
+            totalPrice: item.price * quantity
+        };
+        onAddToCart(cartItem);
+        onClose();
+    };
+
+    const canAddToCart = storeOpen && item.available && item.inStock;
+
+    return (
+        <>
+            <div className="modal-backdrop" onClick={onClose}></div>
+            <div className="modal">
+                <div className="modal-content">
+                    {/* Close button */}
+                    <button className="modal-close" onClick={onClose} aria-label="Close modal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    {/* Item Image */}
+                    <div
+                        className="modal-image"
+                        style={{ backgroundImage: `url(${item.imageUrl})` }}
+                    >
+                        <div className="modal-image-overlay"></div>
+                    </div>
+
+                    {/* Item Details */}
+                    <div className="modal-body">
+                        <h2 className="modal-title">{item.name}</h2>
+
+                        {item.description && (
+                            <p className="modal-description">{item.description}</p>
+                        )}
+
+                        <div className="modal-price">Rs. {item.price}</div>
+
+                        {/* Variations */}
+                        {item.variations && item.variations.length > 0 && (
+                            <div className="modal-variations">
+                                {item.variations.map((variation, index) => (
+                                    <div key={index} className="variation-group">
+                                        <label className="variation-label">{variation.name}</label>
+                                        <select
+                                            className="variation-select"
+                                            value={selectedVariations[variation.name] || ''}
+                                            onChange={(e) => handleVariationChange(variation.name, e.target.value)}
+                                        >
+                                            <option value="">Select {variation.name}</option>
+                                            {variation.options.map((option, optIndex) => (
+                                                <option key={optIndex} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Quantity Selector */}
+                        <div className="quantity-selector">
+                            <label className="quantity-label">Quantity</label>
+                            <div className="quantity-controls">
+                                <button
+                                    className="quantity-btn"
+                                    onClick={decrementQuantity}
+                                    aria-label="Decrease quantity"
+                                >
+                                    −
+                                </button>
+                                <span className="quantity-value">{quantity}</span>
+                                <button
+                                    className="quantity-btn"
+                                    onClick={incrementQuantity}
+                                    aria-label="Increase quantity"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Store Status Message */}
+                        {!storeOpen && (
+                            <div className="store-closed-message">
+                                Sorry, we are closed now. You can place orders during our operating hours.
+                            </div>
+                        )}
+
+                        {/* Add to Cart Button */}
+                        <button
+                            className="modal-add-btn"
+                            onClick={handleAddToCart}
+                            disabled={!canAddToCart}
+                        >
+                            {canAddToCart ? `Add to Cart - Rs. ${item.price * quantity}` : 'Currently Unavailable'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default ItemModal;

@@ -1,0 +1,94 @@
+.menu-categories-wrapper {
+    position: sticky;
+    top: 73px;
+    background-color: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--color-dark-gray);
+    z-index: var(--z-sticky);
+    padding: var(--spacing-md) 0;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.menu-categories-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.menu-categories {
+    display: flex;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: var(--spacing-xs) 0;
+}
+
+.menu-categories::-webkit-scrollbar {
+    display: none;
+}
+
+.category-btn {
+    flex-shrink: 0;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: var(--color-dark-gray);
+    color: var(--color-text-primary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    white-space: nowrap;
+}
+
+.category-btn:hover {
+    background-color: var(--color-medium-gray);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+}
+
+.category-btn.active {
+    background-color: var(--color-accent);
+    color: var(--color-black);
+    border-color: var(--color-accent);
+}
+
+.category-scroll-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--color-dark-gray);
+    color: var(--color-white);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.category-scroll-btn:hover {
+    background-color: var(--color-accent);
+    color: var(--color-black);
+    transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .menu-categories-wrapper {
+        top: 73px;
+    }
+
+    .category-scroll-btn {
+        display: none;
+    }
+
+    .category-btn {
+        padding: var(--spacing-xs) var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+}
