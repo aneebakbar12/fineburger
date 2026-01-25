@@ -258,13 +258,30 @@
     .admin-main {
         margin-left: 0;
         padding: var(--spacing-md);
+        padding-top: 80px;
+        /* Space for menu button */
+    }
+
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    .admin-title {
+        font-size: var(--font-size-2xl);
     }
 
     .dashboard-grid {
         grid-template-columns: 1fr;
+        gap: var(--spacing-md);
     }
 
     .data-table {
         overflow-x: auto;
+    }
+
+    .btn {
+        width: 100%;
     }
 }
