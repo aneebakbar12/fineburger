@@ -182,6 +182,11 @@ export const subscribeToStoreSettings = (callback) => {
 export const isStoreOpen = (settings) => {
     if (!settings || !settings.storeOpen) return false;
 
+    // Check manual override first - if enabled, store is always open
+    if (settings.forceOpen === true) {
+        return true;
+    }
+
     const now = new Date();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
@@ -189,5 +194,19 @@ export const isStoreOpen = (settings) => {
     const todayHours = settings.operatingHours?.[currentDay];
     if (!todayHours) return false;
 
-    return currentTime >= todayHours.open && currentTime <= todayHours.close;
+    const { open, close } = todayHours;
+
+    // Special case: 24-hour operation (00:00 to 23:59)
+    if (open === '00:00' && close === '23:59') {
+        return true;
+    }
+
+    // Check if hours cross midnight (e.g., 22:00 to 02:00)
+    if (close < open) {
+        // Store is open if current time is after opening OR before closing
+        return currentTime >= open || currentTime <= close;
+    }
+
+    // Normal case: opening and closing on the same day
+    return currentTime >= open && currentTime <= close;
 };

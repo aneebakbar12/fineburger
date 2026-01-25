@@ -5,6 +5,7 @@ const Settings = () => {
     const [settings, setSettings] = useState(null);
     const [formData, setFormData] = useState({
         storeOpen: true,
+        forceOpen: false,
         storeInfo: { name: '', phone: '', email: '', address: '' },
         operatingHours: {
             monday: { open: '10:00', close: '22:00' },
@@ -63,15 +64,44 @@ const Settings = () => {
                     <h2 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--spacing-lg)', color: 'var(--color-white)' }}>
                         Store Status
                     </h2>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--color-white)', fontSize: 'var(--font-size-lg)' }}>
-                        <input
-                            type="checkbox"
-                            checked={formData.storeOpen}
-                            onChange={(e) => setFormData({ ...formData, storeOpen: e.target.checked })}
-                            style={{ width: '20px', height: '20px' }}
-                        />
-                        Store is Open
-                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--color-white)', fontSize: 'var(--font-size-lg)' }}>
+                            <input
+                                type="checkbox"
+                                checked={formData.storeOpen}
+                                onChange={(e) => setFormData({ ...formData, storeOpen: e.target.checked })}
+                                style={{ width: '20px', height: '20px' }}
+                            />
+                            Store is Open
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--color-white)', fontSize: 'var(--font-size-lg)' }}>
+                            <input
+                                type="checkbox"
+                                checked={formData.forceOpen || false}
+                                onChange={(e) => setFormData({ ...formData, forceOpen: e.target.checked })}
+                                style={{ width: '20px', height: '20px' }}
+                            />
+                            Force Store Open (Override Schedule)
+                        </label>
+
+                        {formData.forceOpen && (
+                            <div style={{
+                                padding: 'var(--spacing-md)',
+                                backgroundColor: 'rgba(255, 180, 0, 0.2)',
+                                border: '2px solid #FFB400',
+                                borderRadius: 'var(--radius-md)',
+                                color: '#FFB400',
+                                fontSize: 'var(--font-size-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--spacing-sm)'
+                            }}>
+                                <span style={{ fontSize: '20px' }}>⚠️</span>
+                                <span>Manual override is active - store will be open regardless of scheduled hours</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)', padding: 'var(--spacing-xl)' }}>

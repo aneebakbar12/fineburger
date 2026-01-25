@@ -9,6 +9,7 @@ import MenuItemManager from './pages/MenuItemManager';
 import InventoryManager from './pages/InventoryManager';
 import SliderManager from './pages/SliderManager';
 import Settings from './pages/Settings';
+import Reports from './pages/Reports';
 import { onAuthChange } from './services/firebase';
 import './styles/admin.css';
 
@@ -61,6 +62,7 @@ function App() {
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/orders" element={<OrderManager />} />
+                        <Route path="/reports" element={<Reports />} />
                         <Route path="/categories" element={<CategoryManager />} />
                         <Route path="/menu-items" element={<MenuItemManager />} />
                         <Route path="/inventory" element={<InventoryManager />} />

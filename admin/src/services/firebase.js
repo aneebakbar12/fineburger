@@ -3,6 +3,7 @@ import { db, storage, auth } from '../firebase-config';
 import {
     collection,
     getDocs,
+    getDoc,
     addDoc,
     updateDoc,
     deleteDoc,
@@ -323,6 +324,54 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             }
         }
 
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// General Inventory (non-menu items like ketchup, cheese, tissues)
+export const getInventoryItems = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, 'inventory'));
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error fetching inventory items:', error);
+        return [];
+    }
+};
+
+export const addInventoryItem = async (itemData) => {
+    try {
+        const docRef = await addDoc(collection(db, 'inventory'), {
+            ...itemData,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const updateInventoryItem = async (id, itemData) => {
+    try {
+        await updateDoc(doc(db, 'inventory', id), {
+            ...itemData,
+            updatedAt: serverTimestamp()
+        });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteInventoryItem = async (id) => {
+    try {
+        await deleteDoc(doc(db, 'inventory', id));
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
