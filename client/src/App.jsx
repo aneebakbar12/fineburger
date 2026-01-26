@@ -6,7 +6,14 @@ import Cart from './components/Cart';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import About from './pages/About';
-import { subscribeToMenuItems, subscribeToCategories, subscribeToStoreSettings } from './services/firebase';
+import Orders from './pages/Orders'; // Import Orders page
+import {
+    subscribeToMenuItems,
+    subscribeToCategories,
+    subscribeToStoreSettings,
+    onAuthChange,
+    logoutUser
+} from './services/firebase';
 import './styles/index.css';
 
 function App() {
@@ -15,17 +22,25 @@ function App() {
     const [storeSettings, setStoreSettings] = useState(null);
     const [cartItems, setCartItems] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [user, setUser] = useState(null); // Auth user state
+    const [authLoading, setAuthLoading] = useState(true);
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates and auth
     useEffect(() => {
         const unsubscribeCategories = subscribeToCategories(setCategories);
         const unsubscribeItems = subscribeToMenuItems(setMenuItems);
         const unsubscribeSettings = subscribeToStoreSettings(setStoreSettings);
 
+        const unsubscribeAuth = onAuthChange((currentUser) => {
+            setUser(currentUser);
+            setAuthLoading(false);
+        });
+
         return () => {
             unsubscribeCategories();
             unsubscribeItems();
             unsubscribeSettings();
+            unsubscribeAuth();
         };
     }, []);
 
@@ -66,12 +81,19 @@ function App() {
         setIsCartOpen(!isCartOpen);
     };
 
+    const handleLogout = async () => {
+        await logoutUser();
+        // setUser(null); // Automated by onAuthChange
+    };
+
     return (
         <Router>
             <div className="app">
                 <Header
                     cartItemCount={cartItems.length}
                     onCartClick={toggleCart}
+                    user={user}
+                    onLogout={handleLogout}
                 />
 
                 <main>
@@ -99,6 +121,7 @@ function App() {
                             }
                         />
                         <Route path="/about" element={<About />} />
+                        <Route path="/orders" element={<Orders user={user} />} />
                     </Routes>
                 </main>
 
@@ -110,6 +133,7 @@ function App() {
                     cartItems={cartItems}
                     onUpdateQuantity={handleUpdateQuantity}
                     onRemoveItem={handleRemoveItem}
+                    user={user} // Pass user to Cart
                 />
             </div>
         </Router>

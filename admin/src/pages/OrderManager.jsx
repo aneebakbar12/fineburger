@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { subscribeToOrders, updateOrderStatus, getServerTimestamp } from '../services/firebase';
+import '../styles/admin.css'; // Ensure we have base styles
+
+// --- Components ---
 
 const CountdownTimer = ({ startTime, durationMinutes = 60 }) => {
     const [timeLeft, setTimeLeft] = useState('00:00');
@@ -9,7 +12,6 @@ const CountdownTimer = ({ startTime, durationMinutes = 60 }) => {
         if (!startTime) return;
 
         const interval = setInterval(() => {
-            // Convert Firestore Timestamp to Date object
             const start = startTime.seconds ? new Date(startTime.seconds * 1000) : new Date(startTime);
             const now = new Date();
             const elapsed = now - start;
@@ -31,25 +33,136 @@ const CountdownTimer = ({ startTime, durationMinutes = 60 }) => {
 
     return (
         <div style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             color: isOverdue ? '#ff6b6b' : '#4ade80',
             fontWeight: 'bold',
-            fontSize: 'var(--font-size-lg)',
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            padding: '8px 12px',
-            borderRadius: 'var(--radius-md)'
+            fontSize: '14px',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            padding: '4px 8px',
+            borderRadius: '4px'
         }}>
-            <span>⏱️ Preparing:</span>
-            <span>{timeLeft}</span>
+            <span>⏱️ {timeLeft}</span>
         </div>
     );
+};
+
+const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint }) => {
+    if (!isOpen || !order) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose} style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000,
+            display: 'flex', justifyContent: 'center', alignItems: 'center', pading: '20px'
+        }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+                backgroundColor: '#1a1a1a', borderRadius: '12px', width: '90%', maxWidth: '600px',
+                maxHeight: '90vh', overflowY: 'auto', border: '1px solid #333', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}>
+                <div style={{ padding: '24px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h2 style={{ fontSize: '24px', color: 'white', margin: 0 }}>Order #{order.id.slice(0, 6).toUpperCase()}</h2>
+                        <span style={{
+                            fontSize: '14px', color: '#ccc',
+                            backgroundColor: getStatusColor(order.status).bg,
+                            color: getStatusColor(order.status).text,
+                            padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold',
+                            marginTop: '8px', display: 'inline-block'
+                        }}>
+                            {order.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: '24px', cursor: 'pointer' }}>×</button>
+                </div>
+
+                <div style={{ padding: '24px' }}>
+                    {/* Customer Info */}
+                    <div style={{ marginBottom: '24px', backgroundColor: '#252525', padding: '16px', borderRadius: '8px' }}>
+                        <h3 style={{ color: '#888', fontSize: '14px', textTransform: 'uppercase', marginBottom: '12px' }}>Customer Details</h3>
+                        <p style={{ color: 'white', marginBottom: '4px' }}><strong>Name:</strong> {order.customer.name}</p>
+                        <p style={{ color: 'white', marginBottom: '4px' }}><strong>Phone:</strong> <a href={`tel:${order.customer.phone}`} style={{ color: '#4ade80' }}>{order.customer.phone}</a></p>
+                        <p style={{ color: 'white', marginBottom: '8px' }}><strong>Address:</strong> {order.customer.address}</p>
+                        {order.customer.location && (
+                            <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${order.customer.location.lat},${order.customer.location.lng}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: 'var(--color-accent)', fontSize: '14px', textDecoration: 'underline' }}
+                            >
+                                📍 View Location on Maps
+                            </a>
+                        )}
+                    </div>
+
+                    {/* Order Items */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ color: '#888', fontSize: '14px', textTransform: 'uppercase', marginBottom: '12px' }}>Order Items</h3>
+                        {order.items.map((item, idx) => (
+                            <div key={idx} style={{
+                                display: 'flex', justifyContent: 'space-between', marginBottom: '12px',
+                                paddingBottom: '12px', borderBottom: '1px solid #333'
+                            }}>
+                                <div>
+                                    <div style={{ color: 'white', fontSize: '16px' }}>{item.quantity}x {item.name}</div>
+                                    {item.selectedVariations && Object.values(item.selectedVariations).length > 0 && (
+                                        <div style={{ color: '#888', fontSize: '13px', marginTop: '2px' }}>
+                                            {Object.values(item.selectedVariations).join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ color: 'white', fontWeight: 'bold' }}>Rs. {item.price * item.quantity}</div>
+                            </div>
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                            <span style={{ color: '#888' }}>Payment Method: <strong style={{ color: 'white' }}>{order.paymentMethod}</strong></span>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-accent)' }}>
+                                Total: Rs. {order.total}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button
+                            onClick={() => onPrint(order)}
+                            style={{ flex: 1, padding: '12px', backgroundColor: '#fff', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                            🖨️ Print Receipt
+                        </button>
+
+                        {order.status === 'pending' && (
+                            <>
+                                <button className="btn-action confirm" onClick={() => onUpdateStatus(order.id, 'preparing')}>Confirm Order</button>
+                                <button className="btn-action cancel" onClick={() => onUpdateStatus(order.id, 'cancelled')}>Cancel</button>
+                            </>
+                        )}
+                        {order.status === 'preparing' && (
+                            <button className="btn-action deliver" onClick={() => onUpdateStatus(order.id, 'delivered')}>Mark Delivered</button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const getStatusColor = (status) => {
+    switch (status) {
+        case 'pending': return { bg: 'rgba(255, 180, 0, 0.2)', text: '#FFB400', border: '#FFB400' };
+        case 'preparing': return { bg: 'rgba(59, 130, 246, 0.2)', text: '#3B82F6', border: '#3B82F6' };
+        case 'delivered': return { bg: 'rgba(74, 222, 128, 0.2)', text: '#4ade80', border: '#4ade80' };
+        case 'cancelled': return { bg: 'rgba(255, 107, 107, 0.2)', text: '#ff6b6b', border: '#ff6b6b' };
+        default: return { bg: '#333', text: '#fff', border: '#666' };
+    }
 };
 
 const OrderManager = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
     const prevOrdersRef = useRef([]);
     const audioContextRef = useRef(null);
 
@@ -58,42 +171,32 @@ const OrderManager = () => {
             setOrders(newOrders);
             setLoading(false);
 
-            // Check for new pending orders to play sound
+            // Check for new pending orders
             if (prevOrdersRef.current.length > 0) {
                 const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
                 const newPendingOrders = newOrders.filter(o => !previousIds.has(o.id) && o.status === 'pending');
-
-                if (newPendingOrders.length > 0) {
-                    playBuzzer();
-                }
+                if (newPendingOrders.length > 0) playBuzzer();
             }
-
             prevOrdersRef.current = newOrders;
         });
-
         return () => unsubscribe();
-    }, []);
+    }, []); // No dependencies, subscription runs once
+
+    const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
 
     const playBuzzer = () => {
         try {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            }
-
+            if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             const ctx = audioContextRef.current;
             const oscillator = ctx.createOscillator();
             const gainNode = ctx.createGain();
-
             oscillator.type = 'square';
-            oscillator.frequency.setValueAtTime(440, ctx.currentTime); // A4
-            oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
-
+            oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
             gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 3.0);
-
             oscillator.connect(gainNode);
             gainNode.connect(ctx.destination);
-
             oscillator.start();
             oscillator.stop(ctx.currentTime + 3.0);
         } catch (e) {
@@ -103,13 +206,14 @@ const OrderManager = () => {
 
     const handleStatusUpdate = async (id, newStatus) => {
         let additionalData = {};
+        if (newStatus === 'preparing') additionalData = { preparingStartedAt: getServerTimestamp() };
 
-        if (newStatus === 'preparing') {
-            additionalData = { preparingStartedAt: getServerTimestamp() };
-        }
-
+        // Skip confirm if using modal actions usually
         if (window.confirm(`Change order status to ${newStatus}?`)) {
             await updateOrderStatus(id, newStatus, additionalData);
+            if (newStatus === 'cancelled' || newStatus === 'delivered') {
+                setSelectedOrderId(null); // Close modal on completion
+            }
         }
     };
 
@@ -178,7 +282,8 @@ const OrderManager = () => {
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
-        return new Date(timestamp.seconds * 1000).toLocaleString();
+        const date = new Date(timestamp.seconds * 1000);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     return (
@@ -186,136 +291,101 @@ const OrderManager = () => {
             <div className="admin-header">
                 <div>
                     <h1 className="admin-title">Order Management</h1>
-                    <p className="admin-subtitle">View and manage incoming orders</p>
+                    <p className="admin-subtitle">Live Order Dashboard</p>
                 </div>
-
             </div>
 
             {loading ? (
-                <div style={{ color: 'var(--color-white)' }}>Loading orders...</div>
+                <div style={{ color: 'white' }}>Loading...</div>
             ) : orders.length === 0 ? (
-                <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
                     No orders found.
                 </div>
             ) : (
-                <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr' }}>
-                    {orders.map(order => (
-                        <div key={order.id} className="card" style={{
-                            borderLeft: `5px solid ${order.status === 'pending' ? '#FFB400' :
-                                    order.status === 'preparing' ? '#3B82F6' :
-                                        order.status === 'delivered' ? '#4ade80' :
-                                            '#ff6b6b'
-                                }`
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-md)' }}>
+                <div className="order-grid" style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px'
+                }}>
+                    {orders.map(order => {
+                        const statusColors = getStatusColor(order.status);
+                        return (
+                            <div
+                                key={order.id}
+                                onClick={() => setSelectedOrderId(order.id)}
+                                style={{
+                                    backgroundColor: '#1a1a1a',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    border: '1px solid #333',
+                                    borderTop: `4px solid ${statusColors.border}`,
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    minHeight: '180px'
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
                                 <div>
-                                    <h3 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-xl)' }}>
-                                        Order #{order.id.slice(0, 6).toUpperCase()}
-                                    </h3>
-                                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                                        {formatDate(order.createdAt)} • <span style={{ textTransform: 'uppercase', fontWeight: 'bold', color: 'var(--color-white)' }}>{order.paymentMethod}</span>
-                                    </p>
-                                </div>
-                                <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                        <h3 style={{ margin: 0, color: 'white', fontSize: '18px' }}>#{order.id.slice(0, 4)}...</h3>
+                                        <span style={{
+                                            fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase',
+                                            padding: '4px 8px', borderRadius: '4px',
+                                            backgroundColor: statusColors.bg, color: statusColors.text
+                                        }}>
+                                            {order.status}
+                                        </span>
+                                    </div>
 
-                                    <button
-                                        className="btn"
-                                        onClick={() => handlePrintReceipt(order)}
-                                        style={{ backgroundColor: '#fff', color: '#000', padding: '6px 12px', fontSize: '12px' }}
-                                    >
-                                        🖨️ Print Receipt
-                                    </button>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <h4 style={{ margin: '0 0 4px 0', color: '#ccc', fontSize: '15px' }}>{order.customer.name}</h4>
+                                        <p style={{ margin: '0 0 4px 0', color: '#888', fontSize: '12px' }}>{order.customer.phone}</p>
+                                        <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px' }}>{formatDate(order.createdAt)}</p>
+
+                                        <div style={{ fontSize: '13px', color: '#ddd' }}>
+                                            {order.items.slice(0, 3).map((item, i) => (
+                                                <div key={i} style={{ marginBottom: '2px' }}>
+                                                    {item.quantity}x {item.name}
+                                                </div>
+                                            ))}
+                                            {order.items.length > 3 && (
+                                                <div style={{ color: '#888', fontStyle: 'italic' }}>+ {order.items.length - 3} more...</div>
+                                            )}
+                                        </div>
+                                    </div>
 
                                     {order.status === 'preparing' && order.preparingStartedAt && (
-                                        <CountdownTimer startTime={order.preparingStartedAt} />
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <CountdownTimer startTime={order.preparingStartedAt} />
+                                        </div>
                                     )}
-                                    <div style={{
-                                        padding: '6px 12px',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        backgroundColor:
-                                            order.status === 'pending' ? 'rgba(255, 180, 0, 0.2)' :
-                                                order.status === 'preparing' ? 'rgba(59, 130, 246, 0.2)' :
-                                                    order.status === 'delivered' ? 'rgba(74, 222, 128, 0.2)' :
-                                                        'rgba(255, 107, 107, 0.2)',
-                                        color:
-                                            order.status === 'pending' ? '#FFB400' :
-                                                order.status === 'preparing' ? '#3B82F6' :
-                                                    order.status === 'delivered' ? '#4ade80' :
-                                                        '#ff6b6b'
-                                    }}>
-                                        {order.status}
-                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #333', paddingTop: '12px' }}>
+                                    <span style={{ color: '#888', fontSize: '13px' }}>Total</span>
+                                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold', fontSize: '16px' }}>Rs. {order.total}</span>
                                 </div>
                             </div>
-
-                            <div style={{ marginBottom: 'var(--spacing-lg)', borderTop: '1px solid var(--color-medium-gray)', borderBottom: '1px solid var(--color-medium-gray)', padding: 'var(--spacing-md) 0' }}>
-                                <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>Customer Details</h4>
-                                <p style={{ color: 'var(--color-white)' }}><strong>Name:</strong> {order.customer.name}</p>
-                                <p style={{ color: 'var(--color-white)' }}><strong>Phone:</strong> {order.customer.phone}</p>
-                                <p style={{ color: 'var(--color-white)' }}><strong>Address:</strong> {order.customer.address}</p>
-                                {order.customer.location && (
-                                    <p style={{ color: 'var(--color-accent)', fontSize: 'var(--font-size-sm)', marginTop: '4px' }}>
-                                        <a
-                                            href={`https://www.google.com/maps/search/?api=1&query=${order.customer.location.lat},${order.customer.location.lng}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            style={{ color: 'inherit', textDecoration: 'underline' }}
-                                        >
-                                            View on Google Maps ↗
-                                        </a>
-                                    </p>
-                                )}
-                            </div>
-
-                            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-                                <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>Order Items</h4>
-                                {order.items.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-xs)', color: 'var(--color-white)' }}>
-                                        <span>{item.quantity}x {item.name} {item.selectedVariations && Object.values(item.selectedVariations).length > 0 && `(${Object.values(item.selectedVariations).join(', ')})`}</span>
-                                        <span>Rs. {item.price * item.quantity}</span>
-                                    </div>
-                                ))}
-                                <div style={{ marginTop: 'var(--spacing-md)', paddingTop: 'var(--spacing-sm)', borderTop: '1px solid var(--color-medium-gray)', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 'var(--font-size-lg)', color: 'var(--color-accent)' }}>
-                                    <span>Total</span>
-                                    <span>Rs. {order.total}</span>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-                                {order.status === 'pending' && (
-                                    <>
-                                        <button
-                                            className="btn"
-                                            style={{ flex: 1, backgroundColor: '#3B82F6', color: '#fff' }}
-                                            onClick={() => handleStatusUpdate(order.id, 'preparing')}
-                                        >
-                                            Confirm & Start Preparing
-                                        </button>
-                                        <button
-                                            className="btn"
-                                            style={{ flex: 1, backgroundColor: '#ff6b6b', color: '#fff' }}
-                                            onClick={() => handleStatusUpdate(order.id, 'cancelled')}
-                                        >
-                                            Cancel Order
-                                        </button>
-                                    </>
-                                )}
-                                {order.status === 'preparing' && (
-                                    <button
-                                        className="btn"
-                                        style={{ flex: 1, backgroundColor: '#4ade80', color: '#000' }}
-                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                    >
-                                        Mark as Delivered
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
+
+            <OrderDetailsModal
+                order={selectedOrder}
+                isOpen={!!selectedOrder}
+                onClose={() => setSelectedOrderId(null)}
+                onUpdateStatus={handleStatusUpdate}
+                onPrint={handlePrintReceipt}
+            />
         </div>
     );
 };

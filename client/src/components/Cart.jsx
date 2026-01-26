@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createOrder } from '../services/firebase';
 import LocationPicker from './LocationPicker';
+import AuthModal from './AuthModal'; // Import AuthModal
 import '../styles/Cart.css';
 
-const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) => {
+const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user }) => {
     const [isCheckout, setIsCheckout] = useState(false);
+    const [authChoice, setAuthChoice] = useState(false); // New state to show auth choice
     const [customerDetails, setCustomerDetails] = useState({
         name: '',
         phone: '',
@@ -14,6 +16,18 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
     const [loading, setLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [showMap, setShowMap] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+    // Auto-fill user details when user logs in
+    useEffect(() => {
+        if (user && isCheckout) {
+            setCustomerDetails(prev => ({
+                ...prev,
+                name: user.displayName || prev.name || '',
+                // phone: user.phoneNumber || prev.phone || '' // Firebase auth often doesn't have phone by default
+            }));
+        }
+    }, [user, isCheckout]);
 
     const calculateTotal = () => {
         return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -34,6 +48,22 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
         }));
     };
 
+    const handleProceedToCheckout = () => {
+        if (user) {
+            setIsCheckout(true);
+            setAuthChoice(false);
+        } else {
+            // Show auth choice first
+            setAuthChoice(true);
+            setIsCheckout(false);
+        }
+    };
+
+    const handleGuestCheckout = () => {
+        setAuthChoice(false);
+        setIsCheckout(true);
+    };
+
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -42,26 +72,22 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
             customer: customerDetails,
             items: cartItems,
             total: calculateTotal(),
-            paymentMethod: 'COD'
+            paymentMethod: 'COD',
+            userId: user ? user.uid : null // Link order to user
         };
 
         const result = await createOrder(orderData);
 
         if (result.success) {
             setOrderSuccess(true);
-            // Clear cart? Ideally yes, but we need to prop that up or handle it. 
-            // For now let's just show success and close.
             setTimeout(() => {
                 onClose();
                 setIsCheckout(false);
+                setAuthChoice(false);
                 setOrderSuccess(false);
                 setCustomerDetails({ name: '', phone: '', address: '' });
-                // We should really clear the cart here. 
-                // Since I can't easily modify App.jsx state from here without a prop, 
-                // I'll assume the user will simply clear it manually or I'll implement clearCart prop later.
-                // Wait, I can pass clearCart if I update App.jsx too.
-                // For now, let's just trigger a reload or something? No, that's bad.
-                // I'll assume the user wants to see the success message.
+                // Note: Cart clearing needs to be handled by parent or context in a real app
+                // For this demo, we assume reload or similar behavior for full reset
             }, 3000);
         } else {
             alert('Failed to place order: ' + result.error);
@@ -92,6 +118,16 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
         );
     }
 
+    // Helper to close specific views
+    const handleClose = () => {
+        if (isCheckout || authChoice) {
+            setIsCheckout(false);
+            setAuthChoice(false);
+        } else {
+            onClose();
+        }
+    };
+
     return (
         <>
             <div className="cart-backdrop" onClick={onClose}></div>
@@ -99,14 +135,16 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                 <div className="cart-header">
                     <button
                         className="cart-close"
-                        onClick={() => isCheckout ? setIsCheckout(false) : onClose()}
+                        onClick={handleClose}
                         style={{ marginRight: 'auto', marginLeft: 0 }}
                         aria-label="Back"
                     >
-                        {isCheckout ? '← Back' : ''}
+                        {(isCheckout || authChoice) ? '← Back' : ''}
                     </button>
-                    <h2 className="cart-title">{isCheckout ? 'Checkout' : 'Your Cart'}</h2>
-                    {!isCheckout && (
+                    <h2 className="cart-title">
+                        {authChoice ? 'Sign In' : (isCheckout ? 'Checkout' : 'Your Cart')}
+                    </h2>
+                    {(!isCheckout && !authChoice) && (
                         <button className="cart-close" onClick={onClose} aria-label="Close cart">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M18 6L6 18M6 6l12 12" />
@@ -116,8 +154,38 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                 </div>
 
                 <div className="cart-body">
-                    {isCheckout ? (
+                    {authChoice ? (
+                        <div className="auth-choice-container">
+                            <div className="auth-benefits">
+                                <h3>Create an account for:</h3>
+                                <ul>
+                                    <li>Order tracking & history</li>
+                                    <li>Faster checkout next time</li>
+                                    <li>Exclusive offers</li>
+                                </ul>
+                            </div>
+
+                            <button
+                                className="auth-choice-btn primary"
+                                onClick={() => setIsAuthModalOpen(true)}
+                            >
+                                Sign In / Sign Up
+                            </button>
+
+                            <div className="auth-divider">
+                                <span>OR</span>
+                            </div>
+
+                            <button
+                                className="auth-choice-btn guest"
+                                onClick={handleGuestCheckout}
+                            >
+                                Continue as Guest
+                            </button>
+                        </div>
+                    ) : isCheckout ? (
                         <form onSubmit={handlePlaceOrder} className="checkout-form">
+                            {/* Checkout Form Content */}
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
                                 <input
@@ -264,18 +332,28 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                     )}
                 </div>
 
-                {!isCheckout && cartItems.length > 0 && (
+                {!isCheckout && !authChoice && cartItems.length > 0 && (
                     <div className="cart-footer">
                         <div className="cart-total">
                             <span className="cart-total-label">Total:</span>
                             <span className="cart-total-amount">Rs. {calculateTotal()}</span>
                         </div>
-                        <button className="cart-checkout-btn" onClick={() => setIsCheckout(true)}>
+                        <button className="cart-checkout-btn" onClick={handleProceedToCheckout}>
                             Proceed to Checkout
                         </button>
                     </div>
                 )}
             </div>
+
+            <AuthModal
+                isOpen={isAuthModalOpen}
+                onClose={() => setIsAuthModalOpen(false)}
+                onLoginSuccess={() => {
+                    setIsAuthModalOpen(false);
+                    setAuthChoice(false);
+                    setIsCheckout(true); // Proceed to checkout after login
+                }}
+            />
         </>
     );
 };

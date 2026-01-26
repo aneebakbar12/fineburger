@@ -1,4 +1,4 @@
-import { db } from '../firebase-config';
+import { db, auth } from '../firebase-config'; // Assuming auth is exported from config
 
 import {
     collection,
@@ -11,20 +11,96 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    updateProfile
+} from 'firebase/auth';
+
+// --- Authentication ---
+
+export const registerUser = async (email, password, name) => {
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        return { success: true, user: userCredential.user };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const loginUser = async (email, password) => {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        return { success: true, user: userCredential.user };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const logoutUser = async () => {
+    try {
+        await signOut(auth);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const onAuthChange = (callback) => {
+    return onAuthStateChanged(auth, callback);
+};
+
+// --- Orders ---
+
 // Create a new order
 export const createOrder = async (orderData) => {
     try {
-        const docRef = await addDoc(collection(db, 'orders'), {
+        const payload = {
             ...orderData,
             status: 'pending',
             createdAt: serverTimestamp()
-        });
+        };
+        // Add userId if present in orderData (client should provide it if logged in)
+        // If undefined, it just won't be added or ignored depending on firestore rules/behavior
+        // Ideally explicit check:
+        // if (orderData.userId) payload.userId = orderData.userId; 
+
+        const docRef = await addDoc(collection(db, 'orders'), payload);
         return { success: true, id: docRef.id };
     } catch (error) {
         console.error("Error creating order:", error);
         return { success: false, error: error.message };
     }
 };
+
+// Fetch user's orders
+export const getUserOrders = async (userId) => {
+    try {
+        const q = query(
+            collection(db, 'orders'),
+            where('userId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+        const orders = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        // Sort in memory to avoid composite index requirement (userId + createdAt)
+        return orders.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA; // Descending
+        });
+    } catch (error) {
+        console.error('Error fetching user orders:', error);
+        return [];
+    }
+};
+
 
 // Fetch all categories
 export const getCategories = async () => {
