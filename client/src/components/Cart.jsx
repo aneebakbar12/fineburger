@@ -4,7 +4,7 @@ import LocationPicker from './LocationPicker';
 import AuthModal from './AuthModal'; // Import AuthModal
 import '../styles/Cart.css';
 
-const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user }) => {
+const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user, onClearCart }) => {
     const [isCheckout, setIsCheckout] = useState(false);
     const [authChoice, setAuthChoice] = useState(false); // New state to show auth choice
     const [customerDetails, setCustomerDetails] = useState({
@@ -86,8 +86,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                 setAuthChoice(false);
                 setOrderSuccess(false);
                 setCustomerDetails({ name: '', phone: '', address: '' });
-                // Note: Cart clearing needs to be handled by parent or context in a real app
-                // For this demo, we assume reload or similar behavior for full reset
+                if (onClearCart) onClearCart(); // Clear the cart state globally
             }, 3000);
         } else {
             alert('Failed to place order: ' + result.error);

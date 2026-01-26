@@ -133,7 +133,9 @@ function App() {
                     cartItems={cartItems}
                     onUpdateQuantity={handleUpdateQuantity}
                     onRemoveItem={handleRemoveItem}
+                    onRemoveItem={handleRemoveItem}
                     user={user} // Pass user to Cart
+                    onClearCart={() => setCartItems([])} // New prop
                 />
             </div>
         </Router>

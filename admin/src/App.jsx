@@ -10,20 +10,62 @@ import InventoryManager from './pages/InventoryManager';
 import SliderManager from './pages/SliderManager';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
-import { onAuthChange } from './services/firebase';
+import { onAuthChange, subscribeToOrders } from './services/firebase'; // Updated import
 import './styles/admin.css';
 
 function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const audioContextRef = React.useRef(null);
+    const prevOrdersRef = React.useRef([]);
+
+    // Buzzer Logic
+    const playBuzzer = () => {
+        try {
+            if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = audioContextRef.current;
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 3.0);
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.start();
+            oscillator.stop(ctx.currentTime + 3.0);
+        } catch (e) {
+            console.error("Audio playback failed", e);
+        }
+    };
 
     useEffect(() => {
-        const unsubscribe = onAuthChange((currentUser) => {
+        let unsubscribeOrders;
+        const unsubscribeAuth = onAuthChange((currentUser) => {
             setUser(currentUser);
             setLoading(false);
+
+            // Subscribe to orders if user is logged in
+            if (currentUser) {
+                unsubscribeOrders = subscribeToOrders((newOrders) => {
+                    // Check for new pending orders
+                    if (prevOrdersRef.current.length > 0) {
+                        const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
+                        const newPendingOrders = newOrders.filter(o => !previousIds.has(o.id) && o.status === 'pending');
+                        if (newPendingOrders.length > 0) playBuzzer();
+                    }
+                    prevOrdersRef.current = newOrders;
+                });
+            } else {
+                if (unsubscribeOrders) unsubscribeOrders();
+            }
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeOrders) unsubscribeOrders();
+        };
     }, []);
 
     const handleLoginSuccess = (loggedInUser) => {

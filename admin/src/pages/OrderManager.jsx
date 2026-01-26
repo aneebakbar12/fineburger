@@ -170,39 +170,13 @@ const OrderManager = () => {
         const unsubscribe = subscribeToOrders((newOrders) => {
             setOrders(newOrders);
             setLoading(false);
-
-            // Check for new pending orders
-            if (prevOrdersRef.current.length > 0) {
-                const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
-                const newPendingOrders = newOrders.filter(o => !previousIds.has(o.id) && o.status === 'pending');
-                if (newPendingOrders.length > 0) playBuzzer();
-            }
-            prevOrdersRef.current = newOrders;
         });
         return () => unsubscribe();
     }, []); // No dependencies, subscription runs once
 
     const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
 
-    const playBuzzer = () => {
-        try {
-            if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            const ctx = audioContextRef.current;
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            oscillator.type = 'square';
-            oscillator.frequency.setValueAtTime(440, ctx.currentTime);
-            oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 3.0);
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            oscillator.start();
-            oscillator.stop(ctx.currentTime + 3.0);
-        } catch (e) {
-            console.error("Audio playback failed", e);
-        }
-    };
+    // (Buzzer logic removed - moved to Global App.js)
 
     const handleStatusUpdate = async (id, newStatus) => {
         let additionalData = {};
