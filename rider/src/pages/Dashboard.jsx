@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
     const [orders, setOrders] = useState([]);
+    const [processingOrders, setProcessingOrders] = useState(new Set());
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -25,8 +26,14 @@ const Dashboard = () => {
     };
 
     const handleMarkDelivered = async (orderId) => {
-        if (window.confirm('Mark this order as Delivered?')) {
+        // Prevent multiple clicks
+        if (processingOrders.has(orderId)) return;
+
+        const confirmed = window.confirm('Mark this order as Delivered?');
+        if (confirmed) {
+            setProcessingOrders(prev => new Set(prev).add(orderId));
             await updateOrderStatus(orderId, 'delivered');
+            // Order will be removed from list by the real-time listener
         }
     };
 
@@ -98,8 +105,14 @@ const Dashboard = () => {
                                 <button
                                     onClick={() => handleMarkDelivered(order.id)}
                                     className="btn-deliver"
+                                    disabled={processingOrders.has(order.id)}
+                                    style={{
+                                        opacity: processingOrders.has(order.id) ? 0.6 : 1,
+                                        cursor: processingOrders.has(order.id) ? 'not-allowed' : 'pointer'
+                                    }}
                                 >
-                                    <span>✅</span> MARK COMPLETED
+                                    <span>{processingOrders.has(order.id) ? '⏳' : '✅'}</span>
+                                    {processingOrders.has(order.id) ? 'PROCESSING...' : 'MARK COMPLETED'}
                                 </button>
                             </div>
                         </div>
