@@ -33,33 +33,73 @@ const Dashboard = () => {
     return (
         <div className="dashboard-container">
             <header className="dashboard-header">
-                <h2>Active Deliveries</h2>
-                <button onClick={handleLogout} className="logout-btn">Logout</button>
+                <h2 className="header-title">Active Orders</h2>
+                <button onClick={handleLogout} className="btn-logout">Logout</button>
             </header>
 
             <div className="orders-list">
                 {orders.length === 0 ? (
-                    <p>No active orders.</p>
+                    <div className="no-orders">
+                        <span className="no-orders-icon">📦</span>
+                        <p>No deliveries assigned yet.</p>
+                        <p style={{ fontSize: '14px', marginTop: '8px' }}>Active orders marked as "Ready" will appear here.</p>
+                    </div>
                 ) : (
                     orders.map(order => (
-                        <div key={order.id} className={`order-card status-${order.status}`}>
-                            <div className="order-header">
-                                <span className="order-id">#{order.id.slice(-6)}</span>
-                                <span className="order-status">{order.status}</span>
+                        <div key={order.id} className="order-card">
+                            <div className="order-card-header">
+                                <span className="order-id">#{order.id.slice(0, 5).toUpperCase()}</span>
+                                <span className="order-badge">Ready for Pickup</span>
                             </div>
+
                             <div className="order-details">
-                                <p><strong>Customer:</strong> {order.customer?.name}</p>
-                                <p><strong>Phone:</strong> {order.customer?.phone}</p>
-                                <p><strong>Address:</strong> {order.customer?.address}</p>
-                                <p><strong>Total:</strong> ${order.total?.toFixed(2)}</p>
-                                <p><strong>Payment:</strong> {order.paymentMethod}</p>
+                                <div className="info-row">
+                                    <span className="info-icon">📍</span>
+                                    <div className="info-content">
+                                        <span className="info-label">DELIVER TO</span>
+                                        <span className="info-text large">{order.customer?.address || "No Address Provided"}</span>
+                                        <a
+                                            href={`https://maps.google.com/?q=${order.customer?.address}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ display: 'inline-block', color: 'var(--color-secondary)', fontSize: '12px', marginTop: '4px', fontWeight: 'bold', textDecoration: 'none' }}
+                                        >
+                                            OPEN MAP ↗
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div className="info-row">
+                                    <span className="info-icon">👤</span>
+                                    <div className="info-content">
+                                        <span className="info-label">CUSTOMER</span>
+                                        <span className="info-text">{order.customer?.name}</span>
+                                        <div style={{ marginTop: '4px' }}>
+                                            <a href={`tel:${order.customer?.phone}`} style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px dotted #666' }}>
+                                                📞 {order.customer?.phone}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="info-row">
+                                    <span className="info-icon">💰</span>
+                                    <div className="info-content">
+                                        <span className="info-label">COLLECT CASH</span>
+                                        <span className="info-text" style={{ color: 'var(--color-secondary)', fontSize: '20px' }}>
+                                            Rs. {order.total}
+                                        </span>
+                                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>({order.paymentMethod})</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="order-actions">
+
+                            <div className="action-area">
                                 <button
                                     onClick={() => handleMarkDelivered(order.id)}
-                                    className="action-btn"
+                                    className="btn-deliver"
                                 >
-                                    Mark as Delivered
+                                    <span>✅</span> MARK COMPLETED
                                 </button>
                             </div>
                         </div>

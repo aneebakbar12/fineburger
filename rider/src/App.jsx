@@ -5,6 +5,8 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import { onAuthChange } from './firebase';
 import './index.css';
+import './App.css';
+
 
 function App() {
   const [user, setUser] = useState(null);

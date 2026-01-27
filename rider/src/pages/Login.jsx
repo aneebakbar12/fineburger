@@ -21,27 +21,36 @@ const Login = () => {
 
     return (
         <div className="login-container">
-            <h1>Rider Login</h1>
-            {error && <p className="error">{error}</p>}
-            <form onSubmit={handleSubmit}>
+            <div className="brand-section">
+                <span className="brand-logo">🛵</span>
+                <h1 className="brand-title">FINE BURGER</h1>
+                <p className="brand-subtitle">Rider Partner App</p>
+            </div>
+
+            {error && <div className="error-msg">{error}</div>}
+
+            <form onSubmit={handleSubmit} className="login-form">
                 <input
                     type="email"
-                    placeholder="Email"
+                    className="input-large"
+                    placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
                 <input
                     type="password"
+                    className="input-large"
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                 />
-                <button type="submit">Login</button>
+                <button type="submit" className="btn-primary">START SHIFT</button>
             </form>
-            <p style={{ marginTop: '20px' }}>
-                Don't have an account? <Link to="/signup" style={{ color: '#646cff' }}>Sign Up</Link>
+
+            <p style={{ marginTop: '20px', color: '#666' }}>
+                New Rider? <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>Sign Up Here</Link>
             </p>
         </div>
     );
