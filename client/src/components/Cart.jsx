@@ -11,8 +11,10 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         name: '',
         phone: '',
         address: '',
-        location: null // { lat, lng }
+        location: null, // { lat, lng }
+        tableNumber: '' // For Dine-in
     });
+    const [orderType, setOrderType] = useState('Delivery'); // 'Delivery', 'Takeaway', 'Dine-in'
     const [loading, setLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [showMap, setShowMap] = useState(false);
@@ -73,6 +75,9 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
             items: cartItems,
             total: calculateTotal(),
             paymentMethod: 'COD',
+            total: calculateTotal(),
+            paymentMethod: 'COD',
+            orderType: orderType, // Save order type
             userId: user ? user.uid : null // Link order to user
         };
 
@@ -184,6 +189,32 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                         </div>
                     ) : isCheckout ? (
                         <form onSubmit={handlePlaceOrder} className="checkout-form">
+                            {/* Order Type Selector */}
+                            <div className="form-group">
+                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Order Type</label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    {['Delivery', 'Takeaway', 'Dine-in'].map(type => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => setOrderType(type)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px',
+                                                borderRadius: '6px',
+                                                border: orderType === type ? '1px solid var(--color-accent)' : '1px solid #333',
+                                                backgroundColor: orderType === type ? 'var(--color-accent)' : '#222',
+                                                color: orderType === type ? '#000' : '#ccc',
+                                                fontWeight: orderType === type ? 'bold' : 'normal',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Checkout Form Content */}
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
@@ -209,44 +240,64 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                                     required
                                 />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--color-text-secondary)' }}>
-                                    <span>Delivery Address</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowMap(!showMap)}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'var(--color-accent)',
-                                            cursor: 'pointer',
-                                            fontSize: 'var(--font-size-xs)',
-                                            fontWeight: 'bold'
-                                        }}
-                                    >
-                                        {showMap ? 'Hide Map' : '📍 Auto Detect / Pin on Map'}
-                                    </button>
-                                </label>
 
-                                {showMap && (
-                                    <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                                        <LocationPicker onAddressSelect={handleAddressSelect} />
-                                        <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
-                                            * Click map to manually set location. Address will auto-fill.
-                                        </p>
-                                    </div>
-                                )}
 
-                                <textarea
-                                    name="address"
-                                    className="form-textarea"
-                                    placeholder="Full street address..."
-                                    value={customerDetails.address}
-                                    onChange={handleInputChange}
-                                    required
-                                    rows="3"
-                                ></textarea>
-                            </div>
+                            {/* Address - Only for Delivery */}
+                            {orderType === 'Delivery' && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--color-text-secondary)' }}>
+                                        <span>Delivery Address</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMap(!showMap)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--color-accent)',
+                                                cursor: 'pointer',
+                                                fontSize: 'var(--font-size-xs)',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            {showMap ? 'Hide Map' : '📍 Auto Detect / Pin on Map'}
+                                        </button>
+                                    </label>
+
+                                    {showMap && (
+                                        <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                            <LocationPicker onAddressSelect={handleAddressSelect} />
+                                            <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
+                                                * Click map to manually set location. Address will auto-fill.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <textarea
+                                        name="address"
+                                        className="form-textarea"
+                                        placeholder="Full street address..."
+                                        value={customerDetails.address}
+                                        onChange={handleInputChange}
+                                        required
+                                        rows="3"
+                                    ></textarea>
+                                </div>
+                            )}
+
+                            {/* Table Number - Only for Dine-in */}
+                            {orderType === 'Dine-in' && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number (Optional)</label>
+                                    <input
+                                        type="text"
+                                        name="tableNumber"
+                                        className="form-input"
+                                        placeholder="e.g. 5"
+                                        value={customerDetails.tableNumber}
+                                        onChange={handleInputChange}
+                                    />
+                                </div>
+                            )}
 
                             <div style={{ marginTop: 'var(--spacing-lg)', borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-md)' }}>
                                 <div className="cart-total" style={{ marginBottom: 'var(--spacing-sm)' }}>
@@ -342,7 +393,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                         </button>
                     </div>
                 )}
-            </div>
+            </div >
 
             <AuthModal
                 isOpen={isAuthModalOpen}
