@@ -19,6 +19,9 @@ const Sidebar = ({ onLogout }) => {
     const menuItems = [
         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
         { path: '/orders', icon: '🔔', label: 'Orders' },
+        { path: '/riders', icon: '🏍️', label: 'Rider Management' },
+        { path: '/financial-dashboard', icon: '💰', label: 'Financial Dashboard' },
+        { path: '/expenses', icon: '💸', label: 'Expenses' },
         { path: '/reports', icon: '📈', label: 'Reports' },
         { path: '/categories', icon: '📁', label: 'Categories' },
         { path: '/menu-items', icon: '🍔', label: 'Menu Items' },

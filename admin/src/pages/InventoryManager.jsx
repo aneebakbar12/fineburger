@@ -11,7 +11,9 @@ const InventoryManager = () => {
         category: 'Condiments',
         stockLevel: 0,
         unit: 'pieces',
-        lowStockThreshold: 10
+        lowStockThreshold: 10,
+        purchasePrice: 0,
+        supplier: ''
     });
 
     useEffect(() => {
@@ -49,7 +51,9 @@ const InventoryManager = () => {
                 category: 'Condiments',
                 stockLevel: 0,
                 unit: 'pieces',
-                lowStockThreshold: 10
+                lowStockThreshold: 10,
+                purchasePrice: 0,
+                supplier: ''
             });
             fetchData();
         }
@@ -375,6 +379,28 @@ const InventoryManager = () => {
                                         <option value="boxes">Boxes</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Purchase Price (PKR)</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={newItem.purchasePrice}
+                                    onChange={(e) => setNewItem({ ...newItem, purchasePrice: parseFloat(e.target.value) || 0 })}
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Price per unit"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Supplier</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={newItem.supplier}
+                                    onChange={(e) => setNewItem({ ...newItem, supplier: e.target.value })}
+                                    placeholder="e.g., Metro Cash & Carry"
+                                />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Low Stock Threshold</label>

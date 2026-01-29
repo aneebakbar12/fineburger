@@ -14,6 +14,8 @@ import {
     onAuthChange,
     logoutUser
 } from './services/firebase';
+import { StaffModeProvider } from './contexts/StaffModeContext';
+import StaffModeActivator from './components/StaffModeActivator';
 import './styles/index.css';
 
 function App() {
@@ -24,6 +26,7 @@ function App() {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [user, setUser] = useState(null); // Auth user state
     const [authLoading, setAuthLoading] = useState(true);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     // Subscribe to real-time updates and auth
     useEffect(() => {
@@ -81,64 +84,75 @@ function App() {
         setIsCartOpen(!isCartOpen);
     };
 
+    const toggleSearch = () => {
+        setIsSearchOpen(!isSearchOpen);
+    };
+
     const handleLogout = async () => {
         await logoutUser();
         // setUser(null); // Automated by onAuthChange
     };
 
     return (
-        <Router>
-            <div className="app">
-                <Header
-                    cartItemCount={cartItems.length}
-                    onCartClick={toggleCart}
-                    user={user}
-                    onLogout={handleLogout}
-                />
+        <StaffModeProvider>
+            <Router>
+                <div className="app">
+                    <StaffModeActivator />
+                    <Header
+                        cartItemCount={cartItems.length}
+                        onCartClick={toggleCart}
+                        onSearchClick={toggleSearch}
+                        user={user}
+                        onLogout={handleLogout}
+                    />
 
-                <main>
-                    <Routes>
-                        <Route
-                            path="/"
-                            element={
-                                <Home
-                                    categories={categories}
-                                    menuItems={menuItems}
-                                    storeSettings={storeSettings}
-                                    onAddToCart={handleAddToCart}
-                                />
-                            }
-                        />
-                        <Route
-                            path="/menu"
-                            element={
-                                <Menu
-                                    categories={categories}
-                                    menuItems={menuItems}
-                                    storeSettings={storeSettings}
-                                    onAddToCart={handleAddToCart}
-                                />
-                            }
-                        />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/orders" element={<Orders user={user} />} />
-                    </Routes>
-                </main>
+                    <main>
+                        <Routes>
+                            <Route
+                                path="/"
+                                element={
+                                    <Home
+                                        categories={categories}
+                                        menuItems={menuItems}
+                                        storeSettings={storeSettings}
+                                        onAddToCart={handleAddToCart}
+                                        isSearchOpen={isSearchOpen}
+                                        onSearchClose={() => setIsSearchOpen(false)}
+                                    />
+                                }
+                            />
+                            <Route
+                                path="/menu"
+                                element={
+                                    <Menu
+                                        categories={categories}
+                                        menuItems={menuItems}
+                                        storeSettings={storeSettings}
+                                        onAddToCart={handleAddToCart}
+                                        isSearchOpen={isSearchOpen}
+                                        onSearchClose={() => setIsSearchOpen(false)}
+                                    />
+                                }
+                            />
+                            <Route path="/about" element={<About />} />
+                            <Route path="/orders" element={<Orders user={user} />} />
+                        </Routes>
+                    </main>
 
-                <Footer />
+                    <Footer />
 
-                <Cart
-                    isOpen={isCartOpen}
-                    onClose={toggleCart}
-                    cartItems={cartItems}
-                    onUpdateQuantity={handleUpdateQuantity}
-                    onRemoveItem={handleRemoveItem}
-                    onRemoveItem={handleRemoveItem}
-                    user={user} // Pass user to Cart
-                    onClearCart={() => setCartItems([])} // New prop
-                />
-            </div>
-        </Router>
+                    <Cart
+                        isOpen={isCartOpen}
+                        onClose={toggleCart}
+                        cartItems={cartItems}
+                        onUpdateQuantity={handleUpdateQuantity}
+                        onRemoveItem={handleRemoveItem}
+                        user={user} // Pass user to Cart
+                        onClearCart={() => setCartItems([])} // New prop
+                    />
+                </div>
+            </Router>
+        </StaffModeProvider>
     );
 }
 

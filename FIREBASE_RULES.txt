@@ -20,15 +20,51 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
-    // CRITICAL: Allow anyone to PLACE an order, but only admins can update/delete
+    
+    // CRITICAL: Allow anyone to PLACE an order, but only admins and assigned riders can read
     match /orders/{orderId} {
       allow create: if true;
+      // Allow admins (authenticated) to read/update/delete all orders
       allow read, update, delete: if request.auth != null;
+      // Also allow riders to read orders assigned to them
+      allow read: if request.auth != null && 
+                     resource.data.assignedRiderId == request.auth.uid;
+    }
+    
+    // Riders collection - allow riders to create and read their own profile, admins can read all
+    match /riders/{riderId} {
+      // Allow riders to create their own profile during signup
+      allow create: if request.auth != null && request.auth.uid == riderId;
+      // Allow riders to read their own profile
+      allow read: if request.auth != null && request.auth.uid == riderId;
+      // Allow admins (authenticated users) to read all rider profiles
+      allow read: if request.auth != null;
+      // Allow riders to update their own stats
+      allow update: if request.auth != null && request.auth.uid == riderId;
+      // Allow admins to delete riders
+      allow delete: if request.auth != null;
+    }
+    
+    // Rider signup codes - allow reading unused codes for validation, admins can create/delete
+    match /riderSignupCodes/{codeId} {
+      // Allow anyone to read unused codes (for signup validation)
+      allow read: if resource.data.used == false;
+      // Allow authenticated users (admins) to create codes
+      allow create: if request.auth != null;
+      // Allow authenticated users to update codes (mark as used)
+      allow update: if request.auth != null;
+      // Allow authenticated users (admins) to delete unused codes
+      allow delete: if request.auth != null;
+    }
+    
+    // Inventory - only authenticated users (admins)
+    match /inventory/{document=**} {
+      allow read, write: if request.auth != null;
     }
     
     // Default rule: deny everything else
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

@@ -4,12 +4,15 @@ import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import OrderManager from './pages/OrderManager';
+import RiderManager from './pages/RiderManager';
 import CategoryManager from './pages/CategoryManager';
 import MenuItemManager from './pages/MenuItemManager';
 import InventoryManager from './pages/InventoryManager';
 import SliderManager from './pages/SliderManager';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import ExpenseManager from './pages/ExpenseManager';
+import FinancialDashboard from './pages/FinancialDashboard';
 import { onAuthChange, subscribeToOrders } from './services/firebase'; // Updated import
 import './styles/admin.css';
 
@@ -104,10 +107,13 @@ function App() {
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/orders" element={<OrderManager />} />
+                        <Route path="/riders" element={<RiderManager />} />
                         <Route path="/reports" element={<Reports />} />
                         <Route path="/categories" element={<CategoryManager />} />
                         <Route path="/menu-items" element={<MenuItemManager />} />
                         <Route path="/inventory" element={<InventoryManager />} />
+                        <Route path="/expenses" element={<ExpenseManager />} />
+                        <Route path="/financial-dashboard" element={<FinancialDashboard />} />
                         <Route path="/sliders" element={<SliderManager />} />
                         <Route path="/settings" element={<Settings />} />
                     </Routes>

@@ -1,12 +1,10 @@
 .menu-categories-wrapper {
-    position: sticky;
-    top: 73px;
-    background-color: rgba(0, 0, 0, 0.95);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.98), rgba(0, 0, 0, 0.95));
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--color-dark-gray);
-    z-index: var(--z-sticky);
     padding: var(--spacing-md) 0;
-    margin-bottom: var(--spacing-2xl);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .menu-categories-container {
@@ -79,10 +77,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .menu-categories-wrapper {
-        top: 73px;
-    }
-
     .category-scroll-btn {
         display: none;
     }

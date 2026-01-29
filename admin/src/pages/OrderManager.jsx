@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { subscribeToOrders, updateOrderStatus, getServerTimestamp } from '../services/firebase';
+import { subscribeToOrders, updateOrderStatus, getServerTimestamp, getRiders, assignOrderToRider } from '../services/firebase';
 import '../styles/admin.css'; // Ensure we have base styles
 
 // --- Components ---
@@ -48,8 +48,23 @@ const CountdownTimer = ({ startTime, durationMinutes = 60 }) => {
     );
 };
 
-const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint }) => {
+const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint, riders, onAssignRider }) => {
+    const [selectedRiderId, setSelectedRiderId] = useState(order?.assignedRiderId || '');
+
+    useEffect(() => {
+        setSelectedRiderId(order?.assignedRiderId || '');
+    }, [order]);
+
     if (!isOpen || !order) return null;
+
+    const handleAssignRider = () => {
+        if (selectedRiderId && onAssignRider) {
+            const rider = riders.find(r => r.id === selectedRiderId);
+            if (rider) {
+                onAssignRider(order.id, selectedRiderId, rider.name);
+            }
+        }
+    };
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{
@@ -96,25 +111,33 @@ const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint }) 
 
                         {/* Left Column: Customer & Delivery */}
                         <div className="modal-section">
-                            <h3 className="modal-section-title">Customer & Delivery</h3>
+                            <h3 className="modal-section-title">
+                                {order.orderType === 'Dine-in' ? 'Table Information' : 'Customer & Delivery'}
+                            </h3>
 
-                            <div className="detail-row">
-                                <span className="detail-label">Name</span>
-                                <span className="detail-value">{order.customer.name}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Phone</span>
-                                <span className="detail-value">
-                                    <a href={`tel:${order.customer.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
-                                        {order.customer.phone}
-                                    </a>
-                                </span>
-                            </div>
+                            {/* Show Name/Phone only for non-dine-in orders */}
+                            {order.orderType !== 'Dine-in' && (
+                                <>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Name</span>
+                                        <span className="detail-value">{order.customer.name}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Phone</span>
+                                        <span className="detail-value">
+                                            <a href={`tel:${order.customer.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
+                                                {order.customer.phone}
+                                            </a>
+                                        </span>
+                                    </div>
+                                </>
+                            )}
 
+                            {/* Table Number for Dine-in */}
                             {order.orderType === 'Dine-in' && order.customer.tableNumber && (
                                 <div className="detail-row">
                                     <span className="detail-label">Table No.</span>
-                                    <span className="detail-value" style={{ color: 'var(--color-accent)', fontSize: '18px' }}>
+                                    <span className="detail-value" style={{ color: 'var(--color-accent)', fontSize: '24px', fontWeight: 'bold' }}>
                                         #{order.customer.tableNumber}
                                     </span>
                                 </div>
@@ -207,9 +230,58 @@ const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint }) 
                         )}
 
                         {order.status === 'ready' && (
-                            <button className="btn-action deliver" onClick={() => onUpdateStatus(order.id, 'delivered')}>
-                                🚀 Mark Delivered
-                            </button>
+                            <>
+                                {order.orderType === 'Delivery' && (
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '8px' }}>
+                                            Assign to Rider:
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <select
+                                                value={selectedRiderId}
+                                                onChange={(e) => setSelectedRiderId(e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    backgroundColor: '#2a2a2a',
+                                                    border: '1px solid #444',
+                                                    borderRadius: '6px',
+                                                    color: 'white',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option value="">Select Rider...</option>
+                                                {riders.map(rider => (
+                                                    <option key={rider.id} value={rider.id}>
+                                                        {rider.name} - {rider.email}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={handleAssignRider}
+                                                disabled={!selectedRiderId || selectedRiderId === order.assignedRiderId}
+                                                className="btn-action"
+                                                style={{
+                                                    backgroundColor: selectedRiderId && selectedRiderId !== order.assignedRiderId ? '#8e44ad' : '#444',
+                                                    color: 'white',
+                                                    opacity: selectedRiderId && selectedRiderId !== order.assignedRiderId ? 1 : 0.5,
+                                                    cursor: selectedRiderId && selectedRiderId !== order.assignedRiderId ? 'pointer' : 'not-allowed'
+                                                }}
+                                            >
+                                                {order.assignedRiderId ? '🔄 Reassign' : '✅ Assign'}
+                                            </button>
+                                        </div>
+                                        {order.assignedRiderName && (
+                                            <div style={{ marginTop: '8px', fontSize: '12px', color: '#4ade80' }}>
+                                                ✓ Currently assigned to: {order.assignedRiderName}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <button className="btn-action deliver" onClick={() => onUpdateStatus(order.id, 'delivered')}>
+                                    {order.orderType === 'Dine-in' ? '💰 Receive Payment' : '🚀 Mark Delivered'}
+                                </button>
+                            </>
                         )}
                     </div>
 
@@ -234,6 +306,9 @@ const getStatusColor = (status) => {
 
 const OrderManager = () => {
     const [orders, setOrders] = useState([]);
+    const [riders, setRiders] = useState([]);
+    const prevPendingCountRef = useRef(0);
+    const prevPreparingCountRef = useRef(0);
     const [loading, setLoading] = useState(true);
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const prevOrdersRef = useRef([]);
@@ -244,8 +319,45 @@ const OrderManager = () => {
             setOrders(newOrders);
             setLoading(false);
         });
+
+        // Fetch riders
+        getRiders().then(ridersData => {
+            setRiders(ridersData);
+        });
+
         return () => unsubscribe();
     }, []); // No dependencies, subscription runs once
+
+    // Sound notifications for new orders
+    useEffect(() => {
+        const pendingOrders = orders.filter(o => o.status === 'pending');
+        const preparingOrders = orders.filter(o => o.status === 'preparing' && o.placedByStaff);
+
+        // Play sound for new pending orders
+        if (pendingOrders.length > prevPendingCountRef.current) {
+            try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Notification bell
+                audio.volume = 0.5;
+                audio.play().catch(err => console.log('Audio play failed:', err));
+            } catch (err) {
+                console.log('Audio error:', err);
+            }
+        }
+
+        // Play different sound for new auto-confirmed preparing orders (dine-in)
+        if (preparingOrders.length > prevPreparingCountRef.current) {
+            try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'); // Kitchen bell
+                audio.volume = 0.6;
+                audio.play().catch(err => console.log('Audio play failed:', err));
+            } catch (err) {
+                console.log('Audio error:', err);
+            }
+        }
+
+        prevPendingCountRef.current = pendingOrders.length;
+        prevPreparingCountRef.current = preparingOrders.length;
+    }, [orders]);
 
     const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
 
@@ -264,8 +376,31 @@ const OrderManager = () => {
         }
     };
 
+    const handleAssignRider = async (orderId, riderId, riderName) => {
+        const result = await assignOrderToRider(orderId, riderId, riderName);
+        if (result.success) {
+            // Order will be updated via real-time listener
+        } else {
+            alert('Failed to assign rider: ' + result.error);
+        }
+    };
+
     const handlePrintReceipt = (order) => {
         const printWindow = window.open('', '_blank');
+
+        // Conditional customer section based on order type
+        const customerSection = order.orderType === 'Dine-in'
+            ? `<div class="customer">
+                <p style="font-size: 18px;"><strong>TABLE #${order.customer.tableNumber || 'N/A'}</strong></p>
+                <p><strong>Type:</strong> Dine-in</p>
+               </div>`
+            : `<div class="customer">
+                <p><strong>Customer:</strong> ${order.customer.name}</p>
+                <p><strong>Phone:</strong> ${order.customer.phone}</p>
+                ${order.orderType === 'Delivery' ? `<p><strong>Address:</strong> ${order.customer.address}</p>` : ''}
+                <p><strong>Type:</strong> ${order.orderType}</p>
+               </div>`;
+
         printWindow.document.write(`
             <html>
                 <head>
@@ -286,11 +421,7 @@ const OrderManager = () => {
                         <p>Order #${order.id.slice(0, 6).toUpperCase()}</p>
                         <p>${new Date().toLocaleString()}</p>
                     </div>
-                    <div class="customer">
-                        <p><strong>Customer:</strong> ${order.customer.name}</p>
-                        <p><strong>Phone:</strong> ${order.customer.phone}</p>
-                        <p><strong>Address:</strong> ${order.customer.address}</p>
-                    </div>
+                    ${customerSection}
                     <div class="items">
                         ${order.items.map(item => `
                             <div style="margin-bottom: 8px;">
@@ -407,6 +538,11 @@ const OrderManager = () => {
                                         <h4 style={{ margin: '0 0 4px 0', color: '#ccc', fontSize: '15px' }}>{order.customer.name}</h4>
                                         <p style={{ margin: '0 0 4px 0', color: '#888', fontSize: '12px' }}>{order.customer.phone}</p>
                                         <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px' }}>{formatDate(order.createdAt)}</p>
+                                        {order.assignedRiderName && (
+                                            <p style={{ margin: '4px 0 0 0', color: '#4ade80', fontSize: '12px', fontWeight: 'bold' }}>
+                                                🏍️ {order.assignedRiderName}
+                                            </p>
+                                        )}
 
                                         <div style={{ fontSize: '13px', color: '#ddd' }}>
                                             {order.items.slice(0, 3).map((item, i) => (
@@ -443,6 +579,8 @@ const OrderManager = () => {
                 onClose={() => setSelectedOrderId(null)}
                 onUpdateStatus={handleStatusUpdate}
                 onPrint={handlePrintReceipt}
+                riders={riders}
+                onAssignRider={handleAssignRider}
             />
         </div>
     );

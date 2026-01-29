@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthModal from './AuthModal';
+import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Header.css';
 
-const Header = ({ cartItemCount, onCartClick, user, onLogout }) => {
+const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) => {
+    const { isStaffMode } = useStaffMode();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -25,13 +27,34 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout }) => {
 
                         {/* Desktop Navigation */}
                         <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-                            <Link to="/" className="nav-link">Home</Link>
+                            {!isStaffMode && <Link to="/" className="nav-link">Home</Link>}
                             <Link to="/menu" className="nav-link">Menu</Link>
-                            <Link to="/about" className="nav-link">About Us</Link>
+                            {!isStaffMode && <Link to="/about" className="nav-link">About Us</Link>}
                         </nav>
 
                         {/* Right side actions */}
                         <div className="header-actions">
+                            {/* Search Button */}
+                            <button
+                                className="cart-button"
+                                onClick={onSearchClick}
+                                aria-label="Search menu"
+                                style={{ marginRight: '8px' }}
+                            >
+                                <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.35-4.35" />
+                                </svg>
+                            </button>
+
+                            {/* Cart Button */}
                             <button
                                 className="cart-button"
                                 onClick={onCartClick}
@@ -83,12 +106,32 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout }) => {
                                     )}
                                 </div>
                             ) : (
-                                <button
-                                    className="login-btn"
-                                    onClick={() => setIsAuthModalOpen(true)}
-                                >
-                                    Login
-                                </button>
+                                isStaffMode ? (
+                                    <button
+                                        className="login-btn"
+                                        onClick={() => {
+                                            if (window.confirm('Exit Staff Mode?')) {
+                                                // Access deactivateStaffMode from context
+                                                const event = new CustomEvent('exitStaffMode');
+                                                window.dispatchEvent(event);
+                                            }
+                                        }}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #4ade80, #22c55e)',
+                                            color: '#000',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        🔒 Exit Staff Mode
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="login-btn"
+                                        onClick={() => setIsAuthModalOpen(true)}
+                                    >
+                                        Login
+                                    </button>
+                                )
                             )}
 
                             {/* Mobile menu toggle */}

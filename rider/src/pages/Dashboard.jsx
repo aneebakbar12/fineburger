@@ -1,24 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { subscribeToOrders, updateOrderStatus, logoutRider } from '../firebase';
+import { subscribeToRiderOrders, updateOrderStatus, logoutRider, getRiderProfile } from '../firebase';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase-config';
 
 const Dashboard = () => {
-    const [orders, setOrders] = useState([]);
+    const [assignedOrders, setAssignedOrders] = useState([]);
+    const [pastOrders, setPastOrders] = useState([]);
     const [processingOrders, setProcessingOrders] = useState(new Set());
+    const [activeTab, setActiveTab] = useState('assigned'); // 'assigned' or 'past'
+    const [riderProfile, setRiderProfile] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const unsubscribe = subscribeToOrders((allOrders) => {
-            // Filter orders: Show only 'Delivery' orders that are 'ready' or 'out_for_delivery'
-            const activeOrders = allOrders.filter(o =>
-                o.orderType === 'Delivery' &&
-                (o.status === 'ready' || o.status === 'out_for_delivery')
-            );
-            setOrders(activeOrders);
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
+        // Fetch rider profile
+        getRiderProfile(currentUser.uid).then(result => {
+            if (result.success) {
+                setRiderProfile(result.profile);
+            }
         });
 
+        // Subscribe to rider's orders
+        const unsubscribe = subscribeToRiderOrders(
+            currentUser.uid,
+            setAssignedOrders,
+            setPastOrders
+        );
+
         return () => unsubscribe();
-    }, []);
+    }, [navigate]);
 
     const handleLogout = async () => {
         await logoutRider();
@@ -33,23 +48,82 @@ const Dashboard = () => {
         if (confirmed) {
             setProcessingOrders(prev => new Set(prev).add(orderId));
             await updateOrderStatus(orderId, 'delivered');
-            // Order will be removed from list by the real-time listener
+            // Order will be removed from assigned list by the real-time listener
         }
     };
+
+    const orders = activeTab === 'assigned' ? assignedOrders : pastOrders;
 
     return (
         <div className="dashboard-container">
             <header className="dashboard-header">
-                <h2 className="header-title">Active Orders</h2>
+                <div>
+                    <h2 className="header-title">Rider Dashboard</h2>
+                    {riderProfile && (
+                        <div style={{ fontSize: '14px', color: '#888', marginTop: '4px' }}>
+                            <span style={{ color: '#fff', fontWeight: 'bold' }}>{riderProfile.name}</span>
+                            <span style={{ margin: '0 8px' }}>•</span>
+                            <span>{riderProfile.email}</span>
+                        </div>
+                    )}
+                </div>
                 <button onClick={handleLogout} className="btn-logout">Logout</button>
             </header>
+
+            {/* Tabs */}
+            <div style={{
+                display: 'flex',
+                gap: '16px',
+                marginBottom: '24px',
+                borderBottom: '2px solid #333',
+                paddingBottom: '0'
+            }}>
+                <button
+                    onClick={() => setActiveTab('assigned')}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: activeTab === 'assigned' ? 'var(--color-secondary)' : '#888',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        borderBottom: activeTab === 'assigned' ? '3px solid var(--color-secondary)' : '3px solid transparent',
+                        marginBottom: '-2px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Assigned Orders ({assignedOrders.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('past')}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: activeTab === 'past' ? 'var(--color-secondary)' : '#888',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        borderBottom: activeTab === 'past' ? '3px solid var(--color-secondary)' : '3px solid transparent',
+                        marginBottom: '-2px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Past Orders ({pastOrders.length})
+                </button>
+            </div>
 
             <div className="orders-list">
                 {orders.length === 0 ? (
                     <div className="no-orders">
                         <span className="no-orders-icon">📦</span>
-                        <p>No deliveries assigned yet.</p>
-                        <p style={{ fontSize: '14px', marginTop: '8px' }}>Active orders marked as "Ready" will appear here.</p>
+                        <p>{activeTab === 'assigned' ? 'No assigned orders yet.' : 'No past orders.'}</p>
+                        <p style={{ fontSize: '14px', marginTop: '8px' }}>
+                            {activeTab === 'assigned'
+                                ? 'Orders assigned to you will appear here.'
+                                : 'Your delivered orders will appear here.'}
+                        </p>
                     </div>
                 ) : (
                     orders.map(order => (
@@ -101,20 +175,33 @@ const Dashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="action-area">
-                                <button
-                                    onClick={() => handleMarkDelivered(order.id)}
-                                    className="btn-deliver"
-                                    disabled={processingOrders.has(order.id)}
-                                    style={{
-                                        opacity: processingOrders.has(order.id) ? 0.6 : 1,
-                                        cursor: processingOrders.has(order.id) ? 'not-allowed' : 'pointer'
-                                    }}
-                                >
-                                    <span>{processingOrders.has(order.id) ? '⏳' : '✅'}</span>
-                                    {processingOrders.has(order.id) ? 'PROCESSING...' : 'MARK COMPLETED'}
-                                </button>
-                            </div>
+                            {activeTab === 'assigned' && (
+                                <div className="action-area">
+                                    <button
+                                        onClick={() => handleMarkDelivered(order.id)}
+                                        className="btn-deliver"
+                                        disabled={processingOrders.has(order.id)}
+                                        style={{
+                                            opacity: processingOrders.has(order.id) ? 0.6 : 1,
+                                            cursor: processingOrders.has(order.id) ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        <span>{processingOrders.has(order.id) ? '⏳' : '✅'}</span>
+                                        {processingOrders.has(order.id) ? 'PROCESSING...' : 'MARK COMPLETED'}
+                                    </button>
+                                </div>
+                            )}
+                            {activeTab === 'past' && (
+                                <div style={{
+                                    padding: '12px',
+                                    textAlign: 'center',
+                                    color: '#4ade80',
+                                    fontWeight: 'bold',
+                                    fontSize: '14px'
+                                }}>
+                                    ✅ DELIVERED
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

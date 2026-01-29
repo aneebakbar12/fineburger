@@ -58,20 +58,26 @@ export const onAuthChange = (callback) => {
 // Create a new order
 export const createOrder = async (orderData) => {
     try {
-        const payload = {
-            ...orderData,
-            status: 'pending',
-            createdAt: serverTimestamp()
-        };
-        // Add userId if present in orderData (client should provide it if logged in)
-        // If undefined, it just won't be added or ignored depending on firestore rules/behavior
-        // Ideally explicit check:
-        // if (orderData.userId) payload.userId = orderData.userId; 
+        // Determine initial status based on order type and staff mode
+        let initialStatus = 'pending';
+        let additionalFields = {};
 
-        const docRef = await addDoc(collection(db, 'orders'), payload);
-        return { success: true, id: docRef.id };
+        if (orderData.placedByStaff && orderData.orderType === 'Dine-in') {
+            initialStatus = 'preparing'; // Auto-confirm staff dine-in orders
+            additionalFields.preparingStartedAt = serverTimestamp(); // Set timer start
+        }
+
+        const order = {
+            ...orderData,
+            ...additionalFields,
+            status: orderData.status || initialStatus, // Use provided status or default
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        const docRef = await addDoc(collection(db, 'orders'), order);
+        return { success: true, orderId: docRef.id };
     } catch (error) {
-        console.error("Error creating order:", error);
+        console.error('Error creating order:', error);
         return { success: false, error: error.message };
     }
 };

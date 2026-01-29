@@ -3,11 +3,14 @@ import {
     collection,
     query,
     orderBy,
+    where,
     onSnapshot,
     doc,
     updateDoc,
     serverTimestamp,
-    getDoc
+    getDoc,
+    getDocs,
+    setDoc
 } from 'firebase/firestore';
 import {
     signInWithEmailAndPassword,
@@ -26,10 +29,52 @@ export const loginRider = async (email, password) => {
     }
 };
 
-export const registerRider = async (email, password) => {
+export const registerRider = async (email, password, name, signupCode) => {
     try {
+        // 1. Validate signup code first
+        const codesQuery = query(
+            collection(db, 'riderSignupCodes'),
+            where('code', '==', signupCode.toUpperCase()),
+            where('used', '==', false)
+        );
+        const codesSnapshot = await getDocs(codesQuery);
+
+        if (codesSnapshot.empty) {
+            return { success: false, error: 'Invalid or already used signup code' };
+        }
+
+        const codeDoc = codesSnapshot.docs[0];
+        const codeId = codeDoc.id;
+
+        // 2. Generate temporary password for admin reference
+        const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // 3. Create Firebase Auth account
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        return { success: true, user: userCredential.user };
+        const userId = userCredential.user.uid;
+
+        // 4. Mark code as used
+        await updateDoc(doc(db, 'riderSignupCodes', codeId), {
+            used: true,
+            usedAt: serverTimestamp(),
+            usedBy: userId
+        });
+
+        // 5. Create rider profile in Firestore
+        await setDoc(doc(db, 'riders', userId), {
+            name: name,
+            email: email,
+            userId: userId,
+            signupCode: signupCode.toUpperCase(),
+            tempPassword: tempPassword,
+            createdAt: serverTimestamp(),
+            stats: {
+                assignedOrders: 0,
+                deliveredOrders: 0
+            }
+        });
+
+        return { success: true, user: userCredential.user, tempPassword };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -48,9 +93,34 @@ export const onAuthChange = (callback) => {
     return onAuthStateChanged(auth, callback);
 };
 
-// Orders
-export const subscribeToOrders = (callback) => {
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+// Get rider profile
+export const getRiderProfile = async (userId) => {
+    try {
+        const riderDoc = await getDoc(doc(db, 'riders', userId));
+        if (riderDoc.exists()) {
+            return { success: true, profile: { id: riderDoc.id, ...riderDoc.data() } };
+        }
+        return { success: false, error: 'Rider profile not found' };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// Orders - Filter by assigned rider
+export const subscribeToOrders = (callback, riderId = null) => {
+    let q;
+    if (riderId) {
+        // Filter orders assigned to this rider
+        q = query(
+            collection(db, 'orders'),
+            where('assignedRiderId', '==', riderId),
+            orderBy('createdAt', 'desc')
+        );
+    } else {
+        // All orders (for backward compatibility)
+        q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    }
+
     return onSnapshot(q, (querySnapshot) => {
         const orders = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -59,6 +129,46 @@ export const subscribeToOrders = (callback) => {
         callback(orders);
     }, (error) => {
         console.error("Error subscribing to orders:", error);
+    });
+};
+
+// Subscribe to rider's assigned and past orders separately
+export const subscribeToRiderOrders = (riderId, onAssignedOrders, onPastOrders) => {
+    console.log('🔍 Subscribing to orders for rider:', riderId);
+
+    // Query WITHOUT orderBy to avoid composite index requirement
+    const q = query(
+        collection(db, 'orders'),
+        where('assignedRiderId', '==', riderId)
+    );
+
+    return onSnapshot(q, (querySnapshot) => {
+        console.log('📦 Received orders snapshot, count:', querySnapshot.docs.length);
+
+        const allOrders = querySnapshot.docs.map(doc => {
+            const data = { id: doc.id, ...doc.data() };
+            console.log('📋 Order:', doc.id, 'Status:', data.status, 'Type:', data.orderType);
+            return data;
+        });
+
+        // Sort in memory by createdAt (descending)
+        allOrders.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+        });
+
+        // Split into assigned (active) and past (delivered)
+        const assigned = allOrders.filter(o =>
+            o.orderType === 'Delivery' &&
+            (o.status === 'ready' || o.status === 'out_for_delivery')
+        );
+        const past = allOrders.filter(o => o.status === 'delivered');
+
+        onAssignedOrders(assigned);
+        onPastOrders(past);
+    }, (error) => {
+        console.error("❌ Error subscribing to rider orders:", error);
     });
 };
 

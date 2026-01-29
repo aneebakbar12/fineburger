@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getCategories, addCategory, updateCategory, deleteCategory } from '../services/firebase';
+import { getCategories, addCategory, updateCategory, deleteCategory, updateCategoryOrders } from '../services/firebase';
 
 const CategoryManager = () => {
     const [categories, setCategories] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState({ name: '', order: 1 });
+    const [draggedCategory, setDraggedCategory] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
 
     useEffect(() => {
         fetchCategories();
@@ -61,6 +63,54 @@ const CategoryManager = () => {
         setShowForm(false);
     };
 
+    const handleDragStart = (e, category) => {
+        setDraggedCategory(category);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverIndex(index);
+    };
+
+    const handleDragLeave = () => {
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = async (e, dropIndex) => {
+        e.preventDefault();
+
+        if (!draggedCategory) return;
+
+        const reordered = [...categories];
+        const draggedIndex = reordered.findIndex(c => c.id === draggedCategory.id);
+
+        // Remove from old position
+        const [removed] = reordered.splice(draggedIndex, 1);
+        // Insert at new position
+        reordered.splice(dropIndex, 0, removed);
+
+        // Update local state immediately for instant feedback
+        setCategories(reordered);
+        setDraggedCategory(null);
+        setDragOverIndex(null);
+
+        // Batch update Firestore
+        const result = await updateCategoryOrders(reordered);
+        if (!result.success) {
+            alert('Failed to update order: ' + result.error);
+            // Revert on error
+            fetchCategories();
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedCategory(null);
+        setDragOverIndex(null);
+    };
+
+
     return (
         <div>
             <div className="admin-header">
@@ -106,6 +156,22 @@ const CategoryManager = () => {
                 </div>
             )}
 
+            <div style={{
+                padding: '16px',
+                backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                border: '1px solid rgba(74, 222, 128, 0.3)',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+            }}>
+                <span style={{ fontSize: '20px' }}>💡</span>
+                <p style={{ margin: 0, fontSize: '14px', color: '#aaa' }}>
+                    <strong style={{ color: '#4ade80' }}>Tip:</strong> Drag and drop categories using the <span style={{ fontSize: '16px' }}>⋮⋮</span> handle to reorder them. Changes will sync to the client app automatically.
+                </p>
+            </div>
+
             <div className="data-table">
                 <table>
                     <thead>
@@ -116,9 +182,36 @@ const CategoryManager = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {categories.map(cat => (
-                            <tr key={cat.id}>
-                                <td style={{ fontWeight: 600, color: 'var(--color-white)' }}>{cat.name}</td>
+                        {categories.map((cat, index) => (
+                            <tr
+                                key={cat.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, cat)}
+                                onDragOver={(e) => handleDragOver(e, index)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => handleDrop(e, index)}
+                                onDragEnd={handleDragEnd}
+                                style={{
+                                    opacity: draggedCategory?.id === cat.id ? 0.5 : 1,
+                                    cursor: 'grab',
+                                    backgroundColor: dragOverIndex === index ? 'rgba(74, 222, 128, 0.1)' : 'transparent',
+                                    borderTop: dragOverIndex === index ? '2px solid #4ade80' : 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <td style={{ fontWeight: 600, color: 'var(--color-white)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <span style={{
+                                            cursor: 'grab',
+                                            fontSize: '18px',
+                                            color: '#666',
+                                            userSelect: 'none'
+                                        }}>
+                                            ⋮⋮
+                                        </span>
+                                        {cat.name}
+                                    </div>
+                                </td>
                                 <td>{cat.order}</td>
                                 <td>
                                     <div className="table-actions">

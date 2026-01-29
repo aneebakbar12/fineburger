@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createOrder } from '../services/firebase';
 import LocationPicker from './LocationPicker';
 import AuthModal from './AuthModal'; // Import AuthModal
+import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Cart.css';
 
 const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user, onClearCart }) => {
+    const { isStaffMode } = useStaffMode();
     const [isCheckout, setIsCheckout] = useState(false);
     const [authChoice, setAuthChoice] = useState(false); // New state to show auth choice
     const [customerDetails, setCustomerDetails] = useState({
@@ -31,6 +33,15 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         }
     }, [user, isCheckout]);
 
+    // Set default order type based on staff mode
+    useEffect(() => {
+        if (isStaffMode) {
+            setOrderType('Dine-in');
+        } else {
+            setOrderType('Delivery');
+        }
+    }, [isStaffMode]);
+
     const calculateTotal = () => {
         return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     };
@@ -51,11 +62,12 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     };
 
     const handleProceedToCheckout = () => {
-        if (user) {
+        if (user || isStaffMode) {
+            // Skip auth for staff mode or logged-in users
             setIsCheckout(true);
             setAuthChoice(false);
         } else {
-            // Show auth choice first
+            // Show auth choice for regular users
             setAuthChoice(true);
             setIsCheckout(false);
         }
@@ -75,10 +87,9 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
             items: cartItems,
             total: calculateTotal(),
             paymentMethod: 'COD',
-            total: calculateTotal(),
-            paymentMethod: 'COD',
-            orderType: orderType, // Save order type
-            userId: user ? user.uid : null // Link order to user
+            orderType: orderType,
+            userId: user ? user.uid : null,
+            placedByStaff: isStaffMode
         };
 
         const result = await createOrder(orderData);
@@ -113,9 +124,17 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                                 <polyline points="22 4 12 14.01 9 11.01" />
                             </svg>
                         </div>
-                        <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-sm)' }}>Order Placed!</h2>
-                        <p style={{ color: 'var(--color-text-secondary)' }}>Your order has been received and is pending confirmation.</p>
-                        <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-sm)' }}>We will contact you shortly.</p>
+                        <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-sm)' }}>
+                            {isStaffMode && orderType === 'Dine-in' ? 'Order Sent to Kitchen!' : 'Order Placed!'}
+                        </h2>
+                        <p style={{ color: 'var(--color-text-secondary)' }}>
+                            {isStaffMode && orderType === 'Dine-in'
+                                ? 'The order is now being prepared.'
+                                : 'Your order has been received and is pending confirmation.'}
+                        </p>
+                        {!(isStaffMode && orderType === 'Dine-in') && (
+                            <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-sm)' }}>We will contact you shortly.</p>
+                        )}
                     </div>
                 </div>
             </>
@@ -146,8 +165,18 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                         {(isCheckout || authChoice) ? '← Back' : ''}
                     </button>
                     <h2 className="cart-title">
-                        {authChoice ? 'Sign In' : (isCheckout ? 'Checkout' : 'Your Cart')}
+                        {authChoice ? 'Sign In' : (isCheckout ? (isStaffMode ? '⚡ Quick Order' : 'Checkout') : 'Your Cart')}
                     </h2>
+                    {isStaffMode && isCheckout && (
+                        <span style={{
+                            fontSize: '12px',
+                            color: '#4ade80',
+                            fontWeight: 'bold',
+                            marginLeft: '8px'
+                        }}>
+                            STAFF
+                        </span>
+                    )}
                     {(!isCheckout && !authChoice) && (
                         <button className="cart-close" onClick={onClose} aria-label="Close cart">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -193,7 +222,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Order Type</label>
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    {['Delivery', 'Takeaway', 'Dine-in'].map(type => (
+                                    {(isStaffMode ? ['Dine-in'] : ['Takeaway', 'Delivery']).map(type => (
                                         <button
                                             key={type}
                                             type="button"
@@ -216,30 +245,36 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                             </div>
 
                             {/* Checkout Form Content */}
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    className="form-input"
-                                    placeholder="John Doe"
-                                    value={customerDetails.name}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Phone Number</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    className="form-input"
-                                    placeholder="+1 234 567 890"
-                                    value={customerDetails.phone}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
+                            {/* Name - Optional for staff dine-in */}
+                            {!(isStaffMode && orderType === 'Dine-in') && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        className="form-input"
+                                        placeholder="John Doe"
+                                        value={customerDetails.name}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </div>
+                            )}
+                            {/* Phone - Optional for staff dine-in */}
+                            {!(isStaffMode && orderType === 'Dine-in') && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        className="form-input"
+                                        placeholder="+92 300 1234567"
+                                        value={customerDetails.phone}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </div>
+                            )}
 
 
                             {/* Address - Only for Delivery */}
@@ -287,14 +322,22 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                             {/* Table Number - Only for Dine-in */}
                             {orderType === 'Dine-in' && (
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number (Optional)</label>
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number</label>
                                     <input
                                         type="text"
                                         name="tableNumber"
                                         className="form-input"
-                                        placeholder="e.g. 5"
+                                        placeholder="Enter table number (e.g. 5)"
                                         value={customerDetails.tableNumber}
                                         onChange={handleInputChange}
+                                        required
+                                        style={{
+                                            backgroundColor: '#222',
+                                            color: '#fff',
+                                            border: '1px solid #333',
+                                            padding: '12px',
+                                            borderRadius: '6px'
+                                        }}
                                     />
                                 </div>
                             )}

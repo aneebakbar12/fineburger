@@ -3,10 +3,13 @@ import HeroSlider from '../components/HeroSlider';
 import MenuCategories from '../components/MenuCategories';
 import MenuItem from '../components/MenuItem';
 import ItemModal from '../components/ItemModal';
+import SearchModal from '../components/SearchModal';
 import { getSliders, subscribeToSliders, isStoreOpen } from '../services/firebase';
+import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Home.css';
 
-const Home = ({ categories, menuItems, storeSettings, onAddToCart }) => {
+const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose }) => {
+    const { isStaffMode } = useStaffMode();
     const [sliders, setSliders] = useState([]);
     const [activeCategory, setActiveCategory] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -60,7 +63,7 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart }) => {
 
     return (
         <div className="home-page">
-            <HeroSlider slides={sliders} />
+            {!isStaffMode && <HeroSlider slides={sliders} />}
 
             <div className="container">
                 {!storeOpen && storeSettings && (
@@ -111,6 +114,14 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart }) => {
                 onClose={handleCloseModal}
                 onAddToCart={onAddToCart}
                 storeOpen={storeOpen}
+            />
+
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={onSearchClose}
+                menuItems={menuItems}
+                onAddToCart={onAddToCart}
+                onItemClick={handleItemClick}
             />
         </div>
     );
