@@ -480,9 +480,7 @@ const OrderManager = () => {
                     No orders found.
                 </div>
             ) : (
-                <div className="order-grid" style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px'
-                }}>
+                <div className="order-grid">
                     {orders.map(order => {
                         const statusColors = getStatusColor(order.status);
                         return (

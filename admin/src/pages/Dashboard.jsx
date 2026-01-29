@@ -170,7 +170,7 @@ const Dashboard = () => {
                 <KPICard title="Menu Items" value={stats.totalRevenue > 0 ? "Active" : "Inactive"} icon="🍔" trend="Stable" trendUp={true} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px', marginBottom: '30px' }}>
+            <div className="dashboard-main-grid">
                 {/* Main Graph */}
                 <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -221,7 +221,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '25px' }}>
+            <div className="dashboard-secondary-grid">
                 {/* Category Pie Chart */}
                 <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
                     <h3 style={{ margin: '0 0 20px 0', color: 'white' }}>Category Sales</h3>
@@ -258,7 +258,7 @@ const Dashboard = () => {
                 {/* Quick Actions (Mini) */}
                 <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
                     <h3 style={{ margin: '0 0 20px 0', color: 'white' }}>Quick Actions</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px' }}>
+                    <div className="quick-actions-grid">
                         <ActionButton label="Add Item" icon="Example" onClick={() => window.location.href = '/menu-items'} color="#FFB400" />
                         <ActionButton label="Categories" icon="Example" onClick={() => window.location.href = '/categories'} color="#3B82F6" />
                         <ActionButton label="Inventory" icon="Example" onClick={() => window.location.href = '/inventory'} color="#4ADE80" />

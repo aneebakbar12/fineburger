@@ -218,11 +218,7 @@ const RiderManager = () => {
                     {searchTerm ? 'No riders found matching your search.' : 'No riders registered yet.'}
                 </div>
             ) : (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                    gap: '20px'
-                }}>
+                <div className="responsive-grid">
                     {filteredRiders.map(rider => {
                         const stats = getRiderStats(rider.id);
                         return (

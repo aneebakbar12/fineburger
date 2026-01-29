@@ -254,11 +254,7 @@ const InventoryManager = () => {
             </div>
 
             {/* Inventory Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                gap: 'var(--spacing-lg)'
-            }}>
+            <div className="responsive-grid">
                 {activeTab === 'menu' ? (
                     menuItems.length > 0 ? (
                         menuItems.map(item => (
