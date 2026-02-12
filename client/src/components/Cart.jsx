@@ -399,7 +399,12 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                                                     <span>{item.quantity}</span>
                                                     <button
                                                         className="quantity-btn-small"
-                                                        onClick={() => onUpdateQuantity(index, item.quantity + 1)}
+                                                        onClick={() => {
+                                                            if (item.stockLevel !== undefined && item.quantity >= item.stockLevel) return;
+                                                            onUpdateQuantity(index, item.quantity + 1);
+                                                        }}
+                                                        disabled={item.stockLevel !== undefined && item.quantity >= item.stockLevel}
+                                                        style={{ opacity: item.stockLevel !== undefined && item.quantity >= item.stockLevel ? 0.5 : 1 }}
                                                     >
                                                         +
                                                     </button>

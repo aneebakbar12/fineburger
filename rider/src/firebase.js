@@ -20,9 +20,18 @@ import {
 } from 'firebase/auth';
 
 // Authentication
+// Authentication
 export const loginRider = async (email, password) => {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+        // Check if profile exists (in case it was deleted by admin)
+        const profileCheck = await getRiderProfile(userCredential.user.uid);
+        if (!profileCheck.success) {
+            await signOut(auth);
+            return { success: false, error: 'Account access revoked or profile not found.' };
+        }
+
         return { success: true, user: userCredential.user };
     } catch (error) {
         return { success: false, error: error.message };
@@ -104,6 +113,19 @@ export const getRiderProfile = async (userId) => {
     } catch (error) {
         return { success: false, error: error.message };
     }
+};
+
+// Subscribe to rider profile (for real-time deletion check)
+export const subscribeToRiderProfile = (userId, onProfileChange, onDeleted) => {
+    return onSnapshot(doc(db, 'riders', userId), (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            onProfileChange({ id: docSnapshot.id, ...docSnapshot.data() });
+        } else {
+            onDeleted();
+        }
+    }, (error) => {
+        console.error("Error subscribing to profile:", error);
+    });
 };
 
 // Orders - Filter by assigned rider

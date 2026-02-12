@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getFinancialSummary } from '../services/firebase';
-import { formatPKR, calculatePercentage } from '../utils/currency';
+import { getPKTRange, formatCurrency } from '../utils/dateUtils';
 import '../styles/admin.css';
 
 const FinancialDashboard = () => {
@@ -19,34 +19,14 @@ const FinancialDashboard = () => {
 
     const fetchFinancialData = async () => {
         setLoading(true);
-        const { startDate, endDate } = getDateRange();
+        // Use PKT for correct date ranges
+        const { startDate, endDate } = getPKTRange(dateRange);
+
+        console.log(`Fetching financial data:`, { dateRange, startDate, endDate });
+
         const data = await getFinancialSummary(startDate, endDate);
         setSummary(data);
         setLoading(false);
-    };
-
-    const getDateRange = () => {
-        const now = new Date();
-        let startDate, endDate = now;
-
-        switch (dateRange) {
-            case 'today':
-                startDate = new Date(now.setHours(0, 0, 0, 0));
-                break;
-            case 'week':
-                startDate = new Date(now.setDate(now.getDate() - 7));
-                break;
-            case 'month':
-                startDate = new Date(now.setMonth(now.getMonth() - 1));
-                break;
-            case 'year':
-                startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-                break;
-            default:
-                startDate = new Date(now.setMonth(now.getMonth() - 1));
-        }
-
-        return { startDate, endDate: new Date() };
     };
 
     const MetricCard = ({ icon, label, value, color, subtext }) => (
@@ -80,7 +60,7 @@ const FinancialDashboard = () => {
             <div className="admin-header">
                 <div>
                     <h1 className="admin-title">💰 Financial Dashboard</h1>
-                    <p className="admin-subtitle">Track revenue, expenses, and profitability</p>
+                    <p className="admin-subtitle">Track revenue, expenses, and profitability (PKR)</p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -121,21 +101,21 @@ const FinancialDashboard = () => {
                         <MetricCard
                             icon="💵"
                             label="Total Revenue"
-                            value={formatPKR(summary.revenue)}
+                            value={formatCurrency(summary.revenue)}
                             color="#4ade80"
                             subtext="From completed orders"
                         />
                         <MetricCard
                             icon="💸"
                             label="Total Expenses"
-                            value={formatPKR(summary.expenses)}
+                            value={formatCurrency(summary.expenses)}
                             color="#f59e0b"
                             subtext="All business costs"
                         />
                         <MetricCard
                             icon={isProfitable ? "✅" : "❌"}
                             label="Net Profit"
-                            value={formatPKR(summary.profit)}
+                            value={formatCurrency(summary.profit)}
                             color={isProfitable ? "#4ade80" : "#ef4444"}
                             subtext={`${summary.profitMargin}% profit margin`}
                         />
@@ -156,7 +136,7 @@ const FinancialDashboard = () => {
                         <div style={{ marginBottom: '24px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                 <span style={{ color: '#888' }}>Revenue</span>
-                                <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{formatPKR(summary.revenue)}</span>
+                                <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{formatCurrency(summary.revenue)}</span>
                             </div>
                             <div style={{
                                 height: '8px',
@@ -175,7 +155,7 @@ const FinancialDashboard = () => {
                         <div style={{ marginBottom: '24px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                 <span style={{ color: '#888' }}>Expenses</span>
-                                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{formatPKR(summary.expenses)}</span>
+                                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{formatCurrency(summary.expenses)}</span>
                             </div>
                             <div style={{
                                 height: '8px',
@@ -185,7 +165,7 @@ const FinancialDashboard = () => {
                             }}>
                                 <div style={{
                                     height: '100%',
-                                    width: summary.revenue > 0 ? `${(summary.expenses / summary.revenue) * 100}%` : '0%',
+                                    width: summary.revenue > 0 ? `${Math.min((summary.expenses / summary.revenue) * 100, 100)}%` : '0%',
                                     backgroundColor: '#f59e0b'
                                 }} />
                             </div>
@@ -204,7 +184,7 @@ const FinancialDashboard = () => {
                                 fontWeight: 'bold',
                                 color: isProfitable ? '#4ade80' : '#ef4444'
                             }}>
-                                {formatPKR(summary.profit)}
+                                {formatCurrency(summary.profit)}
                             </span>
                         </div>
                     </div>
@@ -229,7 +209,7 @@ const FinancialDashboard = () => {
                                 <p style={{ margin: 0, color: '#aaa', fontSize: '14px' }}>
                                     {isProfitable
                                         ? `You're making ${summary.profitMargin}% profit margin. Keep up the good work!`
-                                        : `Your expenses exceed revenue by ${formatPKR(Math.abs(summary.profit))}. Consider reducing costs or increasing prices.`
+                                        : `Your expenses exceed revenue by ${formatCurrency(Math.abs(summary.profit))}. Consider reducing costs or increasing prices.`
                                     }
                                 </p>
                             </div>

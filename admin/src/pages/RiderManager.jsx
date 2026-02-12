@@ -55,12 +55,14 @@ const RiderManager = () => {
     };
 
     const handleDeleteRider = async (rider) => {
-        if (window.confirm(`Delete rider ${rider.name}?\n\nThis will remove their profile from the system.`)) {
+        if (window.confirm(`Delete rider ${rider.name}?\n\nThis will remove their profile from the system and they will be immediately logged out.`)) {
+            console.log('Deleting rider:', rider.id, rider.name);
             const result = await deleteRider(rider.id);
             if (result.success) {
                 alert(`Rider ${rider.name} deleted successfully`);
             } else {
-                alert('Failed to delete rider: ' + result.error);
+                console.error('Delete failed:', result.error);
+                alert(`Failed to delete rider: ${result.error}\n\nPlease check the browser console for more details.`);
             }
         }
     };

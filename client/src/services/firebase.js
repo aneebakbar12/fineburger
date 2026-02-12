@@ -261,6 +261,7 @@ export const subscribeToStoreSettings = (callback) => {
 };
 
 // Check if store is currently open
+// Check if store is currently open
 export const isStoreOpen = (settings) => {
     if (!settings || !settings.storeOpen) return false;
 
@@ -270,8 +271,26 @@ export const isStoreOpen = (settings) => {
     }
 
     const now = new Date();
-    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Karachi',
+        weekday: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+
+    const parts = formatter.formatToParts(now);
+    const getPart = (type) => parts.find(p => p.type === type).value;
+
+    const currentDay = getPart('weekday').toLowerCase();
+
+    // Construct "HH:MM"
+    let hour = getPart('hour');
+    if (hour === '24') hour = '00';
+    const currentTime = `${hour}:${getPart('minute')}`;
+
+    console.log(`Checking Store Status (PKT): ${currentDay} ${currentTime}`);
 
     const todayHours = settings.operatingHours?.[currentDay];
     if (!todayHours) return false;

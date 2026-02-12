@@ -61,6 +61,14 @@ function App() {
     }, [cartItems]);
 
     const handleAddToCart = (item) => {
+        // Enforce inventory limit across multiple adds
+        if (item.stockLevel !== undefined) {
+            const existingQty = cartItems.filter(i => i.id === item.id).reduce((sum, i) => sum + i.quantity, 0);
+            if (existingQty + item.quantity > item.stockLevel) {
+                alert(`Cannot add more. You have ${existingQty} in cart and stock is ${item.stockLevel}.`);
+                return;
+            }
+        }
         setCartItems(prev => [...prev, item]);
     };
 
@@ -69,6 +77,19 @@ function App() {
             handleRemoveItem(index);
             return;
         }
+
+        const item = cartItems[index];
+        if (item.stockLevel !== undefined) {
+            const otherInstancesQty = cartItems
+                .filter((itm, idx) => itm.id === item.id && idx !== index)
+                .reduce((sum, i) => sum + i.quantity, 0);
+
+            if (otherInstancesQty + newQuantity > item.stockLevel) {
+                alert(`Cannot increase quantity. Stock limit is ${item.stockLevel}.`);
+                return;
+            }
+        }
+
         setCartItems(prev => {
             const updated = [...prev];
             updated[index].quantity = newQuantity;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getMenuItems, updateMenuItem, getInventoryItems, addInventoryItem, updateInventoryItem, deleteInventoryItem } from '../services/firebase';
 
 const InventoryManager = () => {
@@ -16,8 +16,15 @@ const InventoryManager = () => {
         supplier: ''
     });
 
+    // Refs for debouncing updates
+    const updateTimeouts = useRef({});
+
     useEffect(() => {
         fetchData();
+        // Cleanup timeouts on unmount
+        return () => {
+            Object.values(updateTimeouts.current).forEach(timeout => clearTimeout(timeout));
+        };
     }, []);
 
     const fetchData = async () => {
@@ -27,18 +34,38 @@ const InventoryManager = () => {
         setInventoryItems(inventory);
     };
 
-    const updateMenuStock = async (id, stockLevel, inStock) => {
-        const result = await updateMenuItem(id, { stockLevel, inStock });
-        if (result.success) {
-            fetchData();
+    const updateMenuStock = (id, stockLevel, inStock) => {
+        // Optimistic UI update
+        setMenuItems(prevWrapper => prevWrapper.map(item =>
+            item.id === id ? { ...item, stockLevel, inStock } : item
+        ));
+
+        // Debounce server update
+        if (updateTimeouts.current[id]) {
+            clearTimeout(updateTimeouts.current[id]);
         }
+
+        updateTimeouts.current[id] = setTimeout(async () => {
+            await updateMenuItem(id, { stockLevel, inStock });
+            delete updateTimeouts.current[id];
+        }, 800);
     };
 
-    const updateInventoryStock = async (id, stockLevel) => {
-        const result = await updateInventoryItem(id, { stockLevel });
-        if (result.success) {
-            fetchData();
+    const updateInventoryStock = (id, stockLevel) => {
+        // Optimistic UI update
+        setInventoryItems(prevWrapper => prevWrapper.map(item =>
+            item.id === id ? { ...item, stockLevel } : item
+        ));
+
+        // Debounce server update
+        if (updateTimeouts.current[`inv_${id}`]) {
+            clearTimeout(updateTimeouts.current[`inv_${id}`]);
         }
+
+        updateTimeouts.current[`inv_${id}`] = setTimeout(async () => {
+            await updateInventoryItem(id, { stockLevel });
+            delete updateTimeouts.current[`inv_${id}`];
+        }, 800);
     };
 
     const handleAddItem = async (e) => {

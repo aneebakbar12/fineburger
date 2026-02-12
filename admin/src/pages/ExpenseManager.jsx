@@ -1,19 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeToExpenses, addExpense, updateExpense, deleteExpense } from '../services/firebase';
-import { formatPKR } from '../utils/currency';
+import { formatCurrency, formatPKT, getPKTDate } from '../utils/dateUtils';
 import '../styles/admin.css';
 
 const ExpenseManager = () => {
     const [expenses, setExpenses] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null);
+
+    // Get current date in PKT for default form value (YYYY-MM-DD)
+    const getTodayPKT = () => {
+        const d = getPKTDate();
+        // Manual formatting to ensure YYYY-MM-DD matches PKT
+        // d is already shifted to match PKT components if we use getFullYear etc? 
+        // No, getPKTDate returns a Date object where absolute time is correct? 
+        // Wait, getPKTDate returned `new Date(toLocaleString...)` which creates a shifted Date object.
+        // So `d.toISOString().split('T')[0]` will give the correct YYYY-MM-DD for PKT.
+        // wait, `d` is constructed from "toLocaleString" string. 
+        // The browser sees that string and creates a date.
+        // If the string says "2/12/2026, 5:00:00 AM", `new Date()` makes it local time 5AM.
+        // So yes, toISOString() on that shifted date gives correct YYYY-MM-DD.
+        return d.toISOString().split('T')[0];
+    };
+
     const [formData, setFormData] = useState({
         category: 'Inventory',
         itemName: '',
         quantity: 1,
         unitPrice: 0,
         supplier: '',
-        date: new Date().toISOString().split('T')[0],
+        date: getTodayPKT(),
         notes: ''
     });
 
@@ -42,7 +58,9 @@ const ExpenseManager = () => {
             ...formData,
             quantity: parseFloat(formData.quantity),
             unitPrice: parseFloat(formData.unitPrice),
-            date: new Date(formData.date)
+            // When saving, we want to treat the input date as the start of that day in PKT
+            // Input: "2026-02-12" -> We want 2026-02-12 00:00:00 +05:00
+            date: new Date(`${formData.date}T00:00:00+05:00`)
         };
 
         let result;
@@ -62,13 +80,26 @@ const ExpenseManager = () => {
 
     const handleEdit = (expense) => {
         setEditingExpense(expense);
+
+        // Recover YYYY-MM-DD from the saved timestamp (which is UTC)
+        // We need to convert UTC timestamp -> PKT YYYY-MM-DD
+        let dateStr = getTodayPKT();
+        if (expense.date) {
+            const d = expense.date.toDate ? expense.date.toDate() : new Date(expense.date);
+            // Convert to PKT string
+            const pktStr = d.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+            // pktStr is "2/12/2026, 12:00:00 AM"
+            const pktDate = new Date(pktStr);
+            dateStr = pktDate.toISOString().split('T')[0];
+        }
+
         setFormData({
             category: expense.category,
             itemName: expense.itemName,
             quantity: expense.quantity,
             unitPrice: expense.unitPrice,
             supplier: expense.supplier || '',
-            date: expense.date?.toDate?.()?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+            date: dateStr,
             notes: expense.notes || ''
         });
         setShowForm(true);
@@ -92,7 +123,7 @@ const ExpenseManager = () => {
             quantity: 1,
             unitPrice: 0,
             supplier: '',
-            date: new Date().toISOString().split('T')[0],
+            date: getTodayPKT(),
             notes: ''
         });
         setEditingExpense(null);
@@ -135,7 +166,7 @@ const ExpenseManager = () => {
                     Total Expenses
                 </div>
                 <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#3b82f6' }}>
-                    {formatPKR(totalExpenses)}
+                    {formatCurrency(totalExpenses)}
                 </div>
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                     {expenses.length} expense{expenses.length !== 1 ? 's' : ''} recorded
@@ -204,7 +235,7 @@ const ExpenseManager = () => {
                                 <input
                                     type="text"
                                     className="form-input"
-                                    value={formatPKR(formData.quantity * formData.unitPrice)}
+                                    value={formatCurrency(formData.quantity * formData.unitPrice)}
                                     readOnly
                                     style={{ backgroundColor: '#2a2a2a', color: '#4ade80' }}
                                 />
@@ -220,7 +251,7 @@ const ExpenseManager = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Date</label>
+                                <label className="form-label">Date (PKT)</label>
                                 <input
                                     type="date"
                                     className="form-input"
@@ -262,7 +293,7 @@ const ExpenseManager = () => {
                             <th>Unit Price</th>
                             <th>Total Cost</th>
                             <th>Supplier</th>
-                            <th>Date</th>
+                            <th>Date (PKT)</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -279,10 +310,10 @@ const ExpenseManager = () => {
                                 </td>
                                 <td style={{ fontWeight: 600, color: 'var(--color-white)' }}>{expense.itemName}</td>
                                 <td>{expense.quantity}</td>
-                                <td>{formatPKR(expense.unitPrice)}</td>
-                                <td style={{ fontWeight: 'bold', color: '#f59e0b' }}>{formatPKR(expense.totalCost)}</td>
+                                <td>{formatCurrency(expense.unitPrice)}</td>
+                                <td style={{ fontWeight: 'bold', color: '#f59e0b' }}>{formatCurrency(expense.totalCost)}</td>
                                 <td>{expense.supplier || '-'}</td>
-                                <td>{expense.date?.toDate?.()?.toLocaleDateString() || '-'}</td>
+                                <td>{formatPKT(expense.date)}</td>
                                 <td>
                                     <div className="table-actions">
                                         <button className="btn-icon-small btn-edit" onClick={() => handleEdit(expense)}>✏️</button>

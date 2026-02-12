@@ -14,7 +14,9 @@ import {
     orderBy,
     serverTimestamp,
     onSnapshot,
-    writeBatch
+    writeBatch,
+    sum, // Added
+    getAggregateFromServer // Added
 } from 'firebase/firestore';
 import {
     ref,
@@ -28,6 +30,76 @@ import {
     onAuthStateChanged,
     sendPasswordResetEmail
 } from 'firebase/auth';
+
+// ... (Rest of the file up to line 620)
+
+// EXPENSE MANAGEMENT continuing...
+
+export const getTotalExpenses = async (startDate, endDate) => {
+    try {
+        // Fallback to client-side calculation for reliability
+        // This avoids potential issues with Firestore Aggregation queries permissions/indexes
+        const expenses = await getExpenses(startDate, endDate);
+        console.log(`Calculated Total Expenses from ${expenses.length} records`);
+        return expenses.reduce((total, expense) => total + (expense.totalCost || 0), 0);
+    } catch (error) {
+        console.error('Error calculating total expenses:', error);
+        return 0;
+    }
+};
+
+export const getTotalRevenue = async (startDate, endDate) => {
+    try {
+        let q;
+        if (startDate && endDate) {
+            // Fetch all orders in range to avoid composite index requirement for (createdAt + status)
+            q = query(
+                collection(db, 'orders'),
+                where('createdAt', '>=', startDate),
+                where('createdAt', '<=', endDate)
+            );
+
+            const snapshot = await getDocs(q);
+            const total = snapshot.docs.reduce((sum, doc) => {
+                const data = doc.data();
+                if (data.status === 'delivered') {
+                    return sum + (data.total || 0);
+                }
+                return sum;
+            }, 0);
+            console.log(`Calculated Revenue (Range) from ${snapshot.size} orders`);
+            return total;
+        } else {
+            // All time: Equality only (supported by default index)
+            q = query(
+                collection(db, 'orders'),
+                where('status', '==', 'delivered')
+            );
+
+            const snapshot = await getDocs(q);
+            const total = snapshot.docs.reduce((sum, doc) => sum + (doc.data().total || 0), 0);
+            console.log(`Calculated Revenue (All Time) from ${snapshot.size} orders`);
+            return total;
+        }
+    } catch (error) {
+        console.error('Error calculating total revenue:', error);
+        return 0;
+    }
+};
+
+export const getFinancialSummary = async (startDate, endDate) => {
+    try {
+        const [revenue, expenses] = await Promise.all([
+            getTotalRevenue(startDate, endDate),
+            getTotalExpenses(startDate, endDate)
+        ]);
+        const profit = revenue - expenses;
+        const profitMargin = revenue > 0 ? ((profit / revenue) * 100).toFixed(2) : 0;
+        return { revenue, expenses, profit, profitMargin };
+    } catch (error) {
+        return { revenue: 0, expenses: 0, profit: 0, profitMargin: 0 };
+    }
+};
 
 // Authentication
 export const loginAdmin = async (email, password) => {
@@ -547,9 +619,18 @@ export const deleteSignupCode = async (codeId) => {
 // Delete a rider (Firestore only)
 export const deleteRider = async (riderId) => {
     try {
+        console.log('Attempting to delete rider:', riderId);
+        console.log('Current admin user:', auth.currentUser?.email);
+
+        if (!auth.currentUser) {
+            throw new Error('Not authenticated. Please log in again.');
+        }
+
         await deleteDoc(doc(db, 'riders', riderId));
+        console.log('Rider deleted successfully');
         return { success: true };
     } catch (error) {
+        console.error('Error deleting rider:', error);
         return { success: false, error: error.message };
     }
 };
@@ -619,40 +700,4 @@ export const deleteExpense = async (id) => {
     }
 };
 
-export const getTotalExpenses = async (startDate, endDate) => {
-    try {
-        const expenses = await getExpenses(startDate, endDate);
-        return expenses.reduce((total, expense) => total + (expense.totalCost || 0), 0);
-    } catch (error) {
-        return 0;
-    }
-};
-
-export const getTotalRevenue = async (startDate, endDate) => {
-    try {
-        let q;
-        if (startDate && endDate) {
-            q = query(collection(db, 'orders'), where('createdAt', '>=', startDate), where('createdAt', '<=', endDate), where('status', '==', 'delivered'));
-        } else {
-            q = query(collection(db, 'orders'), where('status', '==', 'delivered'));
-        }
-        const snapshot = await getDocs(q);
-        return snapshot.docs.reduce((total, doc) => total + (doc.data().total || 0), 0);
-    } catch (error) {
-        return 0;
-    }
-};
-
-export const getFinancialSummary = async (startDate, endDate) => {
-    try {
-        const [revenue, expenses] = await Promise.all([
-            getTotalRevenue(startDate, endDate),
-            getTotalExpenses(startDate, endDate)
-        ]);
-        const profit = revenue - expenses;
-        const profitMargin = revenue > 0 ? ((profit / revenue) * 100).toFixed(2) : 0;
-        return { revenue, expenses, profit, profitMargin };
-    } catch (error) {
-        return { revenue: 0, expenses: 0, profit: 0, profitMargin: 0 };
-    }
-};
+// End of file

@@ -29,6 +29,7 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     };
 
     const incrementQuantity = () => {
+        if (item.stockLevel !== undefined && quantity >= item.stockLevel) return;
         setQuantity(prev => prev + 1);
     };
 
@@ -118,9 +119,16 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                                     className="quantity-btn"
                                     onClick={incrementQuantity}
                                     aria-label="Increase quantity"
+                                    disabled={item.stockLevel !== undefined && quantity >= item.stockLevel}
+                                    style={{ opacity: item.stockLevel !== undefined && quantity >= item.stockLevel ? 0.5 : 1 }}
                                 >
                                     +
                                 </button>
+                                {item.stockLevel !== undefined && (
+                                    <span style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}>
+                                        (Max: {item.stockLevel})
+                                    </span>
+                                )}
                             </div>
                         </div>
 
