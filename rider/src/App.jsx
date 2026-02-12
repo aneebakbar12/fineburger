@@ -16,8 +16,28 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthChange(async (currentUser) => {
       if (currentUser) {
-        // Initial check on load/login
-        const result = await getRiderProfile(currentUser.uid);
+        // Check if this is a newly created account (within last 30 seconds)
+        const accountAge = Date.now() - new Date(currentUser.metadata.creationTime).getTime();
+        const isNewAccount = accountAge < 30000; // 30 seconds
+
+        // For new accounts, retry profile check with delays to allow Firestore write to complete
+        let result;
+        if (isNewAccount) {
+          console.log("New account detected, retrying profile check...");
+          let retries = 5;
+          while (retries > 0) {
+            result = await getRiderProfile(currentUser.uid);
+            if (result.success) break;
+
+            // Wait before retry (exponential backoff: 500ms, 1s, 1.5s, 2s, 2.5s)
+            await new Promise(resolve => setTimeout(resolve, (6 - retries) * 500));
+            retries--;
+          }
+        } else {
+          // Existing account - single check
+          result = await getRiderProfile(currentUser.uid);
+        }
+
         if (result.success) {
           setUser(currentUser);
         } else {

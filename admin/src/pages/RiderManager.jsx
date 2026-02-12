@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { subscribeToRiders, subscribeToOrders, generateRiderSignupCode, subscribeToUnusedCodes, deleteSignupCode, deleteRider } from '../services/firebase';
+import { subscribeToRiders, subscribeToOrders, generateRiderSignupCode, deleteRider } from '../services/firebase';
 import '../styles/admin.css';
 
 const RiderManager = () => {
@@ -7,7 +7,6 @@ const RiderManager = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [signupCodes, setSignupCodes] = useState([]);
     const [codeModal, setCodeModal] = useState(null); // { show: bool, code: string }
 
     const handleResetPassword = async (rider) => {
@@ -45,15 +44,6 @@ const RiderManager = () => {
         setCodeModal(null);
     };
 
-    const handleDeleteCode = async (codeId) => {
-        if (window.confirm('Delete this signup code?')) {
-            const result = await deleteSignupCode(codeId);
-            if (!result.success) {
-                alert('Failed to delete code: ' + result.error);
-            }
-        }
-    };
-
     const handleDeleteRider = async (rider) => {
         if (window.confirm(`Delete rider ${rider.name}?\n\nThis will remove their profile from the system and they will be immediately logged out.`)) {
             console.log('Deleting rider:', rider.id, rider.name);
@@ -77,14 +67,9 @@ const RiderManager = () => {
             setOrders(ordersData);
         });
 
-        const unsubscribeCodes = subscribeToUnusedCodes((codesData) => {
-            setSignupCodes(codesData);
-        });
-
         return () => {
             unsubscribeRiders();
             unsubscribeOrders();
-            unsubscribeCodes();
         };
     }, []);
 
@@ -131,86 +116,26 @@ const RiderManager = () => {
                 />
             </div>
 
-            {/* Signup Codes Section */}
-            <div style={{
-                marginBottom: '32px',
-                padding: '24px',
-                backgroundColor: '#1a1a1a',
-                borderRadius: '12px',
-                border: '1px solid #333'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div>
-                        <h3 style={{ margin: 0, color: 'white', fontSize: '18px' }}>Signup Codes</h3>
-                        <p style={{ margin: '4px 0 0 0', color: '#888', fontSize: '13px' }}>
-                            Generate codes for new rider registrations
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleGenerateCode}
-                        style={{
-                            padding: '10px 20px',
-                            backgroundColor: '#4ade80',
-                            border: 'none',
-                            borderRadius: '6px',
-                            color: '#000',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        ➕ Generate Code
-                    </button>
-                </div>
-
-                {signupCodes.length === 0 ? (
-                    <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>No unused codes. Generate one to allow new rider signups.</p>
-                ) : (
-                    <div style={{ display: 'grid', gap: '12px' }}>
-                        {signupCodes.map(codeData => (
-                            <div key={codeData.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '12px 16px',
-                                backgroundColor: '#2a2a2a',
-                                borderRadius: '6px',
-                                border: '1px solid #444'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <code style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#1a1a1a',
-                                        borderRadius: '4px',
-                                        color: '#4ade80',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        letterSpacing: '2px'
-                                    }}>
-                                        {codeData.code}
-                                    </code>
-                                    <span style={{ color: '#666', fontSize: '13px' }}>
-                                        Created {codeData.createdAt ? new Date(codeData.createdAt.seconds * 1000).toLocaleString() : 'recently'}
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => handleDeleteCode(codeData.id)}
-                                    style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#e74c3c',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        color: 'white',
-                                        fontSize: '12px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    🗑️ Delete
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            {/* Generate Code Button */}
+            <div style={{ marginBottom: '32px' }}>
+                <button
+                    onClick={handleGenerateCode}
+                    style={{
+                        padding: '12px 24px',
+                        backgroundColor: '#4ade80',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#000',
+                        fontSize: '15px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#22c55e'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#4ade80'}
+                >
+                    ➕ Generate Rider Signup Code
+                </button>
             </div>
 
             {loading ? (

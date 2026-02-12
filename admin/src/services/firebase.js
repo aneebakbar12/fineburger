@@ -616,18 +616,22 @@ export const deleteSignupCode = async (codeId) => {
     }
 };
 
-// Delete a rider (Firestore only)
+// Delete a rider (Firestore profile only)
+// Note: This only deletes the Firestore document. The Firebase Auth account remains.
+// To reuse the email, manually delete the Auth user from Firebase Console.
 export const deleteRider = async (riderId) => {
     try {
-        console.log('Attempting to delete rider:', riderId);
-        console.log('Current admin user:', auth.currentUser?.email);
+        console.log('Deleting rider profile:', riderId);
+        console.log('Admin user:', auth.currentUser?.email);
 
         if (!auth.currentUser) {
             throw new Error('Not authenticated. Please log in again.');
         }
 
         await deleteDoc(doc(db, 'riders', riderId));
-        console.log('Rider deleted successfully');
+        console.log('✅ Rider profile deleted from Firestore');
+        console.log('⚠️ Note: Auth account still exists. To reuse email, delete from Firebase Console > Authentication.');
+
         return { success: true };
     } catch (error) {
         console.error('Error deleting rider:', error);

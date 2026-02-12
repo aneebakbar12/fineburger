@@ -269,25 +269,44 @@ const MenuItemManager = () => {
                                 style={{ display: 'none' }}
                                 id="image-upload"
                             />
-                            <label htmlFor="image-upload" className="image-upload-container">
+                            <label htmlFor="image-upload" className="image-upload-container" style={{
+                                cursor: 'pointer',
+                                border: '2px dashed var(--color-accent)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--spacing-lg)',
+                                textAlign: 'center',
+                                transition: 'all 0.3s ease',
+                                backgroundColor: 'rgba(255, 200, 87, 0.05)'
+                            }}>
                                 {imagePreview ? (
-                                    <div className="image-preview">
-                                        <img src={imagePreview} alt="Preview" onError={(e) => e.target.src = 'https://via.placeholder.com/300?text=Invalid+Image+URL'} />
+                                    <div className="image-preview" style={{
+                                        maxWidth: '300px',
+                                        margin: '0 auto',
+                                        borderRadius: 'var(--radius-md)',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <img src={imagePreview} alt="Preview" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => e.target.src = 'https://via.placeholder.com/300?text=Invalid+Image+URL'} />
+                                        <div style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-accent)', fontSize: 'var(--font-size-sm)' }}>
+                                            Click to change image
+                                        </div>
                                     </div>
                                 ) : (
                                     <div>
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2">
                                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                                             <circle cx="8.5" cy="8.5" r="1.5" />
                                             <polyline points="21 15 16 10 5 21" />
                                         </svg>
-                                        <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-text-secondary)' }}>
-                                            Click to upload image
+                                        <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-accent)', fontWeight: 'bold', fontSize: 'var(--font-size-md)' }}>
+                                            📁 Click to upload image from your computer
+                                        </p>
+                                        <p style={{ marginTop: 'var(--spacing-xs)', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                            Supports: JPG, PNG, GIF (Max 5MB)
                                         </p>
                                     </div>
                                 )}
                             </label>
-                            {imageFile && <p style={{ marginTop: 'var(--spacing-xs)', color: 'var(--color-accent)', fontSize: 'var(--font-size-sm)' }}>Selected: {imageFile.name}</p>}
+                            {imageFile && <p style={{ marginTop: 'var(--spacing-xs)', color: '#4ade80', fontSize: 'var(--font-size-sm)', fontWeight: 'bold' }}>✅ Selected: {imageFile.name}</p>}
                         </div>
 
                         <div className="form-group">
