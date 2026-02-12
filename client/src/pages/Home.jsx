@@ -55,10 +55,15 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
 
     const storeOpen = storeSettings ? isStoreOpen(storeSettings) : false;
 
-    // Group items by category
+    // Group items by category and filter out unavailable/out-of-stock items
     const itemsByCategory = categories.map(category => ({
         ...category,
-        items: menuItems.filter(item => item.categoryId === category.id && item.available)
+        items: menuItems.filter(item =>
+            item.categoryId === category.id &&
+            item.available &&
+            item.inStock !== false &&
+            (item.stockLevel === undefined || item.stockLevel > 0)
+        )
     }));
 
     return (

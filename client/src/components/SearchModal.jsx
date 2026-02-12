@@ -20,10 +20,13 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
         }
     }, [isOpen]);
 
-    // Filter menu items based on search query
+    // Filter menu items based on search query and stock availability
     const filteredItems = searchQuery
         ? menuItems.filter(item =>
-            item.available && (
+            item.available &&
+            item.inStock !== false &&
+            (item.stockLevel === undefined || item.stockLevel > 0) &&
+            (
                 item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
             )
