@@ -73,3 +73,34 @@ service cloud.firestore {
     }
   }
 }
+
+// ============================================
+// FIREBASE STORAGE RULES
+// ============================================
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow anyone to read all files (for public menu images, sliders, etc.)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Allow authenticated users (admins) to upload images
+    match /menu-images/{imageId} {
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');  // Only images
+    }
+    
+    match /slider-images/{imageId} {
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');  // Only images
+    }
+    
+    // Allow any other uploads by authenticated users
+    match /{allPaths=**} {
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024;  // Max 10MB for other files
+    }
+  }
+}
