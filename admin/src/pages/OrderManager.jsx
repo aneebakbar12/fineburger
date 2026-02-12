@@ -48,7 +48,7 @@ const CountdownTimer = ({ startTime, durationMinutes = 60 }) => {
     );
 };
 
-const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint, riders, onAssignRider }) => {
+const OrderDetailsModal = ({ order, serialNumber, isOpen, onClose, onUpdateStatus, onPrint, riders, onAssignRider }) => {
     const [selectedRiderId, setSelectedRiderId] = useState(order?.assignedRiderId || '');
 
     useEffect(() => {
@@ -83,7 +83,7 @@ const OrderDetailsModal = ({ order, isOpen, onClose, onUpdateStatus, onPrint, ri
                     <div className="modal-header">
                         <div className="modal-title-row">
                             <h2 style={{ fontSize: '28px', color: 'white', margin: 0 }}>
-                                Order #{order.id.slice(0, 6).toUpperCase()}
+                                Order #{serialNumber || order.id.slice(0, 6).toUpperCase()}
                             </h2>
                             <div>
                                 <span className="badge" style={{
@@ -360,6 +360,7 @@ const OrderManager = () => {
     }, [orders]);
 
     const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
+    const selectedOrderSerial = selectedOrder ? orders.length - orders.findIndex(o => o.id === selectedOrderId) : null;
 
     // (Buzzer logic removed - moved to Global App.js)
 
@@ -385,7 +386,7 @@ const OrderManager = () => {
         }
     };
 
-    const handlePrintReceipt = (order) => {
+    const handlePrintReceipt = (order, serialNumber) => {
         const printWindow = window.open('', '_blank');
 
         // Conditional customer section based on order type
@@ -404,7 +405,7 @@ const OrderManager = () => {
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Receipt #${order.id.slice(0, 6)}</title>
+                    <title>Receipt #${serialNumber}</title>
                     <style>
                         body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; color: #000; }
                         .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
@@ -418,7 +419,8 @@ const OrderManager = () => {
                 <body>
                     <div class="header">
                         <h2>FINE BURGER</h2>
-                        <p>Order #${order.id.slice(0, 6).toUpperCase()}</p>
+                        <p>Order #${serialNumber}</p>
+                        <p style="font-size: 10px; color: #666;">ID: ${order.id.slice(0, 8)}</p>
                         <p>${new Date().toLocaleString()}</p>
                     </div>
                     ${customerSection}
@@ -466,10 +468,10 @@ const OrderManager = () => {
 
     return (
         <div>
-            <div className="admin-header">
+            <div className="admin-header" style={{ padding: '16px 24px', marginBottom: '20px' }}>
                 <div>
-                    <h1 className="admin-title">Order Management</h1>
-                    <p className="admin-subtitle">Live Order Dashboard</p>
+                    <h1 className="admin-title" style={{ fontSize: '24px' }}>Order Management</h1>
+                    <p className="admin-subtitle" style={{ fontSize: '13px', marginTop: '4px' }}>Live Order Dashboard</p>
                 </div>
             </div>
 
@@ -481,28 +483,31 @@ const OrderManager = () => {
                 </div>
             ) : (
                 <div className="order-grid">
-                    {orders.map(order => {
+                    {orders.map((order, index) => {
                         const statusColors = getStatusColor(order.status);
+                        const serialNumber = orders.length - index;
+
                         return (
                             <div
                                 key={order.id}
                                 onClick={() => setSelectedOrderId(order.id)}
                                 style={{
                                     backgroundColor: '#1a1a1a',
-                                    borderRadius: '12px',
-                                    padding: '20px',
+                                    borderRadius: '8px',
+                                    padding: '12px',
                                     border: '1px solid #333',
-                                    borderTop: `4px solid ${statusColors.border}`,
+                                    borderLeft: `4px solid ${statusColors.border}`,
+                                    borderTop: '1px solid #333',
                                     cursor: 'pointer',
                                     transition: 'transform 0.2s, box-shadow 0.2s',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: 'space-between',
-                                    minHeight: '180px'
+                                    minHeight: 'auto'
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
                                 }}
                                 onMouseLeave={e => {
                                     e.currentTarget.style.transform = 'translateY(0)';
@@ -510,60 +515,76 @@ const OrderManager = () => {
                                 }}
                             >
                                 <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                        <h3 style={{ margin: 0, color: 'white', fontSize: '18px' }}>#{order.id.slice(0, 4)}...</h3>
-                                        <span style={{
-                                            fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase',
-                                            padding: '4px 8px', borderRadius: '4px',
-                                            backgroundColor: statusColors.bg, color: statusColors.text
-                                        }}>
-                                            {order.status}
-                                        </span>
-                                    </div>
-                                    {order.orderType && (
-                                        <div style={{ marginBottom: '8px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <h3 style={{ margin: 0, color: 'white', fontSize: '15px' }}>#{serialNumber}</h3>
                                             <span style={{
                                                 fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase',
                                                 padding: '2px 6px', borderRadius: '4px',
-                                                backgroundColor: '#333', color: '#ccc', border: '1px solid #555'
+                                                backgroundColor: statusColors.bg, color: statusColors.text
+                                            }}>
+                                                {order.status}
+                                            </span>
+                                        </div>
+                                        {order.orderType && (
+                                            <span style={{
+                                                fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase',
+                                                padding: '2px 4px', borderRadius: '3px',
+                                                backgroundColor: '#333', color: '#aaa', border: '1px solid #444'
                                             }}>
                                                 {order.orderType}
                                             </span>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
 
-                                    <div style={{ marginBottom: '16px' }}>
-                                        <h4 style={{ margin: '0 0 4px 0', color: '#ccc', fontSize: '15px' }}>{order.customer.name}</h4>
-                                        <p style={{ margin: '0 0 4px 0', color: '#888', fontSize: '12px' }}>{order.customer.phone}</p>
-                                        <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px' }}>{formatDate(order.createdAt)}</p>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                            <h4 style={{ margin: '0', color: '#ccc', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                                                {order.customer.name}
+                                            </h4>
+                                            <span style={{ color: '#666', fontSize: '11px' }}>{formatDate(order.createdAt)}</span>
+                                        </div>
+
                                         {order.assignedRiderName && (
-                                            <p style={{ margin: '4px 0 0 0', color: '#4ade80', fontSize: '12px', fontWeight: 'bold' }}>
+                                            <p style={{ margin: '2px 0 0 0', color: '#4ade80', fontSize: '11px', fontWeight: 'bold' }}>
                                                 🏍️ {order.assignedRiderName}
                                             </p>
                                         )}
 
-                                        <div style={{ fontSize: '13px', color: '#ddd' }}>
-                                            {order.items.slice(0, 3).map((item, i) => (
-                                                <div key={i} style={{ marginBottom: '2px' }}>
-                                                    {item.quantity}x {item.name}
+                                        <div style={{ fontSize: '12px', color: '#ddd', marginTop: '6px', lineHeight: '1.3' }}>
+                                            {order.items.slice(0, 2).map((item, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        <span style={{ color: '#888', marginRight: '4px' }}>{item.quantity}x</span>
+                                                        {item.name}
+                                                    </span>
                                                 </div>
                                             ))}
-                                            {order.items.length > 3 && (
-                                                <div style={{ color: '#888', fontStyle: 'italic' }}>+ {order.items.length - 3} more...</div>
+                                            {order.items.length > 2 && (
+                                                <div style={{ color: '#666', fontSize: '10px', fontStyle: 'italic', marginTop: '2px' }}>
+                                                    + {order.items.length - 2} items...
+                                                </div>
                                             )}
                                         </div>
                                     </div>
 
                                     {order.status === 'preparing' && order.preparingStartedAt && (
-                                        <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ marginBottom: '8px' }}>
                                             <CountdownTimer startTime={order.preparingStartedAt} />
                                         </div>
                                     )}
                                 </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #333', paddingTop: '12px' }}>
-                                    <span style={{ color: '#888', fontSize: '13px' }}>Total</span>
-                                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold', fontSize: '16px' }}>Rs. {order.total}</span>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderTop: '1px solid #333',
+                                    paddingTop: '8px',
+                                    marginTop: '4px'
+                                }}>
+                                    <span style={{ color: '#666', fontSize: '11px' }}>Total</span>
+                                    <span style={{ color: 'var(--color-accent)', fontWeight: 'bold', fontSize: '14px' }}>Rs. {order.total}</span>
                                 </div>
                             </div>
                         );
@@ -573,10 +594,11 @@ const OrderManager = () => {
 
             <OrderDetailsModal
                 order={selectedOrder}
+                serialNumber={selectedOrderSerial}
                 isOpen={!!selectedOrder}
                 onClose={() => setSelectedOrderId(null)}
                 onUpdateStatus={handleStatusUpdate}
-                onPrint={handlePrintReceipt}
+                onPrint={(order) => handlePrintReceipt(order, selectedOrderSerial)}
                 riders={riders}
                 onAssignRider={handleAssignRider}
             />
