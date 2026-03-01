@@ -3,11 +3,15 @@ import { db, auth } from '../firebase-config'; // Assuming auth is exported from
 import {
     collection,
     getDocs,
+    doc,
+    getDoc,
     query,
     orderBy,
     where,
     onSnapshot,
     addDoc,
+    updateDoc,
+    runTransaction,
     serverTimestamp
 } from 'firebase/firestore';
 
@@ -55,7 +59,7 @@ export const onAuthChange = (callback) => {
 
 // --- Orders ---
 
-// Create a new order
+// Create a new order — atomically checks & deducts inventory in a transaction
 export const createOrder = async (orderData) => {
     try {
         // Determine initial status based on order type and staff mode
@@ -63,24 +67,81 @@ export const createOrder = async (orderData) => {
         let additionalFields = {};
 
         if (orderData.placedByStaff && orderData.orderType === 'Dine-in') {
-            initialStatus = 'preparing'; // Auto-confirm staff dine-in orders
-            additionalFields.preparingStartedAt = serverTimestamp(); // Set timer start
+            initialStatus = 'preparing';
+            additionalFields.preparingStartedAt = serverTimestamp();
         }
 
-        const order = {
-            ...orderData,
-            ...additionalFields,
-            status: orderData.status || initialStatus, // Use provided status or default
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-        };
-        const docRef = await addDoc(collection(db, 'orders'), order);
-        return { success: true, orderId: docRef.id };
+        // Run inside a Firestore transaction so stock check + deduction + order write are atomic
+        const orderId = await runTransaction(db, async (transaction) => {
+
+            // 1. Read current stock for every item in the order
+            const itemRefs = orderData.items.map(item => doc(db, 'items', item.id));
+            const itemSnaps = await Promise.all(itemRefs.map(ref => transaction.get(ref)));
+
+            // 2. Validate stock for each ordered item
+            for (let i = 0; i < orderData.items.length; i++) {
+                const ordered = orderData.items[i];
+                const snap = itemSnaps[i];
+
+                if (!snap.exists()) {
+                    throw new Error(`Item "${ordered.name}" no longer exists.`);
+                }
+
+                const data = snap.data();
+                const currentStock = data.stockLevel;
+
+                // Only enforce limit when stockLevel is explicitly tracked (not undefined/null)
+                if (currentStock !== undefined && currentStock !== null) {
+                    if (currentStock < ordered.quantity) {
+                        const available = currentStock <= 0 ? 'out of stock' : `only ${currentStock} left`;
+                        throw new Error(`"${ordered.name}" is ${available}. Please update your cart.`);
+                    }
+                }
+            }
+
+            // 3. Deduct stock for each item (still inside transaction)
+            for (let i = 0; i < orderData.items.length; i++) {
+                const ordered = orderData.items[i];
+                const snap = itemSnaps[i];
+                const data = snap.data();
+                const currentStock = data.stockLevel;
+
+                if (currentStock !== undefined && currentStock !== null) {
+                    const newStock = Math.max(0, currentStock - ordered.quantity);
+                    const updates = { stockLevel: newStock };
+
+                    // Auto mark out-of-stock when stock is fully depleted
+                    if (newStock === 0) {
+                        updates.inStock = false;
+                    }
+
+                    transaction.update(itemRefs[i], updates);
+                }
+            }
+
+            // 4. Write the order document
+            const order = {
+                ...orderData,
+                ...additionalFields,
+                status: orderData.status || initialStatus,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            const newOrderRef = doc(collection(db, 'orders'));
+            transaction.set(newOrderRef, order);
+
+            return newOrderRef.id;
+        });
+
+        return { success: true, orderId };
+
     } catch (error) {
         console.error('Error creating order:', error);
         return { success: false, error: error.message };
     }
 };
+
 
 // Fetch user's orders
 export const getUserOrders = async (userId) => {

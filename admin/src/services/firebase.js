@@ -408,24 +408,24 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             updatedAt: serverTimestamp()
         });
 
-        // Deduct inventory when order starts/is confirmed (status: preparing)
-        if (status === 'preparing') {
+        // Restore inventory when an order is CANCELLED
+        // (stock was already deducted when the order was placed)
+        if (status === 'cancelled') {
             const orderSnap = await getDoc(doc(db, 'orders', id));
             if (orderSnap.exists()) {
                 const orderData = orderSnap.data();
 
-                // Deduct stock for each item
                 for (const item of orderData.items) {
                     const menuItemRef = doc(db, 'items', item.id);
                     const menuItemSnap = await getDoc(menuItemRef);
 
                     if (menuItemSnap.exists()) {
-                        const currentStock = menuItemSnap.data().stockLevel || 0;
-                        // Determine deduction amount (assuming each item is 1 unit unless otherwise specified)
-                        const deduction = item.quantity || 1;
-
+                        const currentStock = menuItemSnap.data().stockLevel ?? 0;
+                        const restored = currentStock + (item.quantity || 1);
                         await updateDoc(menuItemRef, {
-                            stockLevel: Math.max(0, currentStock - deduction)
+                            stockLevel: restored,
+                            // Re-enable the item if it was marked out-of-stock by this order
+                            ...(menuItemSnap.data().inStock === false ? { inStock: true } : {})
                         });
                     }
                 }
@@ -437,6 +437,7 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
         return { success: false, error: error.message };
     }
 };
+
 
 // General Inventory (non-menu items like ketchup, cheese, tissues)
 export const getInventoryItems = async () => {
