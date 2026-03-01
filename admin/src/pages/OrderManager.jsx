@@ -314,6 +314,70 @@ const OrderManager = () => {
     const prevOrdersRef = useRef([]);
     const audioContextRef = useRef(null);
 
+    // Helper: get or create AudioContext
+    const getAudioContext = () => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContextRef.current;
+    };
+
+    // Unlock AudioContext on first user interaction
+    useEffect(() => {
+        const unlock = () => {
+            const ctx = getAudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+        window.addEventListener('click', unlock);
+        window.addEventListener('keydown', unlock);
+        return () => {
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+    }, []);
+
+    // Play a beep using Web Audio API
+    const playBeep = async (type = 'notification') => {
+        try {
+            const ctx = getAudioContext();
+            if (ctx.state === 'suspended') await ctx.resume();
+
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            if (type === 'kitchen') {
+                // Two-tone kitchen bell for preparing orders
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+                oscillator.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 2.0);
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + 2.0);
+            } else {
+                // Urgent triple beep for new pending orders
+                [0, 0.25, 0.5].forEach((offset) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(520, ctx.currentTime + offset);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + offset + 0.2);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + offset);
+                    osc.stop(ctx.currentTime + offset + 0.2);
+                });
+            }
+        } catch (err) {
+            console.error('Beep failed:', err);
+        }
+    };
+
     useEffect(() => {
         const unsubscribe = subscribeToOrders((newOrders) => {
             setOrders(newOrders);
@@ -335,24 +399,12 @@ const OrderManager = () => {
 
         // Play sound for new pending orders
         if (pendingOrders.length > prevPendingCountRef.current) {
-            try {
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Notification bell
-                audio.volume = 0.5;
-                audio.play().catch(err => console.log('Audio play failed:', err));
-            } catch (err) {
-                console.log('Audio error:', err);
-            }
+            playBeep('notification');
         }
 
         // Play different sound for new auto-confirmed preparing orders (dine-in)
         if (preparingOrders.length > prevPreparingCountRef.current) {
-            try {
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'); // Kitchen bell
-                audio.volume = 0.6;
-                audio.play().catch(err => console.log('Audio play failed:', err));
-            } catch (err) {
-                console.log('Audio error:', err);
-            }
+            playBeep('kitchen');
         }
 
         prevPendingCountRef.current = pendingOrders.length;

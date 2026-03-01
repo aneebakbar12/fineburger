@@ -22,17 +22,41 @@ function App() {
     const audioContextRef = React.useRef(null);
     const prevOrdersRef = React.useRef([]);
 
+    // Unlock AudioContext on first user interaction (browsers block audio until then)
+    useEffect(() => {
+        const unlock = () => {
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+        window.addEventListener('click', unlock);
+        window.addEventListener('keydown', unlock);
+        return () => {
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+    }, []);
+
     // Buzzer Logic
-    const playBuzzer = () => {
+    const playBuzzer = async () => {
         try {
-            if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
             const ctx = audioContextRef.current;
+            // Resume context if suspended (required by browser autoplay policy)
+            if (ctx.state === 'suspended') await ctx.resume();
             const oscillator = ctx.createOscillator();
             const gainNode = ctx.createGain();
             oscillator.type = 'square';
             oscillator.frequency.setValueAtTime(440, ctx.currentTime);
             oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 3.0);
             oscillator.connect(gainNode);
             gainNode.connect(ctx.destination);
