@@ -3,9 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // Allow anyone to read menu items, categories, sliders, and settings
-    match /items/{document=**} {
+    match /items/{itemId} {
       allow read: if true;
+      // Admins can do anything
       allow write: if request.auth != null;
+      // Anyone placing an order can update ONLY stockLevel and inStock
+      // (used by the order transaction to deduct stock at placement time)
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['stockLevel', 'inStock']);
     }
     match /categories/{document=**} {
       allow read: if true;

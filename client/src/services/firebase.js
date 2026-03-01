@@ -67,7 +67,7 @@ export const createOrder = async (orderData) => {
         let additionalFields = {};
 
         if (orderData.placedByStaff && orderData.orderType === 'Dine-in') {
-            initialStatus = 'preparing';
+            initialStatus = 'preparing'; // Auto-confirm staff dine-in orders
             additionalFields.preparingStartedAt = serverTimestamp();
         }
 
@@ -141,7 +141,6 @@ export const createOrder = async (orderData) => {
         return { success: false, error: error.message };
     }
 };
-
 
 // Fetch user's orders
 export const getUserOrders = async (userId) => {
