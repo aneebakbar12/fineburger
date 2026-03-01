@@ -21,16 +21,23 @@ function App() {
     const [loading, setLoading] = useState(true);
     const audioContextRef = React.useRef(null);
     const prevOrdersRef = React.useRef([]);
+    // Tracks if a new order arrived while the tab was hidden
+    const pendingSoundRef = React.useRef(false);
 
-    // Unlock AudioContext on first user interaction (browsers block audio until then)
+    // ── Audio Context helpers ─────────────────────────────────────────────────
+
+    const getAudioContext = () => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContextRef.current;
+    };
+
+    // Unlock AudioContext on first user interaction (browser autoplay policy)
     useEffect(() => {
         const unlock = () => {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContextRef.current.state === 'suspended') {
-                audioContextRef.current.resume();
-            }
+            const ctx = getAudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
             window.removeEventListener('click', unlock);
             window.removeEventListener('keydown', unlock);
         };
@@ -42,30 +49,72 @@ function App() {
         };
     }, []);
 
-    // Buzzer Logic
+    // ── Buzzer ────────────────────────────────────────────────────────────────
+
     const playBuzzer = async () => {
         try {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            const ctx = audioContextRef.current;
-            // Resume context if suspended (required by browser autoplay policy)
+            const ctx = getAudioContext();
             if (ctx.state === 'suspended') await ctx.resume();
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            oscillator.type = 'square';
-            oscillator.frequency.setValueAtTime(440, ctx.currentTime);
-            oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 3.0);
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            oscillator.start();
-            oscillator.stop(ctx.currentTime + 3.0);
+
+            // Triple urgent beep pattern
+            [0, 0.28, 0.56].forEach((offset) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(520, ctx.currentTime + offset);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime + offset);
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + offset + 0.22);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + offset);
+                osc.stop(ctx.currentTime + offset + 0.22);
+            });
         } catch (e) {
-            console.error("Audio playback failed", e);
+            console.error('Audio playback failed', e);
         }
     };
+
+    // ── Browser Notification ──────────────────────────────────────────────────
+
+    const requestNotificationPermission = async () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            await Notification.requestPermission();
+        }
+    };
+
+    const showOrderNotification = (count) => {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        const n = new Notification('🍔 New Order!', {
+            body: count === 1
+                ? 'A new order has been placed. Tap to view.'
+                : `${count} new orders have been placed. Tap to view.`,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'new-order',        // replaces previous notification instead of stacking
+            renotify: true,          // vibrate/sound even if tag already shown
+            requireInteraction: true // stays on screen until dismissed
+        });
+        // Clicking the notification focuses the admin tab
+        n.onclick = () => {
+            window.focus();
+            n.close();
+        };
+    };
+
+    // ── Visibility-change: play immediately when tab regains focus ────────────
+
+    useEffect(() => {
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && pendingSoundRef.current) {
+                pendingSoundRef.current = false;
+                playBuzzer();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    }, []);
+
+    // ── Order subscription ────────────────────────────────────────────────────
 
     useEffect(() => {
         let unsubscribeOrders;
@@ -73,14 +122,27 @@ function App() {
             setUser(currentUser);
             setLoading(false);
 
-            // Subscribe to orders if user is logged in
             if (currentUser) {
+                // Request notification permission as soon as user is logged in
+                requestNotificationPermission();
+
                 unsubscribeOrders = subscribeToOrders((newOrders) => {
-                    // Check for new pending orders
                     if (prevOrdersRef.current.length > 0) {
                         const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
-                        const newPendingOrders = newOrders.filter(o => !previousIds.has(o.id) && o.status === 'pending');
-                        if (newPendingOrders.length > 0) playBuzzer();
+                        const newPendingOrders = newOrders.filter(
+                            o => !previousIds.has(o.id) && o.status === 'pending'
+                        );
+
+                        if (newPendingOrders.length > 0) {
+                            if (document.visibilityState === 'visible') {
+                                // Tab is active → play immediately
+                                playBuzzer();
+                            } else {
+                                // Tab is in background → queue the sound + show notification
+                                pendingSoundRef.current = true;
+                                showOrderNotification(newPendingOrders.length);
+                            }
+                        }
                     }
                     prevOrdersRef.current = newOrders;
                 });
