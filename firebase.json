@@ -1,4 +1,7 @@
 {
+    "firestore": {
+        "rules": "FIREBASE_RULES.txt"
+    },
     "functions": [
         {
             "source": "functions",

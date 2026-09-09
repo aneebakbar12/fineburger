@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="48" fill="#121212" stroke="#FFB400" stroke-width="3"/>
+  <!-- Delivery Scooter / Rider Icon -->
+  <circle cx="32" cy="68" r="12" fill="none" stroke="#FFB400" stroke-width="4"/>
+  <circle cx="72" cy="68" r="12" fill="none" stroke="#FFB400" stroke-width="4"/>
+  <path d="M 32 68 L 46 68 L 56 46 L 72 46 L 72 68" fill="none" stroke="#FFB400" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 52 38 L 44 48 L 34 48" fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round"/>
+  <!-- Helmet -->
+  <circle cx="56" cy="30" r="8" fill="#FFB400"/>
+  <!-- Delivery box -->
+  <rect x="20" y="40" width="14" height="14" rx="2" fill="#E09600"/>
+</svg>

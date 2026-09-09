@@ -1,10 +1,9 @@
 import React from 'react';
 import Home from './Home';
 
-// Menu page is essentially the same as Home page for now
-// You can customize it differently if needed
+// Menu page displays the menu directly without the promotional hero slider
 const Menu = (props) => {
-    return <Home {...props} />;
+    return <Home {...props} showHeroSlider={false} />;
 };
 
 export default Menu;

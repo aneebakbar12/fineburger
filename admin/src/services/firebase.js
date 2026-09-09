@@ -52,34 +52,29 @@ export const getTotalRevenue = async (startDate, endDate) => {
     try {
         let q;
         if (startDate && endDate) {
-            // Fetch all orders in range to avoid composite index requirement for (createdAt + status)
             q = query(
                 collection(db, 'orders'),
+                where('status', '==', 'delivered'),
                 where('createdAt', '>=', startDate),
                 where('createdAt', '<=', endDate)
             );
-
-            const snapshot = await getDocs(q);
-            const total = snapshot.docs.reduce((sum, doc) => {
-                const data = doc.data();
-                if (data.status === 'delivered') {
-                    return sum + (data.total || 0);
-                }
-                return sum;
-            }, 0);
-            console.log(`Calculated Revenue (Range) from ${snapshot.size} orders`);
-            return total;
         } else {
-            // All time: Equality only (supported by default index)
             q = query(
                 collection(db, 'orders'),
                 where('status', '==', 'delivered')
             );
+        }
 
-            const snapshot = await getDocs(q);
-            const total = snapshot.docs.reduce((sum, doc) => sum + (doc.data().total || 0), 0);
-            console.log(`Calculated Revenue (All Time) from ${snapshot.size} orders`);
+        try {
+            const snapshot = await getAggregateFromServer(q, {
+                totalRevenue: sum('total')
+            });
+            const total = snapshot.data().totalRevenue || 0;
             return total;
+        } catch (aggError) {
+            console.warn('Aggregation query fell back to getDocs:', aggError.message);
+            const snapshot = await getDocs(q);
+            return snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
         }
     } catch (error) {
         console.error('Error calculating total revenue:', error);
@@ -634,23 +629,25 @@ export const deleteSignupCode = async (codeId) => {
     }
 };
 
-// Delete a rider (Firestore profile only)
-// Note: This only deletes the Firestore document. The Firebase Auth account remains.
-// To reuse the email, manually delete the Auth user from Firebase Console.
+// Delete a rider completely (removes Firebase Auth user + Firestore profile via Cloud Function)
 export const deleteRider = async (riderId) => {
     try {
-        console.log('Deleting rider profile:', riderId);
-        console.log('Admin user:', auth.currentUser?.email);
+        console.log('Deleting rider completely via Cloud Function:', riderId);
 
         if (!auth.currentUser) {
             throw new Error('Not authenticated. Please log in again.');
         }
 
-        await deleteDoc(doc(db, 'riders', riderId));
-        console.log('✅ Rider profile deleted from Firestore');
-        console.log('⚠️ Note: Auth account still exists. To reuse email, delete from Firebase Console > Authentication.');
-
-        return { success: true };
+        try {
+            const deleteRiderCompletelyFn = httpsCallable(functions, 'deleteRiderCompletely');
+            const result = await deleteRiderCompletelyFn({ riderId });
+            console.log('✅ Rider completely deleted via Cloud Function:', result.data);
+            return { success: true };
+        } catch (fnError) {
+            console.warn('Cloud Function deletion failed, falling back to Firestore delete:', fnError.message);
+            await deleteDoc(doc(db, 'riders', riderId));
+            return { success: true, warning: 'Deleted from database. Auth account may require manual removal.' };
+        }
     } catch (error) {
         console.error('Error deleting rider:', error);
         return { success: false, error: error.message };

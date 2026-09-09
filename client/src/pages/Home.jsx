@@ -8,7 +8,7 @@ import { getSliders, subscribeToSliders, isStoreOpen } from '../services/firebas
 import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Home.css';
 
-const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose }) => {
+const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose, showHeroSlider = true }) => {
     const { isStaffMode } = useStaffMode();
     const [sliders, setSliders] = useState([]);
     const [activeCategory, setActiveCategory] = useState(null);
@@ -68,7 +68,7 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
 
     return (
         <div className="home-page">
-            {!isStaffMode && <HeroSlider slides={sliders} />}
+            {showHeroSlider && !isStaffMode && <HeroSlider slides={sliders} />}
 
             <div className="container">
                 {!storeOpen && storeSettings && (

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getStoreSettings } from '../services/firebase';
 
 const StaffModeContext = createContext();
 
@@ -12,14 +13,27 @@ export const useStaffMode = () => {
 
 export const StaffModeProvider = ({ children }) => {
     const [isStaffMode, setIsStaffMode] = useState(false);
-    const [staffPin, setStaffPin] = useState('1234'); // Default PIN, can be changed from admin
+    const [currentPin, setCurrentPin] = useState('1234');
 
-    // Load staff mode state from localStorage on mount
+    // Load staff mode state from localStorage and fetch PIN from store settings
     useEffect(() => {
         const savedStaffMode = localStorage.getItem('isStaffMode');
         if (savedStaffMode === 'true') {
             setIsStaffMode(true);
         }
+
+        const fetchPin = async () => {
+            try {
+                const settings = await getStoreSettings();
+                if (settings && settings.staffPin) {
+                    setCurrentPin(String(settings.staffPin));
+                }
+            } catch (err) {
+                console.warn('Could not fetch custom staff PIN, using fallback:', err);
+            }
+        };
+
+        fetchPin();
     }, []);
 
     // Listen for exit staff mode event from header
@@ -32,7 +46,7 @@ export const StaffModeProvider = ({ children }) => {
     }, []);
 
     const activateStaffMode = (pin) => {
-        if (pin === staffPin) {
+        if (String(pin).trim() === String(currentPin).trim()) {
             setIsStaffMode(true);
             localStorage.setItem('isStaffMode', 'true');
             return true;
@@ -49,7 +63,7 @@ export const StaffModeProvider = ({ children }) => {
         isStaffMode,
         activateStaffMode,
         deactivateStaffMode,
-        staffPin
+        staffPin: currentPin
     };
 
     return (
