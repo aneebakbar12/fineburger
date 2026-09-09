@@ -8,12 +8,16 @@ const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
         setError('');
+        setLoading(true);
         const result = await registerRider(email, password, name, signupCode);
+        setLoading(false);
         if (result.success) {
             navigate('/');
         } else {
@@ -27,6 +31,7 @@ const Signup = () => {
             {error && <p className="error">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <input
+                    className="input-large"
                     type="text"
                     placeholder="Signup Code (Get from admin)"
                     value={signupCode}
@@ -36,6 +41,7 @@ const Signup = () => {
                     style={{ textTransform: 'uppercase', letterSpacing: '2px' }}
                 />
                 <input
+                    className="input-large"
                     type="text"
                     placeholder="Full Name"
                     value={name}
@@ -43,6 +49,7 @@ const Signup = () => {
                     required
                 />
                 <input
+                    className="input-large"
                     type="email"
                     placeholder="Email"
                     value={email}
@@ -50,6 +57,7 @@ const Signup = () => {
                     required
                 />
                 <input
+                    className="input-large"
                     type="password"
                     placeholder="Password"
                     value={password}
@@ -57,10 +65,12 @@ const Signup = () => {
                     required
                     minLength="6"
                 />
-                <button type="submit">Sign Up</button>
+                <button className="btn-primary" type="submit" disabled={loading}>
+                    {loading ? 'Creating Account...' : 'Sign Up'}
+                </button>
             </form>
             <p style={{ marginTop: '20px' }}>
-                Already have an account? <Link to="/login" style={{ color: '#646cff' }}>Login</Link>
+                Already have an account? <Link to="/login" style={{ color: 'var(--color-secondary, #FFB400)' }}>Login</Link>
             </p>
         </div>
     );

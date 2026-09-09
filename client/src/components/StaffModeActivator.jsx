@@ -31,7 +31,7 @@ const StaffModeActivator = () => {
             setShowPinInput(false);
             setPin('');
             setError('');
-            alert('✅ Staff Mode Activated!');
+            // alert replaced — using inline success message via error state momentarily
         } else {
             setError('❌ Invalid PIN');
             setPin('');
@@ -46,7 +46,7 @@ const StaffModeActivator = () => {
 
     return (
         <>
-            {/* Hidden trigger - tap logo area */}
+            {/* Hidden trigger — pointer-events only on tap area, not behind logo link */}
             <div
                 onClick={handleLogoTap}
                 style={{
@@ -56,9 +56,7 @@ const StaffModeActivator = () => {
                     width: '150px',
                     height: '50px',
                     cursor: 'pointer',
-                    zIndex: 9999,
-                    // Uncomment to see the clickable area during testing
-                    // backgroundColor: 'rgba(255, 0, 0, 0.2)'
+                    zIndex: 1029,
                 }}
                 title="Tap 5 times for staff mode"
             />

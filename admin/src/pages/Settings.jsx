@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSettings, updateSettings } from '../services/firebase';
+import { getSettings, updateSettings, addSettings } from '../services/firebase';
 
 const Settings = () => {
     const [settings, setSettings] = useState(null);
@@ -36,6 +36,13 @@ const Settings = () => {
             const result = await updateSettings(settings.id, formData);
             if (result.success) {
                 alert('Settings updated successfully!');
+            }
+        } else {
+            // First-time setup — create the document
+            const result = await addSettings(formData);
+            if (result.success) {
+                alert('Settings created successfully!');
+                fetchSettings();
             }
         }
     };

@@ -331,7 +331,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                             <div className="tracking-stepper">
                                 <div
                                     className="tracking-stepper-progress"
-                                    style={{ width: `calc(${progressPercent}% * 0.8)` }}
+                                    style={{ width: `${progressPercent * 0.8}%` }}
                                 ></div>
                                 {STATUS_STEPS.map((step, idx) => {
                                     const isCompleted = idx < activeStepIndex || order.status === 'delivered';
@@ -413,7 +413,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                     {order.orderType === 'Delivery' && order.customer?.address && (
                                         <div className="info-row">
                                             <span>Address:</span>
-                                            <strong style={{ maxWidth: '60%', textAlign: 'right' }}>
+                                            <strong style={{ maxWidth: '60%', textAlign: 'right', display: 'inline-block', wordBreak: 'break-word' }}>
                                                 {order.customer.address}
                                             </strong>
                                         </div>

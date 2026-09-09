@@ -120,16 +120,16 @@ const OrderDetailsModal = ({ order, serialNumber, isOpen, onClose, onUpdateStatu
                                 <>
                                     <div className="detail-row">
                                         <span className="detail-label">Name</span>
-                                        <span className="detail-value">{order.customer.name}</span>
+                                        <span className="detail-value">{order.customer?.name}</span>
                                     </div>
                                     <div className="detail-row">
                                         <span className="detail-label">Phone</span>
                                         <span className="detail-value" style={{ display: 'flex', alignItems: 'center' }}>
-                                            <a href={`tel:${order.customer.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
-                                                {order.customer.phone}
+                                            <a href={`tel:${order.customer?.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
+                                                {order.customer?.phone}
                                             </a>
                                             <a
-                                                href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${order.customer.name || 'there'}! This is Fine Burger regarding your order #${order.orderReference || order.id.substring(0, 5).toUpperCase()}.`)}`}
+                                                href={`https://wa.me/${order.customer?.phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${order.customer?.name || 'there'}! This is Fine Burger regarding your order #${order.orderReference || order.id.substring(0, 5).toUpperCase()}.`)}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{

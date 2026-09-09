@@ -114,7 +114,7 @@ function App() {
 
         setCartItems(prev => {
             const updated = [...prev];
-            updated[index].quantity = newQuantity;
+            updated[index] = { ...updated[index], quantity: newQuantity };
             return updated;
         });
     };
@@ -142,7 +142,7 @@ function App() {
                 <div className="app">
                     <StaffModeActivator />
                     <Header
-                        cartItemCount={cartItems.length}
+                        cartItemCount={cartItems.reduce((sum, i) => sum + i.quantity, 0)}
                         onCartClick={toggleCart}
                         onSearchClick={toggleSearch}
                         user={user}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AuthModal from './AuthModal';
 import { useStaffMode } from '../contexts/StaffModeContext';
@@ -9,10 +9,25 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const userMenuRef = useRef(null);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
+
+    const closeNav = () => setIsMenuOpen(false);
+
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+                setIsUserMenuOpen(false);
+            }
+        };
+        if (isUserMenuOpen) {
+            document.addEventListener('mousedown', handleOutsideClick);
+        }
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, [isUserMenuOpen]);
 
     return (
         <>
@@ -27,10 +42,10 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
 
                         {/* Desktop Navigation */}
                         <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-                            {!isStaffMode && <Link to="/" className="nav-link">Home</Link>}
-                            <Link to="/menu" className="nav-link">Menu</Link>
-                            {!isStaffMode && <Link to="/track" className="nav-link">Track Order</Link>}
-                            {!isStaffMode && <Link to="/about" className="nav-link">About Us</Link>}
+                            {!isStaffMode && <Link to="/" className="nav-link" onClick={closeNav}>Home</Link>}
+                            <Link to="/menu" className="nav-link" onClick={closeNav}>Menu</Link>
+                            {!isStaffMode && <Link to="/track" className="nav-link" onClick={closeNav}>Track Order</Link>}
+                            {!isStaffMode && <Link to="/about" className="nav-link" onClick={closeNav}>About Us</Link>}
                         </nav>
 
                         {/* Right side actions */}
@@ -79,7 +94,7 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                             </button>
 
                             {user ? (
-                                <div className="user-menu-container">
+                                <div className="user-menu-container" ref={userMenuRef}>
                                     <button
                                         className="user-btn"
                                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}

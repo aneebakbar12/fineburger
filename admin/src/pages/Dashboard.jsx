@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCategories, getMenuItems, subscribeToOrders } from '../services/firebase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         totalRevenue: 0,
         totalOrders: 0,
@@ -13,27 +15,33 @@ const Dashboard = () => {
     const [categoryData, setCategoryData] = useState([]);
     const [aiInsights, setAiInsights] = useState([]);
     const [loading, setLoading] = useState(true);
+    const unsubscribeRef = useRef(null);
 
     useEffect(() => {
+        let cancelled = false;
         const fetchData = async () => {
-            // 1. Fetch Static Data
             const categories = await getCategories();
             const items = await getMenuItems();
+            if (cancelled) return;
 
-            // 2. Subscribe to Orders for Real-time Analytics
-            const unsubscribe = subscribeToOrders((orders) => {
+            unsubscribeRef.current = subscribeToOrders((orders) => {
                 processAnalytics(orders, items, categories);
+                setLoading(false);
             });
-
-            return () => unsubscribe();
         };
 
         fetchData();
+        return () => {
+            cancelled = true;
+            if (unsubscribeRef.current) unsubscribeRef.current();
+        };
     }, []);
 
     const processAnalytics = (orders, items, categories) => {
-        // --- KPI Calculations ---
-        const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+        // --- KPI Calculations (only delivered orders for revenue) ---
+        const totalRevenue = orders
+            .filter(o => o.status === 'delivered')
+            .reduce((sum, order) => sum + (order.total || 0), 0);
         const pendingOrders = orders.filter(o => o.status === 'pending').length;
         const avgOrderValue = orders.length > 0 ? (totalRevenue / orders.length).toFixed(0) : 0;
 
@@ -67,7 +75,7 @@ const Dashboard = () => {
         // --- Category Distribution ---
         const categoryCounts = {};
         orders.forEach(order => {
-            order.items.forEach(item => {
+            (order.items || []).forEach(item => {
                 // Find item category (would be better if item stored categoryName, but we map it)
                 const originalItem = items.find(i => i.id === item.id);
                 if (originalItem) {
@@ -167,7 +175,7 @@ const Dashboard = () => {
                 <KPICard title="Total Orders" value={stats.totalOrders} icon="📦" trend="+12%" trendUp={true} />
                 <KPICard title="Pending Orders" value={stats.pendingOrders} icon="⏳" trend={stats.pendingOrders > 5 ? "High Load" : "Normal"} trendUp={stats.pendingOrders < 5} />
                 <KPICard title="Avg. Order Value" value={`Rs. ${stats.avgOrderValue}`} icon="💰" trend="+5%" trendUp={true} />
-                <KPICard title="Menu Items" value={stats.totalRevenue > 0 ? "Active" : "Inactive"} icon="🍔" trend="Stable" trendUp={true} />
+                <KPICard title="Menu Items" value={stats.totalOrders > 0 ? "Active" : "Inactive"} icon="🍔" trend="Stable" trendUp={true} />
             </div>
 
             <div className="dashboard-main-grid">
@@ -259,10 +267,10 @@ const Dashboard = () => {
                 <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
                     <h3 style={{ margin: '0 0 20px 0', color: 'white' }}>Quick Actions</h3>
                     <div className="quick-actions-grid">
-                        <ActionButton label="Add Item" icon="Example" onClick={() => window.location.href = '/menu-items'} color="#FFB400" />
-                        <ActionButton label="Categories" icon="Example" onClick={() => window.location.href = '/categories'} color="#3B82F6" />
-                        <ActionButton label="Inventory" icon="Example" onClick={() => window.location.href = '/inventory'} color="#4ADE80" />
-                        <ActionButton label="Settings" icon="Example" onClick={() => window.location.href = '/settings'} color="#9333EA" />
+                        <ActionButton label="Add Item" icon="Example" onClick={() => navigate('/menu-items')} color="#FFB400" />
+                        <ActionButton label="Categories" icon="Example" onClick={() => navigate('/categories')} color="#3B82F6" />
+                        <ActionButton label="Inventory" icon="Example" onClick={() => navigate('/inventory')} color="#4ADE80" />
+                        <ActionButton label="Settings" icon="Example" onClick={() => navigate('/settings')} color="#9333EA" />
                     </div>
                 </div>
             </div>

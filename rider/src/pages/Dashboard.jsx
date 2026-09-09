@@ -47,8 +47,16 @@ const Dashboard = () => {
         const confirmed = window.confirm('Mark this order as Delivered?');
         if (confirmed) {
             setProcessingOrders(prev => new Set(prev).add(orderId));
-            await updateOrderStatus(orderId, 'delivered');
-            // Order will be removed from assigned list by the real-time listener
+            const result = await updateOrderStatus(orderId, 'delivered');
+            if (!result?.success) {
+                // Remove from processing so rider can retry
+                setProcessingOrders(prev => {
+                    const next = new Set(prev);
+                    next.delete(orderId);
+                    return next;
+                });
+            }
+            // On success the real-time listener moves the order to past tab automatically
         }
     };
 
@@ -127,10 +135,15 @@ const Dashboard = () => {
                     </div>
                 ) : (
                     orders.map(order => (
-                        <div key={order.id} className="order-card">
+                        <div key={order.id} className={`order-card status-${order.status}`}>
                             <div className="order-card-header">
-                                <span className="order-id">#{order.id.slice(0, 5).toUpperCase()}</span>
-                                <span className="order-badge">Ready for Pickup</span>
+                                <span className="order-id">#{(order.orderReference || order.id.slice(0, 8)).toUpperCase()}</span>
+                                <span className="order-badge">
+                                    {order.status === 'out_for_delivery' ? 'Out for Delivery'
+                                        : order.status === 'ready' ? 'Ready for Pickup'
+                                        : order.status === 'preparing' ? 'Preparing'
+                                        : 'Assigned'}
+                                </span>
                             </div>
 
                             <div className="order-details">

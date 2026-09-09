@@ -434,7 +434,7 @@ export const isStoreOpen = (settings) => {
     if (hour === '24') hour = '00';
     const currentTime = `${hour}:${getPart('minute')}`;
 
-    console.log(`Checking Store Status (PKT): ${currentDay} ${currentTime}`);
+    // console.log removed — was leaking internal timezone logic to DevTools in production
 
     const todayHours = settings.operatingHours?.[currentDay];
     if (!todayHours) return false;

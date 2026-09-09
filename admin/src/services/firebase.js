@@ -325,6 +325,19 @@ export const updateSettings = async (id, settingsData) => {
     }
 };
 
+export const addSettings = async (settingsData) => {
+    try {
+        const docRef = await addDoc(collection(db, 'settings'), {
+            ...settingsData,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
 // Sliders
 export const getSliders = async () => {
     try {
