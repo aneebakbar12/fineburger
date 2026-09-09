@@ -1,5 +1,5 @@
 // Fine Burger Service Worker
-const CACHE_NAME = 'fineburger-v1';
+const CACHE_NAME = 'fineburger-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -62,7 +62,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch background update
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
@@ -84,10 +83,74 @@ self.addEventListener('fetch', (event) => {
         });
 
         return networkResponse;
-      }).catch((err) => {
-        // Return nothing or cached resource
+      }).catch(() => {
         return caches.match(event.request);
       });
     })
   );
+});
+
+// ============================================================
+// WEB PUSH & BACKGROUND NOTIFICATION HANDLERS
+// ============================================================
+
+// Listen for push events dispatched from push servers
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Fine Burger Order Update', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || '🍔 Fine Burger Update';
+  const options = {
+    body: data.body || 'Your order status has been updated!',
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'order-status',
+    renotify: true,
+    data: {
+      url: data.url || '/track'
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Handle notification click — open or focus order tracking tab
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/track';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it and navigate
+      for (const client of clientList) {
+        if (client.url.includes('/track') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Allow client-side tabs to trigger persistent Service Worker notifications
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    self.registration.showNotification(title, {
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+      vibrate: [200, 100, 200],
+      ...options
+    });
+  }
 });

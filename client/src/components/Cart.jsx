@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createOrder } from '../services/firebase';
+import {
+    isNotificationSupported,
+    getNotificationPermission,
+    requestNotificationPermission,
+    showPushNotification
+} from '../services/notificationService';
 import LocationPicker from './LocationPicker';
 import AuthModal from './AuthModal'; // Import AuthModal
 import { useStaffMode } from '../contexts/StaffModeContext';
@@ -24,6 +30,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const [confirmedOrder, setConfirmedOrder] = useState(null);
     const [showMap, setShowMap] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
 
     // Auto-fill user details when user logs in
     useEffect(() => {
@@ -131,6 +138,16 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         }
     };
 
+    const handleEnableNotifications = async () => {
+        const granted = await requestNotificationPermission();
+        setNotificationPermission(granted ? 'granted' : 'denied');
+        if (granted && confirmedOrder) {
+            showPushNotification('🔔 Notifications Active!', {
+                body: `We'll alert you when order #${confirmedOrder.orderReference} updates!`
+            });
+        }
+    };
+
     const handleShareWhatsApp = () => {
         if (!confirmedOrder) return;
         const itemsList = confirmedOrder.items
@@ -234,6 +251,29 @@ ${itemsList}
                             >
                                 Track Live Order ➔
                             </button>
+
+                            {isNotificationSupported() && notificationPermission !== 'granted' && (
+                                <button
+                                    onClick={handleEnableNotifications}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        fontSize: 'var(--font-size-sm)',
+                                        cursor: 'pointer',
+                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                        border: '1px dashed var(--color-accent)',
+                                        color: 'var(--color-accent)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    <span>🔔</span> Alert Me on Order Progress
+                                </button>
+                            )}
 
                             <button
                                 onClick={handleShareWhatsApp}

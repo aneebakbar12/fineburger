@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { subscribeToOrder } from '../services/firebase';
+import {
+    isNotificationSupported,
+    getNotificationPermission,
+    requestNotificationPermission,
+    notifyOrderStatusChange,
+    showPushNotification
+} from '../services/notificationService';
 import '../styles/OrderTracking.css';
 
 const STATUS_STEPS = [
@@ -17,6 +24,8 @@ const OrderTracking = ({ storeSettings }) => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(Boolean(orderId));
     const [notFound, setNotFound] = useState(false);
+    const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
+    const prevStatusRef = useRef(null);
 
     useEffect(() => {
         if (!orderId) {
@@ -31,6 +40,12 @@ const OrderTracking = ({ storeSettings }) => {
         const unsubscribe = subscribeToOrder(orderId, (orderData) => {
             setLoading(false);
             if (orderData) {
+                // If status changed and we had a previous status recorded, fire push notification!
+                if (prevStatusRef.current && prevStatusRef.current !== orderData.status) {
+                    notifyOrderStatusChange(orderData, orderData.status);
+                }
+                prevStatusRef.current = orderData.status;
+
                 setOrder(orderData);
                 setNotFound(false);
             } else {
@@ -40,6 +55,16 @@ const OrderTracking = ({ storeSettings }) => {
 
         return () => unsubscribe();
     }, [orderId]);
+
+    const handleEnableNotifications = async () => {
+        const granted = await requestNotificationPermission();
+        setNotificationPermission(granted ? 'granted' : 'denied');
+        if (granted && order) {
+            showPushNotification('🔔 Notifications Enabled!', {
+                body: `You'll be alerted whenever order #${order.orderReference || order.id.substring(0, 5).toUpperCase()} updates!`
+            });
+        }
+    };
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -148,6 +173,33 @@ const OrderTracking = ({ storeSettings }) => {
                                 <span className="tracking-ref-badge">
                                     #{order.orderReference || `FB-${order.id.substring(0, 5).toUpperCase()}`}
                                 </span>
+                                {isNotificationSupported() && notificationPermission !== 'granted' && (
+                                    <div style={{ marginTop: '12px' }}>
+                                        <button
+                                            onClick={handleEnableNotifications}
+                                            style={{
+                                                background: 'rgba(255, 180, 0, 0.12)',
+                                                border: '1px dashed var(--color-accent)',
+                                                color: 'var(--color-accent)',
+                                                padding: '8px 16px',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontSize: '13px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            <span>🔔</span> Turn on Push Notifications for Live Updates
+                                        </button>
+                                    </div>
+                                )}
+                                {notificationPermission === 'granted' && (
+                                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                        <span>✓</span> Live push alerts enabled for this order
+                                    </div>
+                                )}
                             </div>
 
                             {/* Stepper */}
