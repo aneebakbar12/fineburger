@@ -5,6 +5,7 @@ import {
     getDocs,
     doc,
     getDoc,
+    setDoc,
     query,
     orderBy,
     where,
@@ -121,6 +122,17 @@ export const createOrder = async (orderData) => {
 
         const newOrderRef = await addDoc(collection(db, 'orders'), order);
 
+        // Save lookup mapping for human-readable reference (e.g. FB-XXXX -> documentId)
+        try {
+            await setDoc(doc(db, 'orderLookup', orderReference), {
+                orderId: newOrderRef.id,
+                orderReference,
+                createdAt: serverTimestamp()
+            });
+        } catch (lookupErr) {
+            console.warn('Could not save orderLookup mapping:', lookupErr);
+        }
+
         return {
             success: true,
             orderId: newOrderRef.id,
@@ -172,18 +184,71 @@ export const getOrder = async (orderId) => {
     }
 };
 
+// Resolve a human-readable orderReference (e.g. FB-XXXX or XXXX) to the actual Firestore document ID
+export const resolveOrderIdFromReference = async (refOrId) => {
+    if (!refOrId) return null;
+    const clean = refOrId.trim().toUpperCase().replace(/^#/, '');
+
+    try {
+        // 1. Direct lookup by reference (e.g. FB-XXXX)
+        const lookupSnap = await getDoc(doc(db, 'orderLookup', clean));
+        if (lookupSnap.exists()) {
+            return lookupSnap.data().orderId;
+        }
+
+        // 2. Lookup with prefix if user typed just the 4-character suffix (e.g. XXXX -> FB-XXXX)
+        if (!clean.startsWith('FB-')) {
+            const prefixedSnap = await getDoc(doc(db, 'orderLookup', `FB-${clean}`));
+            if (prefixedSnap.exists()) {
+                return prefixedSnap.data().orderId;
+            }
+        }
+    } catch (err) {
+        console.warn('orderLookup check failed:', err);
+    }
+
+    // Default to the input itself (may already be the Firestore document ID)
+    return refOrId.trim().replace(/^#/, '');
+};
+
 // Real-time listener for a single order (for live tracking)
-export const subscribeToOrder = (orderId, callback) => {
-    if (!orderId) return () => {};
-    return onSnapshot(doc(db, 'orders', orderId), (docSnap) => {
+// Supports both Firestore document ID and human-readable FB-XXXX reference
+export const subscribeToOrder = (orderIdOrRef, callback) => {
+    if (!orderIdOrRef) return () => {};
+    let unsubActual = () => {};
+
+    const cleanInput = orderIdOrRef.trim().replace(/^#/, '');
+
+    // Try directly listening to doc(db, 'orders', cleanInput)
+    unsubActual = onSnapshot(doc(db, 'orders', cleanInput), async (docSnap) => {
         if (docSnap.exists()) {
             callback({ id: docSnap.id, ...docSnap.data() });
         } else {
+            // Not found by direct docId — attempt resolving via orderLookup
+            try {
+                const resolvedId = await resolveOrderIdFromReference(cleanInput);
+                if (resolvedId && resolvedId !== cleanInput) {
+                    unsubActual();
+                    unsubActual = onSnapshot(doc(db, 'orders', resolvedId), (resSnap) => {
+                        if (resSnap.exists()) {
+                            callback({ id: resSnap.id, ...resSnap.data() });
+                        } else {
+                            callback(null);
+                        }
+                    }, (err) => {
+                        console.error('Error in resolved order subscription:', err);
+                        callback(null);
+                    });
+                    return;
+                }
+            } catch (_) {}
             callback(null);
         }
     }, (error) => {
         console.error('Error in order subscription:', error);
     });
+
+    return () => unsubActual();
 };
 
 

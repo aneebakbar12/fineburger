@@ -93,10 +93,26 @@ const OrderTracking = ({ storeSettings }) => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        const trimmed = searchInput.trim().replace(/^#/, '');
-        if (trimmed) {
-            navigate(`/track/${trimmed}`);
+        const raw = searchInput.trim().replace(/^#/, '');
+        if (!raw) return;
+
+        const upper = raw.toUpperCase();
+
+        // 1. Check if user typed a local orderReference (e.g. FB-XXXX, #FB-XXXX, or suffix XXXX)
+        const matchedLocal = guestOrders.find(o =>
+            o.orderReference === upper ||
+            o.orderReference === `FB-${upper}` ||
+            o.orderId === raw ||
+            (o.orderReference && o.orderReference.replace(/^FB-/, '') === upper)
+        );
+
+        if (matchedLocal) {
+            navigate(`/track/${matchedLocal.orderId}`);
+            return;
         }
+
+        // 2. Otherwise navigate directly (subscribeToOrder will resolve via orderLookup in Firestore)
+        navigate(`/track/${raw}`);
     };
 
     const getActiveStep = () => {

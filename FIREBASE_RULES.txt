@@ -66,6 +66,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Public Order Reference mapping (maps human-readable FB-XXXX to orderId for tracking)
+    match /orderLookup/{ref} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+
     // Riders collection:
     // - Newly registered riders can create and update their own profile
     // - Admins have full access; riders can read only their own profile
