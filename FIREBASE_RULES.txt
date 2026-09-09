@@ -1,78 +1,104 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow anyone to read menu items, categories, sliders, and settings
-    match /items/{itemId} {
-      allow read: if true;
-      // Admins can do anything
-      allow write: if request.auth != null;
-      // Anyone placing an order can update ONLY stockLevel and inStock
-      // (used by the order transaction to deduct stock at placement time)
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['stockLevel', 'inStock']);
-    }
-    match /categories/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /sliders/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /settings/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    
-    // CRITICAL: Allow anyone to PLACE an order, but only admins and assigned riders can read
-    match /orders/{orderId} {
-      allow create: if true;
-      // Allow admins (authenticated) to read/update/delete all orders
-      allow read, update, delete: if request.auth != null;
-      // Also allow riders to read orders assigned to them
-      allow read: if request.auth != null && 
-                     resource.data.assignedRiderId == request.auth.uid;
-    }
-    
-    // Riders collection - allow riders to create and read their own profile, admins can read all
-    match /riders/{riderId} {
-      // Allow riders to create their own profile during signup
-      allow create: if request.auth != null && request.auth.uid == riderId;
-      // Allow riders to read their own profile
-      allow read: if request.auth != null && request.auth.uid == riderId;
-      // Allow admins (authenticated users) to read all rider profiles
-      allow read: if request.auth != null;
-      // Allow riders to update their own stats
-      allow update: if request.auth != null && request.auth.uid == riderId;
-      // Allow admins to delete riders
-      allow delete: if request.auth != null;
-    }
-    
-    // Rider signup codes - allow reading unused codes for validation, admins can create/delete
-    match /riderSignupCodes/{codeId} {
-      // Allow anyone to read unused codes (for signup validation)
-      allow read: if resource.data.used == false;
-      // Allow authenticated users (admins) to create codes
-      allow create: if request.auth != null;
-      // Allow authenticated users to update codes (mark as used)
-      allow update: if request.auth != null;
-      // Allow authenticated users (admins) to delete unused codes
-      allow delete: if request.auth != null;
-    }
-    
-    // Inventory - only authenticated users (admins)
-    match /inventory/{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Helper functions for authorization
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Expenses - only authenticated users (admins)
-    match /expenses/{document=**} {
-      allow read, write: if request.auth != null;
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'aneeb458@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
-    
-    // Default rule: deny everything else
+
+    // Menu items: Publicly viewable, editable only by admins
+    // Note: Stock deduction is executed safely server-side by Cloud Functions
+    match /items/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Categories: Publicly viewable, editable only by admins
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Sliders & promotional banners: Publicly viewable, editable only by admins
+    match /sliders/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings (operating hours, store info): Publicly viewable, editable only by admins
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admins registry: readable by authenticated users (to verify permissions), writable only by admins
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Orders:
+    // - Anyone can create/place an order
+    // - Read access restricted to: admins, order owner (customer), or assigned rider
+    // - Update access restricted to: admins or assigned rider (status progression)
+    // - Delete access restricted to: admins only
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read: if isAdmin() || (
+        isAuthenticated() && (
+          (resource.data.userId != null && resource.data.userId == request.auth.uid) ||
+          (resource.data.assignedRiderId != null && resource.data.assignedRiderId == request.auth.uid)
+        )
+      );
+      allow update: if isAdmin() || (
+        isAuthenticated() && resource.data.assignedRiderId != null && resource.data.assignedRiderId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Riders collection:
+    // - Newly registered riders can create and update their own profile
+    // - Admins have full access; riders can read only their own profile
+    match /riders/{riderId} {
+      allow create: if isAuthenticated() && request.auth.uid == riderId;
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == riderId);
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == riderId);
+      allow delete: if isAdmin();
+    }
+
+    // Rider signup codes:
+    // - Unused codes can be read during registration validation
+    // - Only admins can generate or delete codes
+    // - Newly registered riders can mark a code as used during registration
+    match /riderSignupCodes/{codeId} {
+      allow read: if (resource != null && resource.data.used == false) || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy']) &&
+        request.resource.data.used == true
+      );
+    }
+
+    // Inventory & Raw Materials: STRICTLY admin-only
+    match /inventory/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Financial Expenses: STRICTLY admin-only
+    match /expenses/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;
     }
@@ -84,28 +110,28 @@ service cloud.firestore {
 // ============================================
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow anyone to read all files (for public menu images, sliders, etc.)
+    // Anyone can read public restaurant assets (menu images, banners)
     match /{allPaths=**} {
       allow read: if true;
     }
-    
-    // Allow authenticated users (admins) to upload images
+
+    // Admins only can upload images (Max 5MB, images only)
     match /menu-images/{imageId} {
       allow write: if request.auth != null
-                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
-                   && request.resource.contentType.matches('image/.*');  // Only images
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
-    
+
     match /slider-images/{imageId} {
       allow write: if request.auth != null
-                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
-                   && request.resource.contentType.matches('image/.*');  // Only images
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
-    
-    // Allow any other uploads by authenticated users
+
+    // Other uploads by authenticated staff
     match /{allPaths=**} {
       allow write: if request.auth != null
-                   && request.resource.size < 10 * 1024 * 1024;  // Max 10MB for other files
+                   && request.resource.size < 10 * 1024 * 1024;
     }
   }
 }

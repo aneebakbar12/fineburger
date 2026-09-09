@@ -145,6 +145,19 @@ const Settings = () => {
                                 onChange={(e) => setFormData({ ...formData, storeInfo: { ...formData.storeInfo, address: e.target.value } })}
                             />
                         </div>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Staff Mode Dine-In PIN</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="e.g. 5892 (default is 1234)"
+                                value={formData.staffPin || ''}
+                                onChange={(e) => setFormData({ ...formData, staffPin: e.target.value })}
+                            />
+                            <small style={{ color: 'var(--color-text-secondary)', marginTop: '4px', display: 'block' }}>
+                                Secret PIN used by in-store waitstaff to unlock quick Dine-in POS mode on the customer website.
+                            </small>
+                        </div>
                     </div>
                 </div>
 

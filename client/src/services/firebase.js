@@ -59,10 +59,19 @@ export const onAuthChange = (callback) => {
 
 // --- Orders ---
 
-// Create a new order — atomically checks & deducts inventory in a transaction
+// Helper to generate a human-readable order reference (e.g., FB-8429)
+const generateOrderReference = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `FB-${code}`;
+};
+
+// Create a new order — writes the order document safely; Cloud Functions handle atomic stock deduction
 export const createOrder = async (orderData) => {
     try {
-        // Determine initial status based on order type and staff mode
         let initialStatus = 'pending';
         let additionalFields = {};
 
@@ -71,70 +80,53 @@ export const createOrder = async (orderData) => {
             additionalFields.preparingStartedAt = serverTimestamp();
         }
 
-        // Run inside a Firestore transaction so stock check + deduction + order write are atomic
-        const orderId = await runTransaction(db, async (transaction) => {
+        const orderReference = orderData.orderReference || generateOrderReference();
 
-            // 1. Read current stock for every item in the order
-            const itemRefs = orderData.items.map(item => doc(db, 'items', item.id));
-            const itemSnaps = await Promise.all(itemRefs.map(ref => transaction.get(ref)));
-
-            // 2. Validate stock for each ordered item
-            for (let i = 0; i < orderData.items.length; i++) {
-                const ordered = orderData.items[i];
-                const snap = itemSnaps[i];
-
-                if (!snap.exists()) {
-                    throw new Error(`Item "${ordered.name}" no longer exists.`);
-                }
-
-                const data = snap.data();
-                const currentStock = data.stockLevel;
-
-                // Only enforce limit when stockLevel is explicitly tracked (not undefined/null)
-                if (currentStock !== undefined && currentStock !== null) {
-                    if (currentStock < ordered.quantity) {
-                        const available = currentStock <= 0 ? 'out of stock' : `only ${currentStock} left`;
-                        throw new Error(`"${ordered.name}" is ${available}. Please update your cart.`);
+        // Validate stock availability before creating order
+        if (orderData.items && orderData.items.length > 0) {
+            for (const item of orderData.items) {
+                if (item.id) {
+                    try {
+                        const itemDoc = await getDoc(doc(db, 'items', item.id));
+                        if (itemDoc.exists()) {
+                            const data = itemDoc.data();
+                            if (data.inStock === false) {
+                                throw new Error(`"${item.name}" is currently out of stock.`);
+                            }
+                            if (data.stockLevel !== undefined && data.stockLevel !== null) {
+                                if (data.stockLevel < item.quantity) {
+                                    const available = data.stockLevel <= 0 ? 'out of stock' : `only ${data.stockLevel} remaining`;
+                                    throw new Error(`"${item.name}" has ${available}. Please update your cart.`);
+                                }
+                            }
+                        }
+                    } catch (checkErr) {
+                        // If network/permission issue, rethrow if out-of-stock message
+                        if (checkErr.message.includes('stock')) {
+                            throw checkErr;
+                        }
                     }
                 }
             }
+        }
 
-            // 3. Deduct stock for each item (still inside transaction)
-            for (let i = 0; i < orderData.items.length; i++) {
-                const ordered = orderData.items[i];
-                const snap = itemSnaps[i];
-                const data = snap.data();
-                const currentStock = data.stockLevel;
+        const order = {
+            ...orderData,
+            ...additionalFields,
+            orderReference,
+            status: orderData.status || initialStatus,
+            stockDeducted: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
 
-                if (currentStock !== undefined && currentStock !== null) {
-                    const newStock = Math.max(0, currentStock - ordered.quantity);
-                    const updates = { stockLevel: newStock };
+        const newOrderRef = await addDoc(collection(db, 'orders'), order);
 
-                    // Auto mark out-of-stock when stock is fully depleted
-                    if (newStock === 0) {
-                        updates.inStock = false;
-                    }
-
-                    transaction.update(itemRefs[i], updates);
-                }
-            }
-
-            // 4. Write the order document
-            const order = {
-                ...orderData,
-                ...additionalFields,
-                status: orderData.status || initialStatus,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            };
-
-            const newOrderRef = doc(collection(db, 'orders'));
-            transaction.set(newOrderRef, order);
-
-            return newOrderRef.id;
-        });
-
-        return { success: true, orderId };
+        return {
+            success: true,
+            orderId: newOrderRef.id,
+            orderReference
+        };
 
     } catch (error) {
         console.error('Error creating order:', error);

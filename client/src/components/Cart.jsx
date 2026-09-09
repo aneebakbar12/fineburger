@@ -19,6 +19,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const [orderType, setOrderType] = useState('Delivery'); // 'Delivery', 'Takeaway', 'Dine-in'
     const [loading, setLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
+    const [confirmedOrder, setConfirmedOrder] = useState(null);
     const [showMap, setShowMap] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -95,46 +96,109 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         const result = await createOrder(orderData);
 
         if (result.success) {
+            setConfirmedOrder({
+                orderId: result.orderId,
+                orderReference: result.orderReference || `FB-${result.orderId.substring(0, 5).toUpperCase()}`,
+                total: calculateTotal(),
+                items: [...cartItems],
+                customer: { ...customerDetails },
+                orderType: orderType
+            });
             setOrderSuccess(true);
-            setTimeout(() => {
-                onClose();
-                setIsCheckout(false);
-                setAuthChoice(false);
-                setOrderSuccess(false);
-                setCustomerDetails({ name: '', phone: '', address: '' });
-                if (onClearCart) onClearCart(); // Clear the cart state globally
-            }, 3000);
+            if (onClearCart) onClearCart(); // Clear the cart state globally
         } else {
             alert('Failed to place order: ' + result.error);
         }
         setLoading(false);
     };
 
+    const handleDismissSuccess = () => {
+        setOrderSuccess(false);
+        setConfirmedOrder(null);
+        setIsCheckout(false);
+        setAuthChoice(false);
+        setCustomerDetails({ name: '', phone: '', address: '', location: null, tableNumber: '' });
+        onClose();
+    };
+
     if (!isOpen) return null;
 
-    if (orderSuccess) {
+    if (orderSuccess && confirmedOrder) {
         return (
             <>
-                <div className="cart-backdrop" onClick={onClose}></div>
+                <div className="cart-backdrop" onClick={handleDismissSuccess}></div>
                 <div className={`cart-sidebar ${isOpen ? 'open' : ''}`}>
-                    <div className="cart-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <div className="cart-header">
+                        <h2 className="cart-title">Order Receipt</h2>
+                        <button className="cart-close" onClick={handleDismissSuccess} aria-label="Close">
+                            ✕
+                        </button>
+                    </div>
+                    <div className="cart-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--spacing-lg)' }}>
                         <div style={{ color: '#4ade80', marginBottom: 'var(--spacing-md)' }}>
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                                 <polyline points="22 4 12 14.01 9 11.01" />
                             </svg>
                         </div>
-                        <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-sm)' }}>
-                            {isStaffMode && orderType === 'Dine-in' ? 'Order Sent to Kitchen!' : 'Order Placed!'}
+                        <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-xs)' }}>
+                            {isStaffMode && confirmedOrder.orderType === 'Dine-in' ? 'Order Sent to Kitchen!' : 'Order Confirmed!'}
                         </h2>
-                        <p style={{ color: 'var(--color-text-secondary)' }}>
-                            {isStaffMode && orderType === 'Dine-in'
-                                ? 'The order is now being prepared.'
-                                : 'Your order has been received and is pending confirmation.'}
+
+                        <div style={{
+                            margin: 'var(--spacing-md) 0',
+                            padding: 'var(--spacing-md)',
+                            backgroundColor: 'rgba(255, 180, 0, 0.12)',
+                            border: '1px solid #FFB400',
+                            borderRadius: 'var(--radius-md)',
+                            width: '100%'
+                        }}>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                Order Reference
+                            </div>
+                            <div style={{ fontSize: 'var(--font-size-2xl)', color: '#FFB400', fontWeight: 'bold', marginTop: '4px' }}>
+                                #{confirmedOrder.orderReference}
+                            </div>
+                        </div>
+
+                        <div style={{ width: '100%', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)', textAlign: 'left' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                <span>Type:</span>
+                                <strong style={{ color: 'var(--color-white)' }}>{confirmedOrder.orderType}</strong>
+                            </div>
+                            {confirmedOrder.orderType === 'Dine-in' && confirmedOrder.customer.tableNumber && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    <span>Table:</span>
+                                    <strong style={{ color: 'var(--color-white)' }}>Table #{confirmedOrder.customer.tableNumber}</strong>
+                                </div>
+                            )}
+                            {confirmedOrder.orderType === 'Delivery' && confirmedOrder.customer.address && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    <span>Address:</span>
+                                    <strong style={{ color: 'var(--color-white)', maxWidth: '65%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {confirmedOrder.customer.address}
+                                    </strong>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-white)', fontWeight: 600 }}>
+                                <span>Total Amount:</span>
+                                <span style={{ color: '#FFB400' }}>Rs. {confirmedOrder.total}</span>
+                            </div>
+                        </div>
+
+                        <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-lg)' }}>
+                            {isStaffMode && confirmedOrder.orderType === 'Dine-in'
+                                ? 'Kitchen staff has been notified.'
+                                : 'Please keep your reference number for order tracking.'}
                         </p>
-                        {!(isStaffMode && orderType === 'Dine-in') && (
-                            <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-sm)' }}>We will contact you shortly.</p>
-                        )}
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleDismissSuccess}
+                            style={{ width: '100%', padding: '12px', fontSize: 'var(--font-size-md)', cursor: 'pointer' }}
+                        >
+                            Done
+                        </button>
                     </div>
                 </div>
             </>

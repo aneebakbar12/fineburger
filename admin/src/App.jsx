@@ -49,7 +49,7 @@ function App() {
         };
     }, []);
 
-    // ── Buzzer ────────────────────────────────────────────────────────────────
+    // ── Buzzer & Kitchen Bell ──────────────────────────────────────────────────
 
     const playBuzzer = async () => {
         try {
@@ -71,6 +71,29 @@ function App() {
             });
         } catch (e) {
             console.error('Audio playback failed', e);
+        }
+    };
+
+    const playKitchenBell = async () => {
+        try {
+            const ctx = getAudioContext();
+            if (ctx.state === 'suspended') await ctx.resume();
+
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            // Two-tone kitchen bell for preparing orders
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 2.0);
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.start();
+            oscillator.stop(ctx.currentTime + 2.0);
+        } catch (e) {
+            console.error('Kitchen bell audio failed', e);
         }
     };
 
@@ -132,15 +155,22 @@ function App() {
                         const newPendingOrders = newOrders.filter(
                             o => !previousIds.has(o.id) && o.status === 'pending'
                         );
+                        const newPreparingDineIn = newOrders.filter(
+                            o => !previousIds.has(o.id) && o.status === 'preparing' && o.placedByStaff
+                        );
 
                         if (newPendingOrders.length > 0) {
                             if (document.visibilityState === 'visible') {
-                                // Tab is active → play immediately
                                 playBuzzer();
                             } else {
-                                // Tab is in background → queue the sound + show notification
                                 pendingSoundRef.current = true;
                                 showOrderNotification(newPendingOrders.length);
+                            }
+                        } else if (newPreparingDineIn.length > 0) {
+                            if (document.visibilityState === 'visible') {
+                                playKitchenBell();
+                            } else {
+                                showOrderNotification(newPreparingDineIn.length);
                             }
                         }
                     }

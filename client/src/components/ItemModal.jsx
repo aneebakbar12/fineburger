@@ -4,11 +4,13 @@ import '../styles/ItemModal.css';
 const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     const [quantity, setQuantity] = useState(1);
     const [selectedVariations, setSelectedVariations] = useState({});
+    const [variationError, setVariationError] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             setQuantity(1);
             setSelectedVariations({});
+            setVariationError('');
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
@@ -26,6 +28,7 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
             ...prev,
             [variationName]: option
         }));
+        setVariationError('');
     };
 
     const incrementQuantity = () => {
@@ -38,6 +41,15 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     };
 
     const handleAddToCart = () => {
+        if (item.variations && item.variations.length > 0) {
+            const missing = item.variations.find(v => !selectedVariations[v.name]);
+            if (missing) {
+                setVariationError(`Please select an option for "${missing.name}".`);
+                return;
+            }
+        }
+        setVariationError('');
+
         const cartItem = {
             ...item,
             quantity,
@@ -131,6 +143,21 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                                 )}
                             </div>
                         </div>
+
+                        {/* Validation error */}
+                        {variationError && (
+                            <div style={{
+                                color: '#f87171',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '8px 12px',
+                                fontSize: 'var(--font-size-sm)',
+                                marginBottom: 'var(--spacing-md)'
+                            }}>
+                                ⚠️ {variationError}
+                            </div>
+                        )}
 
                         {/* Store Status Message */}
                         {!storeOpen && (
