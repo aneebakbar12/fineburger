@@ -7,7 +7,7 @@ const About = () => {
             <div className="about-hero">
                 <div className="container">
                     <h1 className="about-title">About Fine Burger</h1>
-                    <p className="about-subtitle">Good Food, Great Times</p>
+                    <p className="about-subtitle">Good Food, Great Times in Baghbanpura, Lahore</p>
                 </div>
             </div>
 
@@ -16,18 +16,16 @@ const About = () => {
                     <div className="about-content">
                         <h2 className="content-title">Our Story</h2>
                         <p className="content-text">
-                            Welcome to Fine Burger, where passion meets flavor! Since our inception, we've been dedicated to serving the finest burgers, pizzas, and quick bites that bring joy to every meal. Our journey began with a simple mission: to create food that not only satisfies hunger but creates memorable dining experiences.
+                            Welcome to <strong>Fine Burger &amp; Fast Food</strong>, your neighborhood destination for mouth-watering burgers, crispy chicken, and hot savory bites right in the heart of Baghbanpura, Lahore!
                         </p>
                         <p className="content-text">
-                            Every item on our menu is crafted with care, using only the freshest ingredients and time-tested recipes. From our signature burgers to our crispy fries, each dish tells a story of quality, taste, and dedication to culinary excellence.
+                            Our journey began with a simple passion: serving freshly prepared, flavor-packed meals made with premium ingredients at prices everyone can enjoy. From our sizzling beef smash burgers and zinger fillets to our loaded fries and signature wraps, each recipe is perfected to deliver pure satisfaction in every single bite.
                         </p>
                     </div>
 
                     <div className="about-image">
-                        <div className="image-placeholder">
-                            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                            </svg>
+                        <div className="image-placeholder" style={{ backgroundColor: 'rgba(255, 180, 0, 0.1)', border: '1px solid var(--color-accent)' }}>
+                            <span style={{ fontSize: '72px' }}>🍔</span>
                         </div>
                     </div>
                 </section>
@@ -39,19 +37,17 @@ const About = () => {
                             At Fine Burger, we believe that great food brings people together. That's why we're committed to:
                         </p>
                         <ul className="promise-list">
-                            <li>Using only the freshest, highest-quality ingredients</li>
-                            <li>Maintaining strict hygiene and food safety standards</li>
-                            <li>Delivering exceptional taste in every bite</li>
-                            <li>Providing friendly, efficient service</li>
-                            <li>Creating a welcoming atmosphere for all our guests</li>
+                            <li>Using only 100% fresh, halal meats and crisp garden vegetables</li>
+                            <li>Maintaining strict hygiene, clean kitchens, and safe food handling</li>
+                            <li>Crafting our signature sauces and fresh buns in-house daily</li>
+                            <li>Fast kitchen preparation and prompt door-to-door delivery</li>
+                            <li>Treating every customer like family with welcoming Pakistani hospitality</li>
                         </ul>
                     </div>
 
                     <div className="about-image">
-                        <div className="image-placeholder">
-                            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                            </svg>
+                        <div className="image-placeholder" style={{ backgroundColor: 'rgba(255, 180, 0, 0.1)', border: '1px solid var(--color-accent)' }}>
+                            <span style={{ fontSize: '72px' }}>✨</span>
                         </div>
                     </div>
                 </section>
@@ -65,8 +61,8 @@ const About = () => {
                                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                                 </svg>
                             </div>
-                            <h3 className="value-title">Quality</h3>
-                            <p className="value-description">We never compromise on the quality of our ingredients or preparation.</p>
+                            <h3 className="value-title">Quality First</h3>
+                            <p className="value-description">We never compromise on the freshness of our meats, spices, and ingredients.</p>
                         </div>
 
                         <div className="value-card">
@@ -77,8 +73,8 @@ const About = () => {
                                     <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                                 </svg>
                             </div>
-                            <h3 className="value-title">Community</h3>
-                            <p className="value-description">We're proud to be part of the local community and serve our neighbors.</p>
+                            <h3 className="value-title">Community Love</h3>
+                            <p className="value-description">Proudly serving the Baghbanpura, Shalimar, and Greater Lahore community.</p>
                         </div>
 
                         <div className="value-card">
@@ -87,9 +83,73 @@ const About = () => {
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                                 </svg>
                             </div>
-                            <h3 className="value-title">Trust</h3>
-                            <p className="value-description">Building lasting relationships through consistent excellence and integrity.</p>
+                            <h3 className="value-title">Honest Taste</h3>
+                            <p className="value-description">Authentic recipes, generous portions, and transparent pricing in every meal.</p>
                         </div>
+                    </div>
+                </section>
+
+                {/* Visit Us / Contact Card */}
+                <section style={{
+                    marginTop: 'var(--spacing-3xl)',
+                    padding: 'var(--spacing-2xl)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-medium-gray)',
+                    borderRadius: 'var(--radius-lg)',
+                    textAlign: 'center'
+                }}>
+                    <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-sm)' }}>
+                        Visit Fine Burger &amp; Fast Food
+                    </h2>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-base)', maxWidth: '600px', margin: '0 auto var(--spacing-lg)' }}>
+                        Come enjoy hot, freshly prepared meals at our restaurant or order for speedy home delivery across Baghbanpura &amp; Lahore.
+                    </p>
+
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: 'var(--spacing-2xl)',
+                        flexWrap: 'wrap',
+                        marginBottom: 'var(--spacing-xl)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--font-size-sm)'
+                    }}>
+                        <div>
+                            <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: '4px' }}>📍 LOCATION</div>
+                            <div>Main G.T. Road, Baghbanpura</div>
+                            <div>Lahore, Punjab 54890, Pakistan</div>
+                        </div>
+                        <div>
+                            <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: '4px' }}>📞 PHONE / WHATSAPP</div>
+                            <div>+92 321 4854410</div>
+                            <div>Order directly or chat on WhatsApp</div>
+                        </div>
+                        <div>
+                            <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: '4px' }}>🕒 OPENING HOURS</div>
+                            <div>Mon – Sat: 12:00 PM – 1:00 AM</div>
+                            <div>Sunday: 1:00 PM – 12:00 AM</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <a
+                            href="https://maps.app.goo.gl/fzeTw4BjNQcova9q7"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-primary"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            <span>🗺️</span> View on Google Maps
+                        </a>
+                        <a
+                            href="https://wa.me/923214854410?text=Hi%20Fine%20Burger!%20I'd%20like%20to%20order."
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-whatsapp"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px' }}
+                        >
+                            <span>📱</span> WhatsApp Order
+                        </a>
                     </div>
                 </section>
             </div>

@@ -105,16 +105,40 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         const result = await createOrder(orderData);
 
         if (result.success) {
-            setConfirmedOrder({
+            const ref = result.orderReference || `FB-${result.orderId.substring(0, 5).toUpperCase()}`;
+            const confirmed = {
                 orderId: result.orderId,
-                orderReference: result.orderReference || `FB-${result.orderId.substring(0, 5).toUpperCase()}`,
+                orderReference: ref,
                 total: calculateTotal(),
                 items: [...cartItems],
                 customer: { ...customerDetails },
                 orderType: orderType
-            });
+            };
+            setConfirmedOrder(confirmed);
             setOrderSuccess(true);
-            if (onClearCart) onClearCart(); // Clear the cart state globally
+            if (onClearCart) onClearCart();
+
+            const orderRecord = {
+                orderId: result.orderId,
+                orderReference: ref,
+                total: calculateTotal(),
+                orderType: orderType,
+                itemCount: cartItems.reduce((s, i) => s + i.quantity, 0),
+                itemsSummary: cartItems.map(i => `${i.quantity}x ${i.name}`).join(', '),
+                items: [...cartItems],
+                customer: { ...customerDetails },
+                placedAt: Date.now()
+            };
+
+            // Save to localStorage so guest can track anytime without logging in
+            try {
+                const existing = JSON.parse(localStorage.getItem('fb_recent_orders') || '[]');
+                const filtered = existing.filter(o => o.orderId !== result.orderId);
+                filtered.unshift(orderRecord);
+                const trimmed = filtered.slice(0, 10);
+                localStorage.setItem('fb_recent_orders', JSON.stringify(trimmed));
+                localStorage.setItem('fb_guest_orders', JSON.stringify(trimmed));
+            } catch (_) {}
         } else {
             alert('Failed to place order: ' + result.error);
         }
@@ -150,26 +174,59 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
 
     const handleShareWhatsApp = () => {
         if (!confirmedOrder) return;
+
+        // Monospace item list for clean column alignment in WhatsApp
         const itemsList = confirmedOrder.items
-            .map(i => `• ${i.quantity}x ${i.name} (Rs. ${i.price * i.quantity})`)
+            .map(i => {
+                const itemTotal = `Rs. ${i.price * i.quantity}`;
+                const nameStr = `${i.quantity}x ${i.name}`.slice(0, 20);
+                return `• ${nameStr.padEnd(20, ' ')} ${itemTotal}`;
+            })
             .join('\n');
-        const dest = confirmedOrder.orderType === 'Delivery'
-            ? `📍 Address: ${confirmedOrder.customer?.address || 'N/A'}`
-            : `🍽️ Table: #${confirmedOrder.customer?.tableNumber || 'N/A'}`;
 
+        let destInfo = '';
+        if (confirmedOrder.orderType === 'Delivery') {
+            destInfo = `Address: ${confirmedOrder.customer?.address || 'N/A'}`;
+        } else if (confirmedOrder.orderType === 'Dine-in') {
+            destInfo = `Table  : #${confirmedOrder.customer?.tableNumber || 'N/A'}`;
+        } else {
+            destInfo = `Type   : Takeaway`;
+        }
+
+        const trackUrl = `${window.location.origin}/track/${confirmedOrder.orderId}`;
+
+        // Triple backticks (```) trigger WhatsApp Monospace font for receipt styling
         const msg = encodeURIComponent(
-`🍔 *FINE BURGER ORDER* 🍔
-*Order Ref:* #${confirmedOrder.orderReference}
-*Type:* ${confirmedOrder.orderType}
-${dest}
+`🍔 *FINE BURGER & FAST FOOD*
+📍 _Main G.T. Road, Baghbanpura, Lahore_
+📞 _+92 321 4854410_
 
-*Items:*
+\`\`\`
+==============================
+      ORDER RECEIPT
+==============================
+Order Ref : #${confirmedOrder.orderReference}
+Order Type: ${confirmedOrder.orderType}
+${destInfo}
+------------------------------
+ITEMS:
 ${itemsList}
+------------------------------
+TOTAL     : Rs. ${confirmedOrder.total}
+Payment   : Cash on Delivery
+==============================
+CUSTOMER:
+Name  : ${confirmedOrder.customer?.name || 'Guest'}
+Phone : ${confirmedOrder.customer?.phone || 'N/A'}
+==============================
+\`\`\`
 
-*Total:* Rs. ${confirmedOrder.total}
-*Customer:* ${confirmedOrder.customer?.name || 'Guest'} (${confirmedOrder.customer?.phone || 'N/A'})`
+🔗 *Track Live Order Status:*
+${trackUrl}`
         );
-        window.open(`https://wa.me/?text=${msg}`, '_blank');
+
+        // Send to restaurant WhatsApp so ticket is received
+        window.open(`https://wa.me/923214854410?text=${msg}`, '_blank');
     };
 
     if (!isOpen) return null;

@@ -17,7 +17,19 @@ import {
 } from './services/firebase';
 import { StaffModeProvider } from './contexts/StaffModeContext';
 import StaffModeActivator from './components/StaffModeActivator';
+import { DEMO_CATEGORIES, DEMO_MENU_ITEMS } from './data/demoMenu';
 import './styles/index.css';
+
+const DEFAULT_STORE_SETTINGS = {
+    storeOpen: true,
+    forceOpen: true,
+    storeInfo: {
+        name: 'Fine Burger & Fast Food',
+        phone: '+92 321 4854410',
+        address: 'Main G.T. Road, Baghbanpura, Lahore, Punjab 54890, Pakistan',
+        email: 'info@fineburger.com'
+    }
+};
 
 function App() {
     const [categories, setCategories] = useState([]);
@@ -28,6 +40,11 @@ function App() {
     const [user, setUser] = useState(null); // Auth user state
     const [authLoading, setAuthLoading] = useState(true);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    // Fallback to rich demo data if Firestore is not yet populated
+    const effectiveCategories = categories.length > 0 ? categories : DEMO_CATEGORIES;
+    const effectiveMenuItems = menuItems.length > 0 ? menuItems : DEMO_MENU_ITEMS;
+    const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
 
     // Subscribe to real-time updates and auth
     useEffect(() => {
@@ -62,11 +79,15 @@ function App() {
     }, [cartItems]);
 
     const handleAddToCart = (item) => {
-        // Enforce inventory limit across multiple adds
+        // Enforce inventory limit across multiple adds without exposing stock numbers
         if (item.stockLevel !== undefined) {
             const existingQty = cartItems.filter(i => i.id === item.id).reduce((sum, i) => sum + i.quantity, 0);
-            if (existingQty + item.quantity > item.stockLevel) {
-                alert(`Cannot add more. You have ${existingQty} in cart and stock is ${item.stockLevel}.`);
+            if (item.stockLevel <= 0) {
+                alert(`"${item.name}" is currently sold out.`);
+                return;
+            }
+            if (existingQty + item.quantity > item.stockLevel || existingQty + item.quantity > 20) {
+                alert(`You have reached the maximum quantity limit for "${item.name}".`);
                 return;
             }
         }
@@ -85,8 +106,8 @@ function App() {
                 .filter((itm, idx) => itm.id === item.id && idx !== index)
                 .reduce((sum, i) => sum + i.quantity, 0);
 
-            if (otherInstancesQty + newQuantity > item.stockLevel) {
-                alert(`Cannot increase quantity. Stock limit is ${item.stockLevel}.`);
+            if (otherInstancesQty + newQuantity > item.stockLevel || otherInstancesQty + newQuantity > 20) {
+                alert(`You have reached the maximum quantity limit for this item.`);
                 return;
             }
         }
@@ -134,9 +155,9 @@ function App() {
                                 path="/"
                                 element={
                                     <Home
-                                        categories={categories}
-                                        menuItems={menuItems}
-                                        storeSettings={storeSettings}
+                                        categories={effectiveCategories}
+                                        menuItems={effectiveMenuItems}
+                                        storeSettings={effectiveSettings}
                                         onAddToCart={handleAddToCart}
                                         isSearchOpen={isSearchOpen}
                                         onSearchClose={() => setIsSearchOpen(false)}
@@ -147,9 +168,9 @@ function App() {
                                 path="/menu"
                                 element={
                                     <Menu
-                                        categories={categories}
-                                        menuItems={menuItems}
-                                        storeSettings={storeSettings}
+                                        categories={effectiveCategories}
+                                        menuItems={effectiveMenuItems}
+                                        storeSettings={effectiveSettings}
                                         onAddToCart={handleAddToCart}
                                         isSearchOpen={isSearchOpen}
                                         onSearchClose={() => setIsSearchOpen(false)}
@@ -158,8 +179,8 @@ function App() {
                             />
                             <Route path="/about" element={<About />} />
                             <Route path="/orders" element={<Orders user={user} />} />
-                            <Route path="/track" element={<OrderTracking storeSettings={storeSettings} />} />
-                            <Route path="/track/:orderId" element={<OrderTracking storeSettings={storeSettings} />} />
+                            <Route path="/track" element={<OrderTracking storeSettings={effectiveSettings} />} />
+                            <Route path="/track/:orderId" element={<OrderTracking storeSettings={effectiveSettings} />} />
                         </Routes>
                     </main>
 

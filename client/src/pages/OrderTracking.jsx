@@ -17,6 +17,27 @@ const STATUS_STEPS = [
     { key: 'delivered', label: 'Delivered', icon: '🍔' }
 ];
 
+// Load guest orders saved in localStorage
+const getGuestOrders = () => {
+    try {
+        const o1 = JSON.parse(localStorage.getItem('fb_recent_orders') || '[]');
+        const o2 = JSON.parse(localStorage.getItem('fb_guest_orders') || '[]');
+        const combined = [...o1, ...o2];
+        // Deduplicate by orderId
+        const seen = new Set();
+        const unique = [];
+        for (const item of combined) {
+            if (item.orderId && !seen.has(item.orderId)) {
+                seen.add(item.orderId);
+                unique.push(item);
+            }
+        }
+        return unique.sort((a, b) => (b.placedAt || 0) - (a.placedAt || 0));
+    } catch {
+        return [];
+    }
+};
+
 const OrderTracking = ({ storeSettings }) => {
     const { orderId } = useParams();
     const navigate = useNavigate();
@@ -25,7 +46,13 @@ const OrderTracking = ({ storeSettings }) => {
     const [loading, setLoading] = useState(Boolean(orderId));
     const [notFound, setNotFound] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
+    const [guestOrders, setGuestOrders] = useState([]);
     const prevStatusRef = useRef(null);
+
+    // Load guest orders from localStorage on mount
+    useEffect(() => {
+        setGuestOrders(getGuestOrders());
+    }, []);
 
     useEffect(() => {
         if (!orderId) {
@@ -40,12 +67,10 @@ const OrderTracking = ({ storeSettings }) => {
         const unsubscribe = subscribeToOrder(orderId, (orderData) => {
             setLoading(false);
             if (orderData) {
-                // If status changed and we had a previous status recorded, fire push notification!
                 if (prevStatusRef.current && prevStatusRef.current !== orderData.status) {
                     notifyOrderStatusChange(orderData, orderData.status);
                 }
                 prevStatusRef.current = orderData.status;
-
                 setOrder(orderData);
                 setNotFound(false);
             } else {
@@ -74,7 +99,6 @@ const OrderTracking = ({ storeSettings }) => {
         }
     };
 
-    // Calculate current step index (0 to 3)
     const getActiveStep = () => {
         if (!order) return 0;
         const s = order.status;
@@ -88,13 +112,19 @@ const OrderTracking = ({ storeSettings }) => {
     const activeStepIndex = getActiveStep();
     const progressPercent = (activeStepIndex / (STATUS_STEPS.length - 1)) * 100;
 
-    // Helper for WhatsApp order message
     const getWhatsAppUrl = () => {
-        const phone = storeSettings?.storeInfo?.phone || '+923000000000';
+        const phone = storeSettings?.storeInfo?.phone || '923214854410';
         const cleanPhone = phone.replace(/[^0-9]/g, '');
         const ref = order?.orderReference || orderId?.substring(0, 6).toUpperCase();
+        const statusStr = order?.status ? ` [Status: ${order.status.toUpperCase()}]` : '';
         const text = encodeURIComponent(
-            `Hi Fine Burger! 👋 I would like to check the status of my order *#${ref}*.`
+`🍔 *FINE BURGER & FAST FOOD*
+Order Status Inquiry
+
+📋 Order Ref: *#${ref}*${statusStr}
+👤 Customer : ${order?.customer?.name || 'Guest'}
+
+Hi! I would like to check the latest update on my order. Thank you! 👋`
         );
         return `https://wa.me/${cleanPhone}?text=${text}`;
     };
@@ -115,7 +145,7 @@ const OrderTracking = ({ storeSettings }) => {
                         <input
                             type="text"
                             className="track-search-input"
-                            placeholder="Enter Order ID to track..."
+                            placeholder="Enter Order ID or Reference (e.g. FB-XXXX)..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                         />
@@ -157,12 +187,91 @@ const OrderTracking = ({ storeSettings }) => {
                         </div>
                     )}
 
-                    {!orderId && !loading && (
+                    {/* Guest Recent Orders — shown when no orderId in URL */}
+                    {!orderId && !loading && guestOrders.length > 0 && (
+                        <div style={{ marginBottom: 'var(--spacing-xl)' }}>
+                            <h3 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>🕐</span> Your Recent Orders ({guestOrders.length})
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {guestOrders.map((go) => (
+                                    <button
+                                        key={go.orderId}
+                                        onClick={() => navigate(`/track/${go.orderId}`)}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '16px 20px',
+                                            backgroundColor: 'var(--color-surface)',
+                                            border: '1px solid var(--color-medium-gray)',
+                                            borderRadius: 'var(--radius-md)',
+                                            cursor: 'pointer',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.borderColor = 'var(--color-accent)';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.borderColor = 'var(--color-medium-gray)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ color: '#FFB400', fontWeight: 800, fontSize: '16px' }}>#{go.orderReference}</span>
+                                                <span style={{
+                                                    fontSize: '11px',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '12px',
+                                                    backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                    color: 'var(--color-accent)',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {go.orderType}
+                                                </span>
+                                            </div>
+                                            {go.itemsSummary && (
+                                                <div style={{ color: 'var(--color-white)', fontSize: '13px', marginTop: '4px', opacity: 0.9 }}>
+                                                    {go.itemsSummary}
+                                                </div>
+                                            )}
+                                            <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginTop: '4px' }}>
+                                                Total: <strong style={{ color: 'var(--color-white)' }}>Rs. {go.total}</strong>
+                                                {go.placedAt && (
+                                                    <span> • {new Date(go.placedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            color: 'var(--color-accent)',
+                                            fontSize: '13px',
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            backgroundColor: 'rgba(255, 180, 0, 0.1)',
+                                            padding: '8px 14px',
+                                            borderRadius: 'var(--radius-sm)'
+                                        }}>
+                                            <span>Track</span>
+                                            <span>➔</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {!orderId && !loading && guestOrders.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-secondary)' }}>
                             <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍔</div>
                             <p>Have an active order? Enter your Order ID above to see live updates.</p>
                             <Link to="/menu" className="btn btn-primary" style={{ marginTop: '16px', display: 'inline-block' }}>
-                                View Menu & Order
+                                View Menu &amp; Order
                             </Link>
                         </div>
                     )}

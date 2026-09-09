@@ -95,8 +95,7 @@ export const createOrder = async (orderData) => {
                             }
                             if (data.stockLevel !== undefined && data.stockLevel !== null) {
                                 if (data.stockLevel < item.quantity) {
-                                    const available = data.stockLevel <= 0 ? 'out of stock' : `only ${data.stockLevel} remaining`;
-                                    throw new Error(`"${item.name}" has ${available}. Please update your cart.`);
+                                    throw new Error(`"${item.name}" is currently sold out or exceeds available quantity. Please update your cart.`);
                                 }
                             }
                         }
