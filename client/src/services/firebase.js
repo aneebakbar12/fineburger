@@ -159,6 +159,34 @@ export const getUserOrders = async (userId) => {
     }
 };
 
+// Fetch single order by orderId
+export const getOrder = async (orderId) => {
+    try {
+        const orderDoc = await getDoc(doc(db, 'orders', orderId));
+        if (orderDoc.exists()) {
+            return { id: orderDoc.id, ...orderDoc.data() };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching order:', error);
+        return null;
+    }
+};
+
+// Real-time listener for a single order (for live tracking)
+export const subscribeToOrder = (orderId, callback) => {
+    if (!orderId) return () => {};
+    return onSnapshot(doc(db, 'orders', orderId), (docSnap) => {
+        if (docSnap.exists()) {
+            callback({ id: docSnap.id, ...docSnap.data() });
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error('Error in order subscription:', error);
+    });
+};
+
 
 // Fetch all categories
 export const getCategories = async () => {

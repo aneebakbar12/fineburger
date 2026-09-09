@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createOrder } from '../services/firebase';
 import LocationPicker from './LocationPicker';
 import AuthModal from './AuthModal'; // Import AuthModal
@@ -6,6 +7,7 @@ import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Cart.css';
 
 const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user, onClearCart }) => {
+    const navigate = useNavigate();
     const { isStaffMode } = useStaffMode();
     const [isCheckout, setIsCheckout] = useState(false);
     const [authChoice, setAuthChoice] = useState(false); // New state to show auth choice
@@ -121,6 +123,38 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         onClose();
     };
 
+    const handleTrackOrder = () => {
+        if (confirmedOrder?.orderId) {
+            const id = confirmedOrder.orderId;
+            handleDismissSuccess();
+            navigate(`/track/${id}`);
+        }
+    };
+
+    const handleShareWhatsApp = () => {
+        if (!confirmedOrder) return;
+        const itemsList = confirmedOrder.items
+            .map(i => `• ${i.quantity}x ${i.name} (Rs. ${i.price * i.quantity})`)
+            .join('\n');
+        const dest = confirmedOrder.orderType === 'Delivery'
+            ? `📍 Address: ${confirmedOrder.customer?.address || 'N/A'}`
+            : `🍽️ Table: #${confirmedOrder.customer?.tableNumber || 'N/A'}`;
+
+        const msg = encodeURIComponent(
+`🍔 *FINE BURGER ORDER* 🍔
+*Order Ref:* #${confirmedOrder.orderReference}
+*Type:* ${confirmedOrder.orderType}
+${dest}
+
+*Items:*
+${itemsList}
+
+*Total:* Rs. ${confirmedOrder.total}
+*Customer:* ${confirmedOrder.customer?.name || 'Guest'} (${confirmedOrder.customer?.phone || 'N/A'})`
+        );
+        window.open(`https://wa.me/?text=${msg}`, '_blank');
+    };
+
     if (!isOpen) return null;
 
     if (orderSuccess && confirmedOrder) {
@@ -192,13 +226,51 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
                                 : 'Please keep your reference number for order tracking.'}
                         </p>
 
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleDismissSuccess}
-                            style={{ width: '100%', padding: '12px', fontSize: 'var(--font-size-md)', cursor: 'pointer' }}
-                        >
-                            Done
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleTrackOrder}
+                                style={{ width: '100%', padding: '12px', fontSize: 'var(--font-size-md)', cursor: 'pointer' }}
+                            >
+                                Track Live Order ➔
+                            </button>
+
+                            <button
+                                onClick={handleShareWhatsApp}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    fontSize: 'var(--font-size-sm)',
+                                    cursor: 'pointer',
+                                    backgroundColor: '#25D366',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <span>📱</span> Share Order on WhatsApp
+                            </button>
+
+                            <button
+                                onClick={handleDismissSuccess}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    fontSize: 'var(--font-size-sm)',
+                                    cursor: 'pointer',
+                                    backgroundColor: 'transparent',
+                                    color: 'var(--color-text-secondary)',
+                                    border: 'none'
+                                }}
+                            >
+                                Done (Dismiss)
+                            </button>
+                        </div>
                     </div>
                 </div>
             </>

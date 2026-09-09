@@ -118,7 +118,40 @@ All critical security vulnerabilities, double-inventory deduction bugs, duplicat
 
 ---
 
-## 4. Deployment & Verification Commands
+## 4. Phase 2 Features Implemented (Additions 1, 2, and 5)
+
+### 4.1 Automated WhatsApp Order Integration (Addition 1)
+* **Customer Receipt Integration (`client/src/components/Cart.jsx`)**: Added a 1-tap **"Share Order on WhatsApp"** button on the Order Receipt card that formats the full order ticket with reference number, item quantities, delivery address/table number, and subtotal.
+* **Admin Order Management (`admin/src/pages/OrderManager.jsx`)**: Added a **WhatsApp Customer** direct action link on each order card, allowing the manager to contact the customer with one click regarding their order status.
+* **Rider Dashboard (`rider/src/pages/Dashboard.jsx`)**: Added a **WhatsApp Customer** quick action for delivery riders so they can message customers for address landmarks, gate codes, or delivery arrival.
+
+### 4.2 Real-Time Live Order Tracking (Addition 2)
+* **Dedicated Tracking Route (`/track` & `/track/:orderId`)**:
+  * Created `client/src/pages/OrderTracking.jsx` and `client/src/styles/OrderTracking.css`.
+  * Features a 4-step glowing status progression:
+    1. `Order Received` (Kitchen notified)
+    2. `In Kitchen` (Chefs preparing food)
+    3. `On The Way` / `Ready For You` (Dispatched with rider or ready for table)
+    4. `Delivered` (Completed)
+  * Real-time listener (`subscribeToOrder`) reflects Firestore status changes with zero page reloads.
+  * Direct order search input allows customers to track by pasting their Order ID.
+  * 1-click navigation directly from the Cart confirmation modal (`Track Live Order ➔`).
+  * Header navigation link added to `Header.jsx`.
+
+### 4.3 Progressive Web App (PWA) Offline Support (Addition 5)
+* **Web App Manifests**:
+  * Created `client/public/manifest.json` enabling customers to install Fine Burger onto their iOS/Android home screens as a standalone web app.
+  * Created `rider/public/manifest.json` enabling delivery riders to install the Rider portal on their phones as a standalone mobile tool.
+* **Service Worker (`client/public/sw.js`)**:
+  * Precaches core shell assets (`/`, `/index.html`, `/favicon.svg`, `/manifest.json`).
+  * Provides intelligent stale-while-revalidate caching for static media while letting Firestore real-time websockets bypass cache seamlessly.
+* **PWA Registration & Metadata**:
+  * Registered service worker in `client/src/main.jsx`.
+  * Added mobile web app meta tags (`apple-mobile-web-app-capable`, `theme-color: #FFB400`) in `client/index.html` and `rider/index.html`.
+
+---
+
+## 5. Deployment & Verification Commands
 
 ### Deploy Security Rules & Cloud Functions:
 ```bash
@@ -136,30 +169,20 @@ cd client && npm run build
 
 # Verify admin build
 cd ../admin && npm run build
+
+# Verify rider build
+cd ../rider && npm run build
 ```
 
 ---
 
-## 5. Recommended High-Value Future Additions
+## 6. Next Additions for Discussion
 
-Now that the core architecture is secure and bug-free, here are the top recommended features to consider adding:
+With Features 1, 2, and 5 fully operational, the remaining high-impact features available to add are:
 
-### 1. WhatsApp Automated Order Notifications
-* Integrate the Twilio or WhatsApp Business Cloud API into a Cloud Function (`onOrderCreated`, `onUpdate`).
-* When an order is placed, both the customer and the kitchen receive an automated WhatsApp confirmation with items, total, and live tracking links.
-
-### 2. Real-Time Customer Order Tracking Page (`/track/:orderId`)
-* A dedicated tracking screen for customers showing order status step-by-step:  
-  `Order Received` ➔ `Preparing in Kitchen` ➔ `Rider on the Way` ➔ `Delivered`.
-* If assigned to a rider, display the rider's name and contact button.
-
-### 3. Kitchen Display System (KDS) View
-* A dedicated, high-contrast, large-button screen for the kitchen staff (tablet-friendly).
-* Shows order tickets with timers, alert colors for older orders, and 1-tap "Order Ready" button.
-
-### 4. Promo Codes & Discount Engine
-* Add a `coupons` collection in Firestore with percentage or flat discounts (e.g. `WELCOME10`, `FINEBURGER`).
-* Allow customers to apply coupons during checkout with instant subtotal recalculation.
-
-### 5. Progressive Web App (PWA) Offline Support
-* Configure Vite PWA plugin so customers and riders can install Fine Burger directly onto their phone home screen as an app without going through the app stores.
+1. **Kitchen Display System (KDS)**:
+   * A dedicated, high-contrast, tablet-optimized screen for kitchen chefs with live timers and 1-tap "Done" buttons.
+2. **Coupons & Promotional Discount Engine**:
+   * Promo codes in Firestore (`WELCOME10`, `FREESHIP`) with checkout coupon validation and instant discounts.
+3. **Customer SMS / Push Notifications**:
+   * Automated browser Web Push notifications alerting customers when their food is out for delivery.

@@ -47,12 +47,14 @@ service cloud.firestore {
 
     // Orders:
     // - Anyone can create/place an order
-    // - Read access restricted to: admins, order owner (customer), or assigned rider
+    // - Anyone with the exact orderId can track/fetch their single order receipt (allow get)
+    // - Collection querying/listing is restricted to admins and authenticated order owners
     // - Update access restricted to: admins or assigned rider (status progression)
     // - Delete access restricted to: admins only
     match /orders/{orderId} {
       allow create: if true;
-      allow read: if isAdmin() || (
+      allow get: if true;
+      allow list: if isAdmin() || (
         isAuthenticated() && (
           (resource.data.userId != null && resource.data.userId == request.auth.uid) ||
           (resource.data.assignedRiderId != null && resource.data.assignedRiderId == request.auth.uid)

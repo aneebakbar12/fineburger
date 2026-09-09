@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Menu from './pages/Menu';
 import About from './pages/About';
 import Orders from './pages/Orders'; // Import Orders page
+import OrderTracking from './pages/OrderTracking'; // Live order tracking
 import {
     subscribeToMenuItems,
     subscribeToCategories,
@@ -157,6 +158,8 @@ function App() {
                             />
                             <Route path="/about" element={<About />} />
                             <Route path="/orders" element={<Orders user={user} />} />
+                            <Route path="/track" element={<OrderTracking storeSettings={storeSettings} />} />
+                            <Route path="/track/:orderId" element={<OrderTracking storeSettings={storeSettings} />} />
                         </Routes>
                     </main>
 

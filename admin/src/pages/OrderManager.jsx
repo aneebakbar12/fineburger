@@ -124,9 +124,29 @@ const OrderDetailsModal = ({ order, serialNumber, isOpen, onClose, onUpdateStatu
                                     </div>
                                     <div className="detail-row">
                                         <span className="detail-label">Phone</span>
-                                        <span className="detail-value">
+                                        <span className="detail-value" style={{ display: 'flex', alignItems: 'center' }}>
                                             <a href={`tel:${order.customer.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
                                                 {order.customer.phone}
+                                            </a>
+                                            <a
+                                                href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${order.customer.name || 'there'}! This is Fine Burger regarding your order #${order.orderReference || order.id.substring(0, 5).toUpperCase()}.`)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    marginLeft: '10px',
+                                                    backgroundColor: '#25D366',
+                                                    color: 'white',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '11px',
+                                                    fontWeight: 600,
+                                                    textDecoration: 'none',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <span>💬</span> WhatsApp
                                             </a>
                                         </span>
                                     </div>

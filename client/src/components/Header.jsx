@@ -29,6 +29,7 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                         <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
                             {!isStaffMode && <Link to="/" className="nav-link">Home</Link>}
                             <Link to="/menu" className="nav-link">Menu</Link>
+                            {!isStaffMode && <Link to="/track" className="nav-link">Track Order</Link>}
                             {!isStaffMode && <Link to="/about" className="nav-link">About Us</Link>}
                         </nav>
 

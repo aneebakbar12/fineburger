@@ -155,10 +155,31 @@ const Dashboard = () => {
                                     <div className="info-content">
                                         <span className="info-label">CUSTOMER</span>
                                         <span className="info-text">{order.customer?.name}</span>
-                                        <div style={{ marginTop: '4px' }}>
+                                        <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                             <a href={`tel:${order.customer?.phone}`} style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px dotted #666' }}>
                                                 📞 {order.customer?.phone}
                                             </a>
+                                            {order.customer?.phone && (
+                                                <a
+                                                    href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${order.customer?.name || ''}! This is your Fine Burger rider with order #${order.orderReference || order.id.slice(0, 5).toUpperCase()}. I am on my way!`)}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{
+                                                        backgroundColor: '#25D366',
+                                                        color: 'white',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold',
+                                                        textDecoration: 'none',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                >
+                                                    💬 WhatsApp
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
