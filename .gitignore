@@ -28,6 +28,7 @@ temp_auth.json
 Thumbs.db
 .vscode/
 .idea/
+.claude/
 
 # Firebase cache
 .firebase/
