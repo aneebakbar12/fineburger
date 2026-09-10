@@ -32,3 +32,7 @@ Thumbs.db
 
 # Firebase cache
 .firebase/
+
+# Service account credentials
+functions/service-account.json
+service-account.json

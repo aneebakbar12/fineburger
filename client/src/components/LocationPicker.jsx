@@ -183,7 +183,7 @@ const LocationPicker = ({ onAddressSelect }) => {
                     setPosition([latitude, longitude]);
                 },
                 (err) => {
-                    console.log("Geolocation fallback to default center:", err);
+                    // Geolocation unavailable — silently fall back to default center
                 }
             );
         }
