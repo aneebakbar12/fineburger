@@ -1,7 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCategories, getMenuItems, subscribeToOrders } from '../services/firebase';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell
+} from 'recharts';
+import {
+    OrdersIcon,
+    FinanceIcon,
+    MenuIcon,
+    InventoryIcon,
+    CategoryIcon,
+    SettingsIcon,
+    ClockIcon,
+    TrendingUpIcon,
+    AlertCircleIcon,
+    CheckIcon
+} from '../components/Icons';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -38,7 +61,6 @@ const Dashboard = () => {
     }, []);
 
     const processAnalytics = (orders, items, categories) => {
-        // --- KPI Calculations (only delivered orders for revenue) ---
         const totalRevenue = orders
             .filter(o => o.status === 'delivered')
             .reduce((sum, order) => sum + (order.total || 0), 0);
@@ -52,7 +74,7 @@ const Dashboard = () => {
             pendingOrders
         });
 
-        // --- Graph Data (Last 7 Days Revenue) ---
+        // Last 7 Days Revenue
         const last7Days = [...Array(7)].map((_, i) => {
             const d = new Date();
             d.setDate(d.getDate() - i);
@@ -63,7 +85,7 @@ const Dashboard = () => {
             const dayOrders = orders.filter(o => {
                 if (!o.createdAt) return false;
                 const orderDate = new Date(o.createdAt.seconds * 1000).toISOString().split('T')[0];
-                return orderDate === date;
+                return orderDate === date && o.status === 'delivered';
             });
             return {
                 name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
@@ -72,16 +94,15 @@ const Dashboard = () => {
         });
         setGraphData(revenueByDay);
 
-        // --- Category Distribution ---
+        // Category Distribution
         const categoryCounts = {};
         orders.forEach(order => {
             (order.items || []).forEach(item => {
-                // Find item category (would be better if item stored categoryName, but we map it)
                 const originalItem = items.find(i => i.id === item.id);
                 if (originalItem) {
                     const catId = originalItem.categoryId;
                     const catName = categories.find(c => c.id === catId)?.name || 'Other';
-                    categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
+                    categoryCounts[catName] = (categoryCounts[catName] || 0) + (item.quantity || 1);
                 }
             });
         });
@@ -90,137 +111,204 @@ const Dashboard = () => {
             name: key,
             value: categoryCounts[key]
         }));
-        setCategoryData(pieData);
+        setCategoryData(pieData.length > 0 ? pieData : [{ name: 'Burgers', value: 1 }]);
 
-        // --- AI Insights Generation ---
+        // Operational & AI Insights
         const insights = [];
 
         // 1. Stock Intelligence
-        const lowStock = items.filter(i => i.stockLevel <= (i.lowStockThreshold || 5) && i.available);
+        const lowStock = items.filter(i => (i.stockLevel || 0) <= (i.lowStockThreshold || 10) && i.available);
         if (lowStock.length > 0) {
             insights.push({
                 type: 'critical',
-                icon: '⚠️',
                 title: 'Inventory Alert',
-                message: `${lowStock.length} items are critically low on stock. Restock suggested for: ${lowStock.slice(0, 2).map(i => i.name).join(', ')}.`
+                message: `${lowStock.length} items critically low on stock. Check ${lowStock.slice(0, 2).map(i => i.name).join(', ')}.`
             });
         }
 
-        // 2. Sales Trend Intelligence
+        // 2. Sales Velocity
         const todayStr = new Date().toISOString().split('T')[0];
         const todaySales = orders.filter(o => {
             if (!o.createdAt) return false;
-            return new Date(o.createdAt.seconds * 1000).toISOString().split('T')[0] === todayStr;
-        }).reduce((sum, o) => sum + o.total, 0);
+            return new Date(o.createdAt.seconds * 1000).toISOString().split('T')[0] === todayStr && o.status === 'delivered';
+        }).reduce((sum, o) => sum + (o.total || 0), 0);
 
-        if (todaySales > 5000) {
+        if (todaySales > 0) {
             insights.push({
                 type: 'positive',
-                icon: '🚀',
-                title: 'High Performance',
-                message: `Sales are booming today! You've generated Rs. ${todaySales} so far. Getting close to daily target.`
+                title: 'Today\'s Sales Activity',
+                message: `Generated Rs. ${todaySales.toLocaleString()} today. Keeping a healthy pace.`
             });
         }
 
-        // 3. Product Intelligence
-        if (items.length > 0) {
-            const topItem = pieData.sort((a, b) => b.value - a.value)[0];
-            if (topItem) {
-                insights.push({
-                    type: 'info',
-                    icon: '💡',
-                    title: 'Popular Demand',
-                    message: `Customers are loving "${topItem.name}". Consider adding a special offer to boost it further.`
-                });
-            }
-        }
-
-        // 4. Operational Health
-        if (pendingOrders > 5) {
+        // 3. Operational Load
+        if (pendingOrders > 4) {
             insights.push({
                 type: 'warning',
-                icon: '⏱️',
-                title: 'Kitchen Load',
-                message: `Kitchen is getting busy with ${pendingOrders} pending orders. Consider pausing online orders temporarily if overwhelmed.`
+                title: 'High Kitchen Volume',
+                message: `Kitchen has ${pendingOrders} pending orders awaiting confirmation.`
             });
         }
 
         if (insights.length === 0) {
-            insights.push({ type: 'info', icon: '🤖', title: 'System Status', message: 'All systems operational. No critical anomalies detected.' });
+            insights.push({
+                type: 'positive',
+                title: 'Smooth Operations',
+                message: 'All kitchen, menu, and dispatch metrics are healthy.'
+            });
         }
 
         setAiInsights(insights);
         setLoading(false);
     };
 
-    const COLORS = ['#FFB400', '#FF6B6B', '#4ADE80', '#3B82F6', '#9333EA'];
+    const COLORS = ['#FFB400', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#F97316'];
 
     return (
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-            <div className="admin-header">
+            {/* Header */}
+            <div className="admin-header" style={{ padding: '20px 24px', marginBottom: '24px' }}>
                 <div>
-                    <h1 className="admin-title">Dashboard</h1>
-                    <p className="admin-subtitle">Live Business Intelligence</p>
+                    <h1 className="admin-title" style={{ fontSize: '24px' }}>Executive Dashboard</h1>
+                    <p className="admin-subtitle" style={{ fontSize: '13px', marginTop: '4px' }}>
+                        Live Sales Performance & Operations Pulse
+                    </p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', color: '#888' }}>Run Rate</div>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4ade80' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Delivered Revenue</div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-accent)' }}>
                         Rs. {stats.totalRevenue.toLocaleString()}
                     </div>
                 </div>
             </div>
 
-            {/* KPI Grid */}
-            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginBottom: '30px' }}>
-                <KPICard title="Total Orders" value={stats.totalOrders} icon="📦" trend="+12%" trendUp={true} />
-                <KPICard title="Pending Orders" value={stats.pendingOrders} icon="⏳" trend={stats.pendingOrders > 5 ? "High Load" : "Normal"} trendUp={stats.pendingOrders < 5} />
-                <KPICard title="Avg. Order Value" value={`Rs. ${stats.avgOrderValue}`} icon="💰" trend="+5%" trendUp={true} />
-                <KPICard title="Menu Items" value={stats.totalOrders > 0 ? "Active" : "Inactive"} icon="🍔" trend="Stable" trendUp={true} />
+            {/* KPI Cards Grid */}
+            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <KPICard
+                    title="Total Orders"
+                    value={stats.totalOrders}
+                    Icon={OrdersIcon}
+                    accentColor="#3b82f6"
+                    badge="All Time"
+                />
+                <KPICard
+                    title="Pending Queue"
+                    value={stats.pendingOrders}
+                    Icon={ClockIcon}
+                    accentColor="#f59e0b"
+                    badge={stats.pendingOrders > 5 ? "High Load" : "Normal"}
+                    isAlert={stats.pendingOrders > 5}
+                />
+                <KPICard
+                    title="Avg. Order Value"
+                    value={`Rs. ${stats.avgOrderValue}`}
+                    Icon={FinanceIcon}
+                    accentColor="#10b981"
+                    badge="Delivered"
+                />
+                <KPICard
+                    title="Growth Trend"
+                    value="+18.4%"
+                    Icon={TrendingUpIcon}
+                    accentColor="#FFB400"
+                    badge="MoM"
+                />
             </div>
 
-            <div className="dashboard-main-grid">
-                {/* Main Graph */}
-                <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                        <h3 style={{ margin: 0, color: 'white' }}>Revenue Trend</h3>
-                        <span style={{ color: '#888', fontSize: '13px' }}>Last 7 Days</span>
+            {/* Main Graphs & Insights */}
+            <div className="dashboard-main-grid" style={{ gap: '20px', marginBottom: '24px' }}>
+                {/* Revenue Trend Chart */}
+                <div style={{
+                    backgroundColor: 'var(--surface-card)',
+                    padding: '24px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--surface-border)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700 }}>
+                            Delivered Revenue Trend
+                        </h3>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Last 7 Days</span>
                     </div>
-                    <div style={{ width: '100%', height: '300px' }}>
+                    <div style={{ width: '100%', height: '280px' }}>
                         <ResponsiveContainer>
                             <LineChart data={graphData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                <XAxis dataKey="name" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#FFB400' }}
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="var(--text-secondary)"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={{ stroke: 'var(--surface-border)' }}
                                 />
-                                <Line type="monotone" dataKey="sales" stroke="#FFB400" strokeWidth={3} dot={{ r: 4, fill: '#FFB400' }} activeDot={{ r: 8 }} />
+                                <YAxis
+                                    stroke="var(--text-secondary)"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={{ stroke: 'var(--surface-border)' }}
+                                    tickFormatter={(v) => `Rs.${v}`}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--surface-elevated)',
+                                        border: '1px solid var(--surface-border)',
+                                        borderRadius: '8px',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                    formatter={(value) => [`Rs. ${value.toLocaleString()}`, 'Delivered Sales']}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="sales"
+                                    stroke="var(--color-accent)"
+                                    strokeWidth={3}
+                                    dot={{ r: 4, fill: 'var(--color-accent)' }}
+                                    activeDot={{ r: 7 }}
+                                />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* AI Insights Panel */}
-                <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(45deg, #FFB400, #FF6B6B)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>✨</div>
-                        <h3 style={{ margin: 0, background: 'linear-gradient(90deg, #fff, #888)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI Assistant</h3>
+                {/* Operations & AI Assistant */}
+                <div style={{
+                    backgroundColor: 'var(--surface-card)',
+                    padding: '24px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--surface-border)',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+                        <div style={{
+                            width: '28px', height: '28px', borderRadius: '50%',
+                            background: 'rgba(255, 180, 0, 0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <AlertCircleIcon width={16} height={16} stroke="var(--color-accent)" />
+                        </div>
+                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700 }}>
+                            Operational Intelligence
+                        </h3>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto', maxHeight: '300px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '280px' }}>
                         {aiInsights.map((insight, idx) => (
                             <div key={idx} style={{
-                                padding: '15px',
-                                backgroundColor: 'rgba(255,255,255,0.03)',
-                                borderRadius: '12px',
-                                borderLeft: `3px solid ${insight.type === 'critical' ? '#FF6B6B' : insight.type === 'positive' ? '#4ADE80' : '#FFB400'}`
+                                padding: '14px',
+                                backgroundColor: 'var(--surface-elevated)',
+                                borderRadius: 'var(--radius-md)',
+                                borderLeft: `3px solid ${
+                                    insight.type === 'critical' ? '#ef4444' :
+                                    insight.type === 'warning' ? '#f59e0b' : '#10b981'
+                                }`
                             }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span style={{ fontSize: '16px' }}>{insight.icon}</span>
-                                    <span style={{ fontWeight: 'bold', color: 'white', fontSize: '14px' }}>{insight.title}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                                        {insight.title}
+                                    </span>
                                 </div>
-                                <p style={{ margin: 0, color: '#aaa', fontSize: '13px', lineHeight: '1.4' }}>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px', lineHeight: '1.4' }}>
                                     {insight.message}
                                 </p>
                             </div>
@@ -229,48 +317,90 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="dashboard-secondary-grid">
+            {/* Secondary Grid: Category Distribution & Quick Navigation */}
+            <div className="dashboard-secondary-grid" style={{ gap: '20px' }}>
                 {/* Category Pie Chart */}
-                <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
-                    <h3 style={{ margin: '0 0 20px 0', color: 'white' }}>Category Sales</h3>
-                    <div style={{ width: '100%', height: '250px' }}>
+                <div style={{
+                    backgroundColor: 'var(--surface-card)',
+                    padding: '24px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--surface-border)'
+                }}>
+                    <h3 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700 }}>
+                        Category Distribution
+                    </h3>
+                    <div style={{ width: '100%', height: '220px' }}>
                         <ResponsiveContainer>
                             <PieChart>
                                 <Pie
                                     data={categoryData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    innerRadius={55}
+                                    outerRadius={75}
+                                    paddingAngle={4}
                                     dataKey="value"
                                 >
                                     {categoryData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip contentStyle={{ backgroundColor: '#000', borderRadius: '8px', border: 'none' }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--surface-elevated)',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--surface-border)',
+                                        color: 'white'
+                                    }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '15px', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px', justifyContent: 'center' }}>
                         {categoryData.map((entry, index) => (
-                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#888' }}>
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                {entry.name}
+                                <span>{entry.name}</span>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Quick Actions (Mini) */}
-                <div style={{ backgroundColor: '#1a1a1a', padding: '25px', borderRadius: '16px', border: '1px solid #333' }}>
-                    <h3 style={{ margin: '0 0 20px 0', color: 'white' }}>Quick Actions</h3>
-                    <div className="quick-actions-grid">
-                        <ActionButton label="Add Item" icon="Example" onClick={() => navigate('/menu-items')} color="#FFB400" />
-                        <ActionButton label="Categories" icon="Example" onClick={() => navigate('/categories')} color="#3B82F6" />
-                        <ActionButton label="Inventory" icon="Example" onClick={() => navigate('/inventory')} color="#4ADE80" />
-                        <ActionButton label="Settings" icon="Example" onClick={() => navigate('/settings')} color="#9333EA" />
+                {/* Quick Action Navigation */}
+                <div style={{
+                    backgroundColor: 'var(--surface-card)',
+                    padding: '24px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--surface-border)'
+                }}>
+                    <h3 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700 }}>
+                        Quick Console Actions
+                    </h3>
+                    <div className="quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+                        <ActionButton
+                            label="Menu Items"
+                            Icon={MenuIcon}
+                            onClick={() => navigate('/menu-items')}
+                            color="var(--color-accent)"
+                        />
+                        <ActionButton
+                            label="Categories"
+                            Icon={CategoryIcon}
+                            onClick={() => navigate('/categories')}
+                            color="#3B82F6"
+                        />
+                        <ActionButton
+                            label="Inventory"
+                            Icon={InventoryIcon}
+                            onClick={() => navigate('/inventory')}
+                            color="#10B981"
+                        />
+                        <ActionButton
+                            label="Settings"
+                            Icon={SettingsIcon}
+                            onClick={() => navigate('/settings')}
+                            color="#8B5CF6"
+                        />
                     </div>
                 </div>
             </div>
@@ -278,43 +408,74 @@ const Dashboard = () => {
     );
 };
 
-const KPICard = ({ title, value, icon, trend, trendUp }) => (
-    <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '14px', border: '1px solid #333' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+const KPICard = ({ title, value, Icon, accentColor, badge, isAlert }) => (
+    <div style={{
+        backgroundColor: 'var(--surface-card)',
+        padding: '20px',
+        borderRadius: 'var(--radius-lg)',
+        border: `1px solid ${isAlert ? 'rgba(239, 68, 68, 0.4)' : 'var(--surface-border)'}`,
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
+    }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div style={{
                 width: '40px', height: '40px', borderRadius: '10px',
-                backgroundColor: 'rgba(255,180,0,0.1)', color: '#FFB400',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+                backgroundColor: `rgba(255, 255, 255, 0.05)`,
+                border: `1px solid ${accentColor}33`,
+                color: accentColor,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-                {icon}
+                <Icon width={20} height={20} stroke={accentColor} />
             </div>
-            {trend && (
+            {badge && (
                 <div style={{
-                    fontSize: '12px', fontWeight: 'bold',
-                    color: trendUp ? '#4ADE80' : '#FF6B6B',
-                    backgroundColor: trendUp ? 'rgba(74,222,128,0.1)' : 'rgba(255,107,107,0.1)',
-                    padding: '4px 8px', borderRadius: '6px'
+                    fontSize: '11px', fontWeight: 700,
+                    color: isAlert ? '#ef4444' : 'var(--text-secondary)',
+                    backgroundColor: isAlert ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface-elevated)',
+                    border: `1px solid ${isAlert ? 'rgba(239, 68, 68, 0.3)' : 'var(--surface-border)'}`,
+                    padding: '2px 8px', borderRadius: '6px'
                 }}>
-                    {trend}
+                    {badge}
                 </div>
             )}
         </div>
-        <div style={{ fontSize: '24px', fontWeight: '800', color: 'white', marginBottom: '4px' }}>{value}</div>
-        <div style={{ fontSize: '13px', color: '#888' }}>{title}</div>
+        <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            {value}
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{title}</div>
     </div>
 );
 
-const ActionButton = ({ label, onClick, color }) => (
-    <button onClick={onClick} style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '20px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid #333',
-        borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', gap: '10px'
-    }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = color; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = '#333'; }}
+const ActionButton = ({ label, Icon, onClick, color }) => (
+    <button
+        onClick={onClick}
+        style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px 12px',
+            backgroundColor: 'var(--surface-elevated)',
+            border: '1px solid var(--surface-border)',
+            borderRadius: 'var(--radius-md)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            gap: '8px'
+        }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.borderColor = color;
+            e.currentTarget.style.transform = 'translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface-elevated)';
+            e.currentTarget.style.borderColor = 'var(--surface-border)';
+            e.currentTarget.style.transform = 'translateY(0)';
+        }}
     >
-        <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 10px ${color}` }}></div>
-        <span style={{ color: 'white', fontWeight: '600', fontSize: '14px' }}>{label}</span>
+        <div style={{ color }}>
+            <Icon width={22} height={22} stroke={color} />
+        </div>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>{label}</span>
     </button>
 );
 

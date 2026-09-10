@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import Login from './components/Login';
@@ -14,19 +14,33 @@ import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import ExpenseManager from './pages/ExpenseManager';
 import FinancialDashboard from './pages/FinancialDashboard';
-import { onAuthChange, subscribeToOrders } from './services/firebase'; // Updated import
+import { onAuthChange, subscribeToOrders } from './services/firebase';
+import { ToastProvider } from './context/ToastContext';
 import './styles/admin.css';
 
 function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const audioContextRef = React.useRef(null);
-    const prevOrdersRef = React.useRef([]);
-    // Tracks if a new order arrived while the tab was hidden
-    const pendingSoundRef = React.useRef(false);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [isAudioMuted, setIsAudioMuted] = useState(() => {
+        return localStorage.getItem('fineburger_audio_muted') === 'true';
+    });
+
+    const audioContextRef = useRef(null);
+    const prevOrdersRef = useRef([]);
+    const pendingSoundRef = useRef(false);
+    const isAudioMutedRef = useRef(isAudioMuted);
+
+    useEffect(() => {
+        isAudioMutedRef.current = isAudioMuted;
+        localStorage.setItem('fineburger_audio_muted', isAudioMuted.toString());
+    }, [isAudioMuted]);
+
+    const toggleAudioMute = () => {
+        setIsAudioMuted((prev) => !prev);
+    };
 
     // ── Audio Context helpers ─────────────────────────────────────────────────
-
     const getAudioContext = () => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,8 +65,8 @@ function App() {
     }, []);
 
     // ── Buzzer & Kitchen Bell ──────────────────────────────────────────────────
-
     const playBuzzer = async () => {
+        if (isAudioMutedRef.current) return;
         try {
             const ctx = getAudioContext();
             if (ctx.state === 'suspended') await ctx.resume();
@@ -76,6 +90,7 @@ function App() {
     };
 
     const playKitchenBell = async () => {
+        if (isAudioMutedRef.current) return;
         try {
             const ctx = getAudioContext();
             if (ctx.state === 'suspended') await ctx.resume();
@@ -99,7 +114,6 @@ function App() {
     };
 
     // ── Browser Notification ──────────────────────────────────────────────────
-
     const requestNotificationPermission = async () => {
         if ('Notification' in window && Notification.permission === 'default') {
             await Notification.requestPermission();
@@ -114,11 +128,10 @@ function App() {
                 : `${count} new orders have been placed. Tap to view.`,
             icon: '/favicon.ico',
             badge: '/favicon.ico',
-            tag: 'new-order',        // replaces previous notification instead of stacking
-            renotify: true,          // vibrate/sound even if tag already shown
-            requireInteraction: true // stays on screen until dismissed
+            tag: 'new-order',
+            renotify: true,
+            requireInteraction: true
         });
-        // Clicking the notification focuses the admin tab
         n.onclick = () => {
             window.focus();
             n.close();
@@ -126,7 +139,6 @@ function App() {
     };
 
     // ── Visibility-change: play immediately when tab regains focus ────────────
-
     useEffect(() => {
         const onVisibilityChange = () => {
             if (document.visibilityState === 'visible' && pendingSoundRef.current) {
@@ -139,7 +151,6 @@ function App() {
     }, []);
 
     // ── Order subscription ────────────────────────────────────────────────────
-
     useEffect(() => {
         let unsubscribeOrders;
         const unsubscribeAuth = onAuthChange((currentUser) => {
@@ -147,10 +158,13 @@ function App() {
             setLoading(false);
 
             if (currentUser) {
-                // Request notification permission as soon as user is logged in
                 requestNotificationPermission();
 
                 unsubscribeOrders = subscribeToOrders((newOrders) => {
+                    // Update pending count for badge
+                    const pendingOrders = newOrders.filter(o => o.status === 'pending');
+                    setPendingCount(pendingOrders.length);
+
                     if (prevOrdersRef.current.length > 0) {
                         const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
                         const newPendingOrders = newOrders.filter(
@@ -203,10 +217,17 @@ function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 minHeight: '100vh',
-                backgroundColor: 'var(--color-black)',
-                color: 'var(--color-white)'
+                backgroundColor: 'var(--surface-canvas)',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-family)'
             }}>
-                Loading...
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>
+                        <span style={{ color: 'white' }}>FINE</span>
+                        <span style={{ color: 'var(--color-accent)' }}>BURGER</span>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading admin console...</div>
+                </div>
             </div>
         );
     }
@@ -216,28 +237,35 @@ function App() {
     }
 
     return (
-        <Router>
-            <ScrollToTop />
-            <div className="admin-layout">
-                <Sidebar onLogout={handleLogout} />
-                <main className="admin-main">
-                    <Routes>
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/orders" element={<OrderManager />} />
-                        <Route path="/riders" element={<RiderManager />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/categories" element={<CategoryManager />} />
-                        <Route path="/menu-items" element={<MenuItemManager />} />
-                        <Route path="/inventory" element={<InventoryManager />} />
-                        <Route path="/expenses" element={<ExpenseManager />} />
-                        <Route path="/financial-dashboard" element={<FinancialDashboard />} />
-                        <Route path="/sliders" element={<SliderManager />} />
-                        <Route path="/settings" element={<Settings />} />
-                    </Routes>
-                </main>
-            </div>
-        </Router>
+        <ToastProvider>
+            <Router>
+                <ScrollToTop />
+                <div className="admin-layout">
+                    <Sidebar
+                        onLogout={handleLogout}
+                        pendingCount={pendingCount}
+                        isAudioMuted={isAudioMuted}
+                        onToggleAudio={toggleAudioMute}
+                    />
+                    <main className="admin-main">
+                        <Routes>
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/orders" element={<OrderManager />} />
+                            <Route path="/riders" element={<RiderManager />} />
+                            <Route path="/reports" element={<Reports />} />
+                            <Route path="/categories" element={<CategoryManager />} />
+                            <Route path="/menu-items" element={<MenuItemManager />} />
+                            <Route path="/inventory" element={<InventoryManager />} />
+                            <Route path="/expenses" element={<ExpenseManager />} />
+                            <Route path="/financial-dashboard" element={<FinancialDashboard />} />
+                            <Route path="/sliders" element={<SliderManager />} />
+                            <Route path="/settings" element={<Settings />} />
+                        </Routes>
+                    </main>
+                </div>
+            </Router>
+        </ToastProvider>
     );
 }
 

@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeToExpenses, addExpense, updateExpense, deleteExpense } from '../services/firebase';
 import { formatCurrency, formatPKT, getPKTDate } from '../utils/dateUtils';
+import { useToast } from '../context/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
+import { PlusIcon, EditIcon, TrashIcon, CloseIcon } from '../components/Icons';
 import '../styles/admin.css';
 
 const ExpenseManager = () => {
+    const toast = useToast();
     const [expenses, setExpenses] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null);
+    const [expenseToDelete, setExpenseToDelete] = useState(null);
 
     // Get current date in PKT for default form value (YYYY-MM-DD)
     const getTodayPKT = () => {
@@ -71,10 +76,10 @@ const ExpenseManager = () => {
         }
 
         if (result.success) {
-            alert(editingExpense ? 'Expense updated!' : 'Expense added!');
+            toast.success(editingExpense ? 'Expense updated!' : 'Expense added!');
             resetForm();
         } else {
-            alert('Error: ' + result.error);
+            toast.error('Error: ' + result.error);
         }
     };
 
@@ -105,15 +110,19 @@ const ExpenseManager = () => {
         setShowForm(true);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this expense?')) {
-            const result = await deleteExpense(id);
+    const confirmDeleteExpense = async () => {
+        if (!expenseToDelete) return;
+        try {
+            const result = await deleteExpense(expenseToDelete.id);
             if (result.success) {
-                alert('Expense deleted!');
+                toast.success('Expense record deleted successfully.');
             } else {
-                alert('Error: ' + result.error);
+                toast.error('Error: ' + result.error);
             }
+        } catch (err) {
+            toast.error('Failed to delete expense: ' + err.message);
         }
+        setExpenseToDelete(null);
     };
 
     const resetForm = () => {
@@ -144,32 +153,41 @@ const ExpenseManager = () => {
 
     return (
         <div>
-            <div className="admin-header">
+            <div className="admin-header" style={{ padding: '20px 24px', marginBottom: '24px' }}>
                 <div>
-                    <h1 className="admin-title">💸 Expense Management</h1>
-                    <p className="admin-subtitle">Track all business expenses in PKR</p>
+                    <h1 className="admin-title" style={{ fontSize: '24px' }}>Expense Management</h1>
+                    <p className="admin-subtitle" style={{ fontSize: '13px', marginTop: '4px' }}>
+                        Track kitchen overhead, inventory purchases, and operational costs
+                    </p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-                    {showForm ? 'Cancel' : '+ Add Expense'}
+                <button
+                    className="btn btn-primary"
+                    onClick={() => setShowForm(!showForm)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                    {showForm ? <CloseIcon width={18} height={18} /> : <PlusIcon width={18} height={18} />}
+                    <span>{showForm ? 'Cancel' : 'Add Expense'}</span>
                 </button>
             </div>
 
             {/* Total Expenses Card */}
             <div style={{
-                backgroundColor: '#1a1a1a',
-                border: '2px solid #3b82f6',
-                borderRadius: '12px',
+                backgroundColor: 'var(--surface-card)',
+                border: '1px solid var(--surface-border)',
+                borderLeft: '4px solid #3b82f6',
+                borderRadius: 'var(--radius-lg)',
                 padding: '24px',
-                marginBottom: '24px'
+                marginBottom: '24px',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
             }}>
-                <div style={{ fontSize: '14px', color: '#888', marginBottom: '8px' }}>
-                    Total Expenses
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    Total Tracked Expenses
                 </div>
-                <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#3b82f6' }}>
+                <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)' }}>
                     {formatCurrency(totalExpenses)}
                 </div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                    {expenses.length} expense{expenses.length !== 1 ? 's' : ''} recorded
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                    {expenses.length} expense record{expenses.length !== 1 ? 's' : ''} logged
                 </div>
             </div>
 
@@ -316,8 +334,22 @@ const ExpenseManager = () => {
                                 <td>{formatPKT(expense.date)}</td>
                                 <td>
                                     <div className="table-actions">
-                                        <button className="btn-icon-small btn-edit" onClick={() => handleEdit(expense)}>✏️</button>
-                                        <button className="btn-icon-small btn-delete" onClick={() => handleDelete(expense.id)}>🗑️</button>
+                                        <button
+                                            className="btn-icon-small btn-edit"
+                                            onClick={() => handleEdit(expense)}
+                                            title="Edit expense"
+                                            aria-label="Edit expense"
+                                        >
+                                            <EditIcon width={16} height={16} />
+                                        </button>
+                                        <button
+                                            className="btn-icon-small btn-delete"
+                                            onClick={() => setExpenseToDelete(expense)}
+                                            title="Delete expense"
+                                            aria-label="Delete expense"
+                                        >
+                                            <TrashIcon width={16} height={16} />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -325,6 +357,17 @@ const ExpenseManager = () => {
                     </tbody>
                 </table>
             </div>
+
+            <ConfirmModal
+                isOpen={!!expenseToDelete}
+                title="Delete Expense Record"
+                message={`Are you sure you want to remove the expense for "${expenseToDelete?.itemName}" (${formatCurrency(expenseToDelete?.totalCost)})?`}
+                confirmText="Yes, Delete Record"
+                cancelText="Cancel"
+                isDanger={true}
+                onConfirm={confirmDeleteExpense}
+                onCancel={() => setExpenseToDelete(null)}
+            />
         </div>
     );
 };

@@ -14,16 +14,38 @@
 
 :root {
   /* Colors */
-  --color-black: #000000;
-  --color-dark-gray: #1a1a1a;
-  --color-medium-gray: #2a2a2a;
-  --color-light-gray: #3a3a3a;
+  --color-black: #0c0e14;
+  --color-dark-gray: #151922;
+  --color-medium-gray: #1e2430;
+  --color-light-gray: #2d3546;
   --color-accent: #FFB400;
   --color-accent-hover: #FFC933;
   --color-white: #ffffff;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #b0b0b0;
-  --color-text-muted: #808080;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* Semantic Surfaces */
+  --surface-canvas: #0c0e14;
+  --surface-card: #151922;
+  --surface-elevated: #1e2430;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-hover: rgba(255, 255, 255, 0.04);
+
+  /* Status Colors */
+  --status-pending: #f59e0b;
+  --status-pending-bg: rgba(245, 158, 11, 0.15);
+  --status-preparing: #3b82f6;
+  --status-preparing-bg: rgba(59, 130, 246, 0.15);
+  --status-ready: #8b5cf6;
+  --status-ready-bg: rgba(139, 92, 246, 0.15);
+  --status-delivered: #10b981;
+  --status-delivered-bg: rgba(16, 185, 129, 0.15);
+  --status-cancelled: #ef4444;
+  --status-cancelled-bg: rgba(239, 68, 68, 0.15);
+
+  /* Focus Ring */
+  --focus-ring: 0 0 0 2px #0c0e14, 0 0 0 4px var(--color-accent);
   
   /* Spacing */
   --spacing-xs: 0.5rem;
