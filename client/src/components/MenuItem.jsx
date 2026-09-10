@@ -53,14 +53,12 @@ const MenuItem = ({ item, onClick }) => {
                         {hasVariations ? <span className="price-from">From </span> : null}
                         Rs. {price}
                     </span>
-                    <button
-                        className="menu-item-btn"
-                        disabled={!isAvailable}
-                        tabIndex={-1}
+                    <span
+                        className={`menu-item-btn ${!isAvailable ? 'disabled' : ''}`}
                         aria-hidden="true"
                     >
                         {isAvailable ? (hasVariations ? 'Customize ➔' : 'Add to Cart +') : 'Sold Out'}
-                    </button>
+                    </span>
                 </div>
             </div>
         </div>

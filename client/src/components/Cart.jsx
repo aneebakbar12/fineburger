@@ -14,18 +14,19 @@ import '../styles/Cart.css';
 
 // Parse price increments from variation strings, e.g. "Large 13 inch (+Rs. 450)"
 export const getItemUnitPrice = (item) => {
-    let price = Number(item.price) || 0;
+    let basePrice = Number(item.basePrice !== undefined ? item.basePrice : item.price) || 0;
     if (item.selectedVariations && typeof item.selectedVariations === 'object') {
         Object.values(item.selectedVariations).forEach(val => {
             if (typeof val === 'string') {
                 const match = val.match(/\(\s*\+\s*(?:Rs\.?|PKR)?\s*([0-9]+)\s*\)/i);
                 if (match && match[1]) {
-                    price += Number(match[1]);
+                    basePrice += Number(match[1]);
                 }
             }
         });
+        return basePrice;
     }
-    return price;
+    return Number(item.price) || 0;
 };
 
 const Cart = ({

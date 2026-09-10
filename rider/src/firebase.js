@@ -192,7 +192,7 @@ export const subscribeToRiderOrders = (riderId, onAssignedOrders, onPastOrders) 
         // Split into assigned (active) and past (delivered)
         const assigned = allOrders.filter(o =>
             o.orderType === 'Delivery' &&
-            (o.status === 'ready' || o.status === 'out_for_delivery')
+            ['pending', 'preparing', 'ready', 'accepted', 'picked_up', 'out_for_delivery'].includes(o.status)
         );
         const past = allOrders.filter(o => o.status === 'delivered');
 
@@ -205,12 +205,30 @@ export const subscribeToRiderOrders = (riderId, onAssignedOrders, onPastOrders) 
 
 export const updateOrderStatus = async (id, status, additionalData = {}) => {
     try {
-        await updateDoc(doc(db, 'orders', id), {
+        const payload = {
             status,
             ...additionalData,
             updatedAt: serverTimestamp()
-        });
+        };
+        if (status === 'delivered') {
+            payload.deliveredAt = serverTimestamp();
+        } else if (status === 'out_for_delivery' || status === 'picked_up') {
+            payload.pickedUpAt = serverTimestamp();
+        }
 
+        await updateDoc(doc(db, 'orders', id), payload);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const updateRiderOnlineStatus = async (riderId, isOnline) => {
+    try {
+        await updateDoc(doc(db, 'riders', riderId), {
+            isOnline: Boolean(isOnline),
+            lastSeen: serverTimestamp()
+        });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };

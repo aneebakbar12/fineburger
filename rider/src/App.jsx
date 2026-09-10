@@ -60,22 +60,21 @@ function App() {
     if (user) {
       const unsubscribeProfile = subscribeToRiderProfile(
         user.uid,
-        (profile) => {
-          // Profile updated, can update local state if needed
+        () => {
+          // Profile exists and active
         },
         async () => {
-          // Profile deleted
-          console.log("Rider profile deleted, logging out...");
+          // Profile deleted by admin
+          console.log("Rider profile removed, logging out...");
           await logoutRider();
           setUser(null);
-          alert("Your account has been deactivated by the admin.");
         }
       );
       return () => unsubscribeProfile && unsubscribeProfile();
     }
   }, [user]);
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">Loading rider console...</div>;
 
   return (
     <Router>
@@ -92,6 +91,10 @@ function App() {
         <Route
           path="/"
           element={user ? <Dashboard /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </Router>

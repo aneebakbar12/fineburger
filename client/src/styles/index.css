@@ -375,7 +375,11 @@ select {
     --font-size-4xl: 1.75rem;
     --font-size-5xl: 2rem;
   }
-  
+
+  .container {
+    padding: 0 12px;
+  }
+
   .btn {
     padding: var(--spacing-xs) var(--spacing-md);
     font-size: var(--font-size-sm);
