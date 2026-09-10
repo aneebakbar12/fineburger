@@ -1,4 +1,4 @@
-import { db, storage, auth, functions } from '../firebase-config';
+import { db, auth, functions } from '../firebase-config';
 import { httpsCallable } from 'firebase/functions';
 
 import {
@@ -18,12 +18,8 @@ import {
     sum, // Added
     getAggregateFromServer // Added
 } from 'firebase/firestore';
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject
-} from 'firebase/storage';
+
+
 import {
     signInWithEmailAndPassword,
     signOut,
@@ -230,67 +226,31 @@ export const deleteMenuItem = async (id) => {
     }
 };
 
-// Image Upload
-// Image Upload
+// Image Upload — uses Cloudinary unsigned upload (no Firebase Storage / Blaze plan required)
+const CLOUDINARY_CLOUD = 'diveaqbo';
+const CLOUDINARY_PRESET = 'fineburger_uploads';
+
 export const uploadImage = async (file, path = 'menu-images') => {
     try {
-        console.log("Starting image upload...", file.name);
-        console.log("File size:", (file.size / 1024).toFixed(2), "KB");
-        console.log("File type:", file.type);
-        console.log("Upload path:", path);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_PRESET);
+        formData.append('folder', `fineburger/${path}`);
 
-        const timestamp = Date.now();
-        const filename = `${timestamp}_${file.name}`;
-        const storageRef = ref(storage, `${path}/${filename}`);
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+            { method: 'POST', body: formData }
+        );
 
-        console.log("Storage reference created:", storageRef.fullPath);
-
-        // Add metadata
-        const metadata = {
-            contentType: file.type,
-        };
-
-        console.log("Starting upload to Firebase Storage...");
-
-        // Upload directly without timeout to see actual error
-        const uploadResult = await uploadBytes(storageRef, file, metadata);
-        console.log("✅ Upload complete!");
-
-        console.log("Getting download URL...");
-        const downloadURL = await getDownloadURL(storageRef);
-        console.log("✅ Download URL received:", downloadURL);
-
-        return { success: true, url: downloadURL };
-    } catch (error) {
-        console.error("❌ Image upload failed:");
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        console.error("Full error:", error);
-
-        // More helpful error messages
-        let errorMessage = error.message;
-        if (error.code === 'storage/unauthorized') {
-            errorMessage = 'Unauthorized. Check Firebase Storage rules.';
-        } else if (error.code === 'storage/canceled') {
-            errorMessage = 'Upload canceled by user.';
-        } else if (error.code === 'storage/unknown') {
-            errorMessage = 'Unknown error. Check Firebase console logs.';
-        } else if (error.code === 'storage/quota-exceeded') {
-            errorMessage = 'Storage quota exceeded.';
-        } else if (error.code === 'storage/invalid-checksum') {
-            errorMessage = 'File corrupted during upload.';
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || 'Upload failed');
         }
 
-        return { success: false, error: errorMessage };
-    }
-};
-
-export const deleteImage = async (imageUrl) => {
-    try {
-        const imageRef = ref(storage, imageUrl);
-        await deleteObject(imageRef);
-        return { success: true };
+        const data = await response.json();
+        return { success: true, url: data.secure_url };
     } catch (error) {
+        console.error('Image upload failed:', error);
         return { success: false, error: error.message };
     }
 };
