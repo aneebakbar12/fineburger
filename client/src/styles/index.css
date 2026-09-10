@@ -13,19 +13,35 @@
    =================================== */
 
 :root {
-  /* Colors */
-  --color-black: #000000;
-  --color-dark-gray: #1a1a1a;
-  --color-medium-gray: #2a2a2a;
-  --color-light-gray: #3a3a3a;
-  --color-surface: #1a1a1a;
+  /* Brand Accent */
   --color-accent: #FFB400;
   --color-accent-hover: #FFC933;
+  --color-primary: #FFB400;
+  --color-primary-hover: #FFC933;
+
+  /* Background & Surfaces */
+  --color-black: #0c0e14;
+  --color-dark-gray: #14171f;
+  --color-medium-gray: #1d222d;
+  --color-light-gray: #282f3d;
+  --color-surface: #14171f;
+  --color-surface-elevated: #1d222d;
+  --color-surface-overlay: #262c3a;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+
+  /* Text & Typography */
   --color-white: #ffffff;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #b0b0b0;
-  --color-text-muted: #808080;
-  
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
   /* Spacing */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
@@ -34,9 +50,9 @@
   --spacing-xl: 3rem;
   --spacing-2xl: 4rem;
   --spacing-3xl: 6rem;
-  
+
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -46,18 +62,20 @@
   --font-size-3xl: 2rem;
   --font-size-4xl: 2.5rem;
   --font-size-5xl: 3rem;
-  
-  /* Border Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  
+
+  /* Border Radius Hierarchy */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 9999px;
+
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 35px rgba(0, 0, 0, 0.7);
   
   /* Transitions */
   --transition-fast: 150ms ease-in-out;

@@ -61,11 +61,10 @@ const Dashboard = () => {
     }, []);
 
     const processAnalytics = (orders, items, categories) => {
-        const totalRevenue = orders
-            .filter(o => o.status === 'delivered')
-            .reduce((sum, order) => sum + (order.total || 0), 0);
+        const deliveredOrders = orders.filter(o => o.status === 'delivered');
+        const totalRevenue = deliveredOrders.reduce((sum, order) => sum + (order.total || 0), 0);
         const pendingOrders = orders.filter(o => o.status === 'pending').length;
-        const avgOrderValue = orders.length > 0 ? (totalRevenue / orders.length).toFixed(0) : 0;
+        const avgOrderValue = deliveredOrders.length > 0 ? (totalRevenue / deliveredOrders.length).toFixed(0) : 0;
 
         setStats({
             totalRevenue,
@@ -207,11 +206,11 @@ const Dashboard = () => {
                     badge="Delivered"
                 />
                 <KPICard
-                    title="Growth Trend"
-                    value="+18.4%"
+                    title="Completion Rate"
+                    value={`${stats.totalOrders > 0 ? Math.round((orders.filter(o => o.status === 'delivered').length / stats.totalOrders) * 100) : 0}%`}
                     Icon={TrendingUpIcon}
                     accentColor="#FFB400"
-                    badge="MoM"
+                    badge="Fulfilled"
                 />
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -42,60 +42,21 @@ function App() {
     const [authLoading, setAuthLoading] = useState(true);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-    // Harmonize foundational FineBurger catalog with live Firestore records.
-    // Ensures signature burgers, rolls, and fries are permanently available while
-    // seamlessly incorporating any live updates and custom items from Firestore.
+    // Official Fine Burger Menu State
+    // If Firestore is still buffering on initial load, uses the synchronized local copy.
+    // As soon as Firestore data streams in, it seamlessly renders live updates without any layout jumps.
     const effectiveCategories = useMemo(() => {
         if (!categories || categories.length === 0) {
             return DEMO_CATEGORIES;
         }
-
-        // Start with the standard base categories
-        const merged = [...DEMO_CATEGORIES];
-        const addedNames = new Set(DEMO_CATEGORIES.map(c => c.name.toLowerCase().trim()));
-
-        // Add any custom categories from Firestore (e.g. "bbq", "Sweets")
-        categories.forEach(liveCat => {
-            const normName = (liveCat.name || '').toLowerCase().trim();
-            if (!addedNames.has(normName) && normName !== '') {
-                addedNames.add(normName);
-                merged.push({
-                    id: liveCat.id,
-                    name: liveCat.name,
-                    icon: liveCat.icon || '🍽️',
-                    order: liveCat.order !== undefined ? liveCat.order + 10 : 99
-                });
-            }
-        });
-
-        return merged;
+        return [...categories].sort((a, b) => (a.order || 0) - (b.order || 0));
     }, [categories]);
 
     const effectiveMenuItems = useMemo(() => {
         if (!menuItems || menuItems.length === 0) {
             return DEMO_MENU_ITEMS;
         }
-
-        const itemsMap = new Map();
-
-        // 1. Seed base burger and fast food menu items
-        DEMO_MENU_ITEMS.forEach(item => {
-            itemsMap.set(item.name.toLowerCase().trim(), { ...item });
-        });
-
-        // 2. Merge live items from Firestore (updating existing or appending new ones)
-        menuItems.forEach(liveItem => {
-            const key = (liveItem.name || '').toLowerCase().trim();
-            if (itemsMap.has(key)) {
-                // Live Firestore item updates base item (price, stock, availability)
-                itemsMap.set(key, { ...itemsMap.get(key), ...liveItem });
-            } else {
-                // New custom item from Firestore (e.g., malai boti, tawa peice)
-                itemsMap.set(liveItem.id || key, { ...liveItem });
-            }
-        });
-
-        return Array.from(itemsMap.values());
+        return menuItems;
     }, [menuItems]);
 
     const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
@@ -149,29 +110,46 @@ function App() {
         localStorage.setItem('cart', JSON.stringify(cartItems));
     }, [cartItems]);
 
-    const addToCart = (item, quantity = 1, selectedVariations = {}) => {
+    const addToCart = (item, maybeQuantity = 1, maybeVariations = {}) => {
+        let qty = 1;
+        let variations = {};
+        let product = item;
+
+        if (typeof maybeQuantity === 'number') {
+            qty = maybeQuantity;
+            variations = maybeVariations || {};
+        } else if (item && typeof item.quantity === 'number') {
+            qty = item.quantity;
+            variations = item.selectedVariations || {};
+        }
+
         setCartItems(prevItems => {
             const existingItemIndex = prevItems.findIndex(
                 cartItem =>
-                    cartItem.id === item.id &&
-                    JSON.stringify(cartItem.selectedVariations || {}) === JSON.stringify(selectedVariations || {})
+                    cartItem.id === product.id &&
+                    JSON.stringify(cartItem.selectedVariations || {}) === JSON.stringify(variations || {})
             );
 
             if (existingItemIndex > -1) {
                 const newItems = [...prevItems];
-                newItems[existingItemIndex].quantity += quantity;
+                newItems[existingItemIndex].quantity += qty;
                 return newItems;
             } else {
-                return [...prevItems, { ...item, quantity, selectedVariations }];
+                return [...prevItems, { ...product, quantity: qty, selectedVariations: variations }];
             }
         });
         setIsCartOpen(true);
     };
 
-    const updateQuantity = (index, delta) => {
+    const updateQuantity = (index, deltaOrQuantity) => {
         setCartItems(prevItems => {
+            if (!prevItems[index]) return prevItems;
             const newItems = [...prevItems];
-            newItems[index].quantity += delta;
+            if (deltaOrQuantity === 1 || deltaOrQuantity === -1) {
+                newItems[index].quantity += deltaOrQuantity;
+            } else if (typeof deltaOrQuantity === 'number') {
+                newItems[index].quantity = deltaOrQuantity;
+            }
             if (newItems[index].quantity <= 0) {
                 newItems.splice(index, 1);
             }
@@ -229,6 +207,8 @@ function App() {
                                         menuItems={effectiveMenuItems}
                                         storeSettings={effectiveSettings}
                                         onAddToCart={addToCart}
+                                        isSearchOpen={isSearchOpen}
+                                        onSearchClose={() => setIsSearchOpen(false)}
                                     />
                                 }
                             />
@@ -241,12 +221,24 @@ function App() {
                                 element={<Orders user={user} />}
                             />
                             <Route
+                                path="/track"
+                                element={<Navigate to="/track-order" replace />}
+                            />
+                            <Route
+                                path="/track/:orderId"
+                                element={<OrderTracking storeSettings={effectiveSettings} />}
+                            />
+                            <Route
                                 path="/track-order"
-                                element={<OrderTracking />}
+                                element={<OrderTracking storeSettings={effectiveSettings} />}
                             />
                             <Route
                                 path="/track-order/:orderId"
-                                element={<OrderTracking />}
+                                element={<OrderTracking storeSettings={effectiveSettings} />}
+                            />
+                            <Route
+                                path="*"
+                                element={<Navigate to="/" replace />}
                             />
                         </Routes>
                     </main>
@@ -256,6 +248,7 @@ function App() {
                     <Cart
                         isOpen={isCartOpen}
                         onClose={() => setIsCartOpen(false)}
+                        cartItems={cartItems}
                         items={cartItems}
                         onUpdateQuantity={updateQuantity}
                         onRemoveItem={removeFromCart}

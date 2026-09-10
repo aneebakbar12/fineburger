@@ -61,7 +61,10 @@ service cloud.firestore {
         )
       );
       allow update: if isAdmin() || (
-        isAuthenticated() && resource.data.assignedRiderId != null && resource.data.assignedRiderId == request.auth.uid
+        isAuthenticated() &&
+        resource.data.assignedRiderId != null &&
+        resource.data.assignedRiderId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'deliveredAt', 'pickedUpAt'])
       );
       allow delete: if isAdmin();
     }

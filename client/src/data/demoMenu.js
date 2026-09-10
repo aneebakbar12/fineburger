@@ -1,373 +1,1436 @@
-// Fine Burger & Fast Food — Baghbanpura, Lahore Menu
-// Authentic local fast food menu with current Lahore market prices (PKR 2026)
+// Official Fine Burger (Since 1981) Menu Data
 
 export const DEMO_CATEGORIES = [
-    { id: 'cat_burgers', name: 'Burgers', icon: '🍔', order: 1 },
-    { id: 'cat_rolls', name: 'Shawarma & Rolls', icon: '🌯', order: 2 },
-    { id: 'cat_pizzas', name: 'Pizzas', icon: '🍕', order: 3 },
-    { id: 'cat_fries', name: 'Fries & Sides', icon: '🍟', order: 4 },
-    { id: 'cat_beverages', name: 'Beverages', icon: '🥤', order: 5 },
-    { id: 'cat_deals', name: 'Special Deals', icon: '🎉', order: 6 },
+    {
+        "id": "cat_burgers",
+        "name": "Burgers",
+        "icon": "🍔",
+        "order": 1
+    },
+    {
+        "id": "cat_deals",
+        "name": "Special Deals",
+        "icon": "🎉",
+        "order": 2
+    },
+    {
+        "id": "cat_pizzas",
+        "name": "Pizza'z",
+        "icon": "🍕",
+        "order": 3
+    },
+    {
+        "id": "cat_special_pizza",
+        "name": "Special Pizza",
+        "icon": "👑",
+        "order": 4
+    },
+    {
+        "id": "cat_shawarma_wraps",
+        "name": "Shawarma & Wraps",
+        "icon": "🌯",
+        "order": 5
+    },
+    {
+        "id": "cat_paratha_rolls",
+        "name": "Paratha Rolls",
+        "icon": "🥖",
+        "order": 6
+    },
+    {
+        "id": "cat_sandwiches",
+        "name": "Sandwiches",
+        "icon": "🥪",
+        "order": 7
+    },
+    {
+        "id": "cat_broast",
+        "name": "Arabian Broast",
+        "icon": "🍗",
+        "order": 8
+    },
+    {
+        "id": "cat_sides",
+        "name": "Fries, Nuggets & Wings",
+        "icon": "🍟",
+        "order": 9
+    },
+    {
+        "id": "cat_beverages",
+        "name": "Beverages",
+        "icon": "🥤",
+        "order": 10
+    }
 ];
 
 export const DEMO_MENU_ITEMS = [
-    // ==========================================
-    // 🍔 BURGERS
-    // ==========================================
     {
-        id: 'fb_b1',
-        name: 'Fine Special Zinger Burger',
-        categoryId: 'cat_burgers',
-        price: 420,
-        description: 'Our signature crispy fried chicken fillet, double coated in secret spices, iceberg lettuce & garlic mayo in a toasted sesame bun.',
-        imageUrl: 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 100,
-        featured: true,
-        variations: [
-            { name: 'Cheese Slice', options: ['No Cheese', 'Add Cheddar Slice (+Rs. 50)'] }
+        "id": "fb_shami",
+        "name": "Shami Burger",
+        "categoryId": "cat_burgers",
+        "price": 160,
+        "description": "Authentic Lahore street-style spiced shami patty with crisp onions, ketchup & mint sauce in a toasted bun.",
+        "imageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)",
+                    "Mayo Dip + Cheese (+Rs. 100)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_b2',
-        name: 'Special Egg Shami Burger',
-        categoryId: 'cat_burgers',
-        price: 200,
-        description: 'Authentic Lahore street favorite! Spiced daal & chicken shami patty fried with fresh egg omelet, onions, ketchup & mint chutney in a soft bun.',
-        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 80,
-        featured: true,
-        variations: [
-            { name: 'Egg Style', options: ['Single Egg', 'Double Egg (+Rs. 40)'] }
+        "id": "fb_double_anda_shami",
+        "name": "Double Anda Shami Burger",
+        "categoryId": "cat_burgers",
+        "price": 220,
+        "description": "Traditional spiced shami patty topped with a double fluffy egg omelet, onions & tangy mint chutney.",
+        "imageUrl": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 90,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)",
+                    "Mayo Dip + Cheese (+Rs. 100)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_b3',
-        name: 'Double Zinger Mighty Burger',
-        categoryId: 'cat_burgers',
-        price: 620,
-        description: 'Two massive crispy chicken zinger fillets stacked high with double cheese, jalapeños & house chipotle sauce.',
-        imageUrl: 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 50,
-        featured: true
-    },
-    {
-        id: 'fb_b4',
-        name: 'Classic Beef Burger',
-        categoryId: 'cat_burgers',
-        price: 420,
-        description: 'Pure grilled beef patty, melted cheese, sliced pickles, fresh tomatoes, shredded lettuce & creamy burger sauce.',
-        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 60
-    },
-    {
-        id: 'fb_b5',
-        name: 'Double Beef Cheese Burger',
-        categoryId: 'cat_burgers',
-        price: 620,
-        description: 'Two juicy beef patties grilled to perfection with melted cheddar, sautéed onions & signature smoky burger sauce.',
-        imageUrl: 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 45,
-        featured: true
-    },
-    {
-        id: 'fb_b6',
-        name: 'Smoky BBQ Grilled Burger',
-        categoryId: 'cat_burgers',
-        price: 480,
-        description: 'Charcoal grilled chicken breast fillet glazed with hickory BBQ glaze, caramelized onions & cheese.',
-        imageUrl: 'https://images.unsplash.com/photo-1619881590738-a111d176d906?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 40
-    },
-    {
-        id: 'fb_b7',
-        name: 'Chicken Patty Burger',
-        categoryId: 'cat_burgers',
-        price: 280,
-        description: 'Seasoned minced chicken patty fried golden with lettuce, mayo & ketchup. A classic budget-friendly treat!',
-        imageUrl: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 70
-    },
-
-    // ==========================================
-    // 🌯 SHAWARMA & ROLLS
-    // ==========================================
-    {
-        id: 'fb_r1',
-        name: 'Special Chicken Shawarma',
-        categoryId: 'cat_rolls',
-        price: 260,
-        description: 'Marinated shredded chicken, garlic mayo sauce, pickled cucumbers & chili sauce wrapped in warm pita bread.',
-        imageUrl: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 80,
-        featured: true,
-        variations: [
-            { name: 'Cheese', options: ['Regular (No Cheese)', 'Cheese Shawarma (+Rs. 50)'] }
+        "id": "fb_chicken_burger",
+        "name": "Chicken Burger",
+        "categoryId": "cat_burgers",
+        "price": 370,
+        "description": "Golden-crisp chicken patty with shredded iceberg lettuce and house garlic mayo in a soft sesame bun.",
+        "imageUrl": "https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 370)",
+                    "Combo with Fries & Drink (+Rs. 140)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_r2',
-        name: 'Zinger Paratha Roll',
-        categoryId: 'cat_rolls',
-        price: 340,
-        description: 'Crispy crunchy zinger strips wrapped in a crispy golden layered paratha with spicy garlic mayo & chopped salad.',
-        imageUrl: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 75,
-        featured: true
-    },
-    {
-        id: 'fb_r3',
-        name: 'Chicken Tikka Paratha Roll',
-        categoryId: 'cat_rolls',
-        price: 320,
-        description: 'Smoky barbecued chicken tikka pieces, sliced red onions & mint raita rolled into a hot buttered paratha.',
-        imageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 70
-    },
-    {
-        id: 'fb_r4',
-        name: 'Shawarma Platter (Open)',
-        categoryId: 'cat_rolls',
-        price: 450,
-        description: 'Generous portion of spiced grilled chicken, 2 pita breads, french fries, pickled vegetables, garlic mayo & hot sauce.',
-        imageUrl: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 30
-    },
-
-    // ==========================================
-    // 🍕 PIZZAS
-    // ==========================================
-    {
-        id: 'fb_p1',
-        name: 'Chicken Tikka Pizza',
-        categoryId: 'cat_pizzas',
-        price: 490,
-        description: 'Local favorite: smoky chicken tikka chunks, sliced onions, green bell peppers, black olives & 100% mozzarella cheese.',
-        imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 40,
-        featured: true,
-        variations: [
-            { name: 'Size', options: ['Small 7 inch', 'Medium 10 inch (+Rs. 400)', 'Large 13 inch (+Rs. 750)'] }
+        "id": "fb_zinger_burger",
+        "name": "Zinger Burger",
+        "categoryId": "cat_burgers",
+        "price": 370,
+        "description": "Crispy fried chicken thigh fillet double-coated in secret fiery spices with creamy mayo & fresh lettuce.",
+        "imageUrl": "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 120,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 370)",
+                    "Combo with Fries & Drink (+Rs. 140)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_p2',
-        name: 'Chicken Fajita Pizza',
-        categoryId: 'cat_pizzas',
-        price: 490,
-        description: 'Mexican style spicy fajita chicken, crunchy capsicum, sweet corn, mushrooms and abundant gooey mozzarella.',
-        imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 35,
-        variations: [
-            { name: 'Size', options: ['Small 7 inch', 'Medium 10 inch (+Rs. 400)', 'Large 13 inch (+Rs. 750)'] }
+        "id": "fb_mighty_zinger",
+        "name": "Mighty Zinger Burger",
+        "categoryId": "cat_burgers",
+        "price": 550,
+        "description": "Two massive crispy chicken zinger fillets stacked high with double cheese, creamy mayo, and crisp lettuce.",
+        "imageUrl": "https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 550)",
+                    "Combo with Fries & Drink (+Rs. 100)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_p3',
-        name: 'Cheese Lover Margherita Pizza',
-        categoryId: 'cat_pizzas',
-        price: 440,
-        description: 'Loaded with rich double mozzarella cheese blend over Italian herb tomato base with oregano sprinkle.',
-        imageUrl: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 30,
-        variations: [
-            { name: 'Size', options: ['Small 7 inch', 'Medium 10 inch (+Rs. 350)', 'Large 13 inch (+Rs. 650)'] }
-        ]
-    },
-
-    // ==========================================
-    // 🍟 FRIES & SIDES
-    // ==========================================
-    {
-        id: 'fb_f1',
-        name: 'Crispy French Fries (Masala / Plain)',
-        categoryId: 'cat_fries',
-        price: 180,
-        description: 'Fresh cut, perfectly fried golden potatoes tossed in spicy chaat masala or classic sea salt. Served with dip.',
-        imageUrl: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 100,
-        variations: [
-            { name: 'Flavor', options: ['Lahori Chaat Masala', 'Plain Salted', 'Garlic Mayo'] },
-            { name: 'Portion', options: ['Regular', 'Large (+Rs. 70)'] }
+        "id": "fb_grill_burger",
+        "name": "Grill Burger",
+        "categoryId": "cat_burgers",
+        "price": 420,
+        "description": "Tender flame-grilled chicken fillet infused with smoky spices, caramelized onions & secret burger sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1619881590738-a111d176d906?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 75,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 420)",
+                    "Combo with Fries & Drink (+Rs. 100)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_f2',
-        name: 'Loaded Melted Cheese Fries',
-        categoryId: 'cat_fries',
-        price: 320,
-        description: 'Generous box of crispy hot fries drenched in warm cheddar cheese sauce, pickled jalapeño slices & mayo garlic.',
-        imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 60,
-        featured: true
-    },
-    {
-        id: 'fb_f3',
-        name: 'Crispy Chicken Nuggets (6 Pcs)',
-        categoryId: 'cat_fries',
-        price: 280,
-        description: 'Tender chicken breast nuggets fried crispy golden with chili garlic and tomato ketchup dips.',
-        imageUrl: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 70
-    },
-    {
-        id: 'fb_f4',
-        name: 'Crispy Hot Wings (6 Pcs)',
-        categoryId: 'cat_fries',
-        price: 340,
-        description: 'Juicy chicken wings coated in a fiery crispy batter, deep-fried crunchy with spicy dip.',
-        imageUrl: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 50
-    },
-
-    // ==========================================
-    // 🥤 BEVERAGES
-    // ==========================================
-    {
-        id: 'fb_d1',
-        name: 'Chilled Soft Drink (Regular)',
-        categoryId: 'cat_beverages',
-        price: 80,
-        description: 'Refreshing chilled carbonated drink — choose your favorite flavor.',
-        imageUrl: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 200,
-        variations: [
-            { name: 'Flavor', options: ['Pepsi', '7Up', 'Mirinda', 'Mountain Dew', 'Diet 7Up'] }
+        "id": "fb_peri_peri_grill_burger",
+        "name": "Peri Peri Grill Burger",
+        "categoryId": "cat_burgers",
+        "price": 450,
+        "description": "Flame-grilled chicken fillet basted in African peri-peri glaze with pickled jalapenos & chili mayo.",
+        "imageUrl": "https://images.unsplash.com/photo-1586816001966-79b736744398?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 70,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 450)",
+                    "Combo with Fries & Drink (+Rs. 120)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_d2',
-        name: 'Soft Drink Bottle (500ml)',
-        categoryId: 'cat_beverages',
-        price: 120,
-        description: 'Half-liter chilled bottle for on the go refreshment.',
-        imageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 150,
-        variations: [
-            { name: 'Flavor', options: ['Pepsi 500ml', '7Up 500ml', 'Dew 500ml'] }
+        "id": "fb_mac_patty_burger",
+        "name": "Mac Patty Burger (For Kids Also)",
+        "categoryId": "cat_burgers",
+        "price": 250,
+        "description": "Mild seasoned chicken patty with gentle cheese spread and mild mayo. Ideal for children and light snacks.",
+        "imageUrl": "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 250)",
+                    "Combo with Fries & Drink (+Rs. 140)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_d3',
-        name: 'Oreo Thick Milkshake',
-        categoryId: 'cat_beverages',
-        price: 320,
-        description: 'Handcrafted thick shake made with whole milk, vanilla dairy ice cream & blended Oreo cookies.',
-        imageUrl: 'https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 40,
-        featured: true
-    },
-    {
-        id: 'fb_d4',
-        name: 'Fresh Mint Margarita / Lemonade',
-        categoryId: 'cat_beverages',
-        price: 160,
-        description: 'Crushed ice, fresh mint sprigs, lemon juice, 7Up and black salt. The ultimate Lahore thirst quencher!',
-        imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 60
-    },
-
-    // ==========================================
-    // 🎉 SPECIAL DEALS
-    // ==========================================
-    {
-        id: 'fb_dl1',
-        name: 'Solo Deal 1 — Zinger + Fries + Drink',
-        categoryId: 'cat_deals',
-        price: 580,
-        description: '1 Special Zinger Burger + Regular Masala Fries + 1 Chilled Drink. Total satisfaction at a bargain price!',
-        imageUrl: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 999,
-        featured: true,
-        variations: [
-            { name: 'Drink', options: ['Pepsi', '7Up', 'Mirinda'] }
+        "id": "fb_chicken_boti_burger",
+        "name": "Chicken Boti Burger",
+        "categoryId": "cat_burgers",
+        "price": 370,
+        "description": "Charcoal-grilled tender chicken boti chunks with mint raita, onion rings, and spicy desi spices in a bun.",
+        "imageUrl": "https://images.unsplash.com/photo-1521305916504-4a1121188589?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 70,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 370)",
+                    "Combo with Fries & Drink (+Rs. 120)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_dl2',
-        name: 'Twin Zinger Combo — 2 Zingers + Fries + 2 Drinks',
-        categoryId: 'cat_deals',
-        price: 1050,
-        description: '2 Crispy Zinger Burgers + 1 Large Masala Fries + 2 Chilled Soft Drinks. Best deal for couples & friends!',
-        imageUrl: 'https://images.unsplash.com/photo-1551782450-17144efb9c50?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 999,
-        featured: true,
-        variations: [
-            { name: 'Drinks', options: ['2x Pepsi', '2x 7Up', '1 Pepsi + 1 7Up'] }
+        "id": "fb_crunch_burger",
+        "name": "Crunch Burger",
+        "categoryId": "cat_burgers",
+        "price": 300,
+        "description": "Extra crispy battered chicken fillet topped with crunchy potato crisps, signature dressing & cheese sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 85,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 300)",
+                    "Combo with Fries & Drink (+Rs. 150)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_dl3',
-        name: 'Pizza & Burger Feast Deal',
-        categoryId: 'cat_deals',
-        price: 1350,
-        description: '1 Medium Tikka or Fajita Pizza + 1 Special Zinger Burger + 1 Liter Cold Drink Bottle.',
-        imageUrl: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 999,
-        featured: true,
-        variations: [
-            { name: 'Pizza Flavor', options: ['Chicken Tikka', 'Chicken Fajita'] }
+        "id": "fb_special_burger",
+        "name": "FB Special Burger",
+        "categoryId": "cat_burgers",
+        "price": 490,
+        "description": "Fine Burger royal specialty: double premium patties, melted cheddar, grilled smoked sausage & house secret sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 90,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 490)",
+                    "Combo with Fries & Drink (+Rs. 110)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
         ]
     },
     {
-        id: 'fb_dl4',
-        name: 'Family Mega Box — 4 Zingers + 2 Fries + 1.5L Drink',
-        categoryId: 'cat_deals',
-        price: 1990,
-        description: '4 Signature Zinger Burgers + 2 Large Fries Baskets + 1.5 Liter Chilled Bottle + Dipping Sauces.',
-        imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80',
-        available: true,
-        inStock: true,
-        stockLevel: 999,
-        featured: true
+        "id": "fb_gorilla_smash",
+        "name": "Gorilla Smash Burger",
+        "categoryId": "cat_burgers",
+        "price": 490,
+        "description": "Giant smashed double beef/chicken patties with caramelized crispy edges, melted cheese, pickles & gorilla sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 90,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Burger (Rs. 490)",
+                    "Combo with Fries & Drink (+Rs. 110)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sand_chicken",
+        "name": "Chicken Sandwich",
+        "categoryId": "cat_sandwiches",
+        "price": 420,
+        "description": "Shredded seasoned chicken breast, boiled egg slices, cucumber & creamy mayo in triple-layer toasted bread.",
+        "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Sandwich (Rs. 420)",
+                    "Combo with Fries & Drink (Rs. 570)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sand_grill",
+        "name": "Grill Sandwich",
+        "categoryId": "cat_sandwiches",
+        "price": 470,
+        "description": "Charcoal-grilled smoky chicken breast strips with bell peppers, melted cheese & herb spread toasted golden.",
+        "imageUrl": "https://images.unsplash.com/photo-1554433607-66b5efe9d304?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Sandwich (Rs. 470)",
+                    "Combo with Fries & Drink (Rs. 590)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sand_club",
+        "name": "Club Sandwich",
+        "categoryId": "cat_sandwiches",
+        "price": 420,
+        "description": "Classic double-decker with chicken, fluffy omelet, cheese slice, lettuce, tomatoes and garlic mayo.",
+        "imageUrl": "https://images.unsplash.com/photo-1567234669003-dce7a7a88821?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 70,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Sandwich (Rs. 420)",
+                    "Combo with Fries & Drink (Rs. 570)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sand_peri_peri",
+        "name": "Peri Peri Grill Sandwich",
+        "categoryId": "cat_sandwiches",
+        "price": 520,
+        "description": "Fiery peri-peri grilled chicken with melted mozzarella, jalapenos & spicy dressing in grilled crusty bread.",
+        "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Meal Option",
+                "options": [
+                    "Single Sandwich (Rs. 520)",
+                    "Combo with Fries & Drink (Rs. 620)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_shaw_chicken",
+        "name": "Chicken Shawarma",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 270,
+        "description": "Thinly sliced rotisserie chicken, authentic garlic toum, vinegar pickles, and hot sauce in warm pita bread (Large).",
+        "imageUrl": "https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 90,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_shaw_chicken_platter",
+        "name": "Chicken Platter Shawarma",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 680,
+        "description": "Open-style shawarma platter with carved spiced chicken, 2 warm pita breads, french fries, garlic toum & salad.",
+        "imageUrl": "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Platter Size",
+                "options": [
+                    "Medium Platter (Rs. 680)",
+                    "Large Platter (Rs. 760)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_shaw_zinger",
+        "name": "Zinger Shawarma",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 220,
+        "description": "Crunchy golden zinger chicken strips wrapped in pita bread with spicy garlic mayo sauce & shredded cabbage.",
+        "imageUrl": "https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small (Rs. 220)",
+                    "Large (Rs. 300)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_shaw_grill",
+        "name": "Grill Shawarma",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 350,
+        "description": "Smoky grilled chicken boti chunks basted in olive oil & garlic, rolled in warm pita bread (Large).",
+        "imageUrl": "https://images.unsplash.com/photo-1561651823-34feb02250e4?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 75,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_shaw_grill_platter",
+        "name": "Grill Platter Shawarma",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 780,
+        "description": "Generous platter of charcoal-grilled chicken cubes served with fries, garlic dip, pickled veggies & 2 pitas.",
+        "imageUrl": "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Platter Size",
+                "options": [
+                    "Small Platter (Rs. 780)",
+                    "Large Platter (Rs. 850)"
+                ]
+            },
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_wrap_zinger",
+        "name": "Zinger Tortilla Wrap",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 550,
+        "description": "Crispy chicken zinger fillets, iceberg lettuce, diced tomatoes, and house dressing wrapped in a soft flour tortilla.",
+        "imageUrl": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_wrap_grill_bbq",
+        "name": "Grill BBQ Tortilla Wrap",
+        "categoryId": "cat_shawarma_wraps",
+        "price": 600,
+        "description": "Flame-grilled chicken glazed in barbecue sauce with sauteed peppers, onions, and melted cheese in a toasted tortilla.",
+        "imageUrl": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_paratha_kabab",
+        "name": "Kabab Paratha Roll",
+        "categoryId": "cat_paratha_rolls",
+        "price": 300,
+        "description": "Juicy spiced seekh kabab grilled on charcoal and wrapped in hot crispy lachha paratha with mint chutney.",
+        "imageUrl": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_paratha_chicken",
+        "name": "Chicken Paratha Roll",
+        "categoryId": "cat_paratha_rolls",
+        "price": 320,
+        "description": "Traditional chicken boti rolled in hot flaky paratha with sliced red onions and creamy garlic mayo.",
+        "imageUrl": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_paratha_zinger",
+        "name": "Zinger Paratha Roll",
+        "categoryId": "cat_paratha_rolls",
+        "price": 300,
+        "description": "Crunchy golden fried zinger strips wrapped in a crispy layered paratha with spicy sauce & fresh salad.",
+        "imageUrl": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 85,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_paratha_grill",
+        "name": "Grill Paratha Roll",
+        "categoryId": "cat_paratha_rolls",
+        "price": 350,
+        "description": "Smoky grilled chicken pieces basted in tikka spices, wrapped in crispy layered butter paratha.",
+        "imageUrl": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 75,
+        "variations": [
+            {
+                "name": "Add-ons",
+                "options": [
+                    "No Add-on",
+                    "Mayo Dip (+Rs. 50)",
+                    "Cheese Slice (+Rs. 50)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_fries_plain",
+        "name": "Plain Fries",
+        "categoryId": "cat_sides",
+        "price": 150,
+        "description": "Crisp golden french fries freshly cooked and lightly seasoned with sea salt.",
+        "imageUrl": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small (Rs. 150)",
+                    "Medium (Rs. 200)",
+                    "Large (Rs. 300)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_fries_masala",
+        "name": "Masala Fries",
+        "categoryId": "cat_sides",
+        "price": 160,
+        "description": "Hot golden fries generously dusted with spicy traditional Lahori chaat masala seasoning.",
+        "imageUrl": "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small (Rs. 160)",
+                    "Medium (Rs. 210)",
+                    "Large (Rs. 310)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_fries_mayo_garlic",
+        "name": "Mayo Garlic Fries",
+        "categoryId": "cat_sides",
+        "price": 200,
+        "description": "Crisp fries generously topped with our house-recipe creamy garlic mayo sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1585109649139-366815a0d713?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small (Rs. 200)",
+                    "Medium (Rs. 270)",
+                    "Large (Rs. 370)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_fries_loaded",
+        "name": "Loaded Fries",
+        "categoryId": "cat_sides",
+        "price": 600,
+        "description": "Large portion of fries smothered in cheese sauce, crispy fried chicken bites, jalapenos & secret dressing.",
+        "imageUrl": "https://images.unsplash.com/photo-1585109649139-366815a0d713?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 70,
+        "featured": true
+    },
+    {
+        "id": "fb_fries_grill_loaded",
+        "name": "Grill Loaded Fries",
+        "categoryId": "cat_sides",
+        "price": 700,
+        "description": "Fries topped with tender charcoal-grilled chicken boti chunks, melted cheese, black olives, and BBQ drizzle.",
+        "imageUrl": "https://images.unsplash.com/photo-1585109649139-366815a0d713?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "featured": true
+    },
+    {
+        "id": "fb_hot_wings",
+        "name": "Hot Wings",
+        "categoryId": "cat_sides",
+        "price": 300,
+        "description": "Crispy batter-fried chicken wings seasoned with fiery spices and served piping hot.",
+        "imageUrl": "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "variations": [
+            {
+                "name": "Portion",
+                "options": [
+                    "5 Pieces (Rs. 300)",
+                    "10 Pieces (Rs. 500)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_nuggets",
+        "name": "Chicken Nuggets",
+        "categoryId": "cat_sides",
+        "price": 300,
+        "description": "Tender all-white-meat chicken nuggets with a golden crunchy coating. Loved by kids and adults.",
+        "imageUrl": "https://images.unsplash.com/photo-1562967914-608f82629710?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 90,
+        "variations": [
+            {
+                "name": "Portion",
+                "options": [
+                    "5 Pieces (Rs. 300)",
+                    "10 Pieces (Rs. 500)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_broast_quarter",
+        "name": "Quarter Arabian Broast",
+        "categoryId": "cat_broast",
+        "price": 750,
+        "description": "Authentic deep-pressure fried Arabian chicken (1 Leg + 1 Thigh), served with soft bun, fries & special garlic dip.",
+        "imageUrl": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "featured": true
+    },
+    {
+        "id": "fb_broast_half",
+        "name": "Half Arabian Broast",
+        "categoryId": "cat_broast",
+        "price": 1150,
+        "description": "Half crispy Arabian broast chicken (1 Leg + 1 Thigh + 1 Wing + 1 Chest piece), served with bun, fries & garlic dip.",
+        "imageUrl": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "featured": true
+    },
+    {
+        "id": "fb_broast_full",
+        "name": "Full Arabian Broast",
+        "categoryId": "cat_broast",
+        "price": 2200,
+        "description": "Full family crispy Arabian broast (2 Legs + 2 Thighs + 2 Wings + 2 Chest pieces), served with buns, fries & garlic dips.",
+        "imageUrl": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 30,
+        "featured": true
+    },
+    {
+        "id": "fb_pz_tikka",
+        "name": "Chicken Tikka Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Lahore favorite: smoky chicken tikka chunks, sliced onions, green bell peppers & 100% pure mozzarella cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_fajita",
+        "name": "Chicken Fajita Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Marinated Mexican-spiced chicken fajita, crisp onions, green bell peppers, oregano & mozzarella.",
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_supreme",
+        "name": "Chicken Supreme Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Loaded with spiced chicken, smoked sausage, sliced mushrooms, capsicum, black olives & rich mozzarella.",
+        "imageUrl": "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_cheese_lover",
+        "name": "Cheese Lover Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Double layer of 100% dairy mozzarella and cheddar cheese over rich Italian tomato herb sauce.",
+        "imageUrl": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_vegi_lover",
+        "name": "Vegi Lover Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Fresh bell peppers, red onions, mushrooms, sweet corn, juicy tomatoes & black olives on herb crust.",
+        "imageUrl": "https://images.unsplash.com/photo-1576458088443-04a19bb13da6?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_bbq",
+        "name": "Bar-B-Q Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Smoky barbecued chicken chunks with sweet tangy BBQ drizzle, caramelized red onions & mozzarella.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 55,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_mexican",
+        "name": "Mexican Chilli Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Spicy chicken, zesty Mexican salsa, jalapenos, chili flakes, crunchy capsicum and bubbly cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_peri_peri",
+        "name": "Peri Peri Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Fiery peri-peri chicken chunks with spicy sauce swirl, onions, bell peppers & mozzarella cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_malai_boti",
+        "name": "Malai Boti Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 450,
+        "description": "Mild, rich and creamy chicken malai boti pieces with white garlic sauce, onions and lots of mozzarella.",
+        "imageUrl": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 60,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 450)",
+                    "Medium 10 inch (Rs. 800)",
+                    "Large 13 inch (Rs. 1200)",
+                    "XL 17 inch (Rs. 1600)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_lasagnia",
+        "name": "Lasagnia Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 850,
+        "description": "Lasagna-style minced meat sauce layered between pizza crust, creamy bechamel & melted cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 850)",
+                    "Large 13 inch (Rs. 1300)",
+                    "XL 17 inch (Rs. 1700)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_bihari_kabab",
+        "name": "Bihari Kabab Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 500,
+        "description": "Tender bihari kabab chunks marinated in traditional aromatic spices, red onions & mozzarella.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 500)",
+                    "Medium 10 inch (Rs. 850)",
+                    "Large 13 inch (Rs. 1300)",
+                    "XL 17 inch (Rs. 1700)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_pz_grill_smoke",
+        "name": "Grill Smoke Pizza",
+        "categoryId": "cat_pizzas",
+        "price": 500,
+        "description": "Hickory-smoked grilled chicken, roasted bell peppers, red onions, smoky BBQ drizzle & melted cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 50,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Small 7 inch (Rs. 500)",
+                    "Medium 10 inch (Rs. 850)",
+                    "Large 13 inch (Rs. 1300)",
+                    "XL 17 inch (Rs. 1700)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sp_fine_special",
+        "name": "Fine Special Pizza",
+        "categoryId": "cat_special_pizza",
+        "price": 1050,
+        "description": "Chef's ultimate crown creation: four meats blend, stuffed crust, black olives, mushrooms & overflowing cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 1050)",
+                    "Large 13 inch (Rs. 1350)",
+                    "XL 17 inch (Rs. 1800)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sp_four_season",
+        "name": "Four Season Pizza",
+        "categoryId": "cat_special_pizza",
+        "price": 1050,
+        "description": "Four distinct quadrants on one large artisan crust: Chicken Tikka, Fajita, Smoky BBQ, and Fresh Veggie.",
+        "imageUrl": "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 1050)",
+                    "Large 13 inch (Rs. 1350)",
+                    "XL 17 inch (Rs. 1800)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sp_cheese_stuffer",
+        "name": "Cheese Stuffer Pizza",
+        "categoryId": "cat_special_pizza",
+        "price": 1050,
+        "description": "Outer crust ring generously stuffed with gooey melted cheese, topped with premium grilled chicken & olives.",
+        "imageUrl": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 1050)",
+                    "Large 13 inch (Rs. 1350)",
+                    "XL 17 inch (Rs. 1800)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sp_kabab_stuffer",
+        "name": "Kabab Stuffer Pizza",
+        "categoryId": "cat_special_pizza",
+        "price": 1050,
+        "description": "Crust stuffed with tender seekh kababs, covered in spicy chicken chunks, onions & 100% mozzarella cheese.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 1050)",
+                    "Large 13 inch (Rs. 1350)",
+                    "XL 17 inch (Rs. 1800)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_sp_crown_crust",
+        "name": "Crown Crust Pizza",
+        "categoryId": "cat_special_pizza",
+        "price": 1050,
+        "description": "Artisan crown crust featuring regal folded pockets filled with cream cheese, surrounded by savory toppings.",
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 40,
+        "featured": true,
+        "variations": [
+            {
+                "name": "Size",
+                "options": [
+                    "Medium 10 inch (Rs. 1050)",
+                    "Large 13 inch (Rs. 1350)",
+                    "XL 17 inch (Rs. 1800)"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_deal_1",
+        "name": "Deal 1",
+        "categoryId": "cat_deals",
+        "price": 590,
+        "description": "1 Zinger Burger + 1 PC Crispy Chicken + 1 345ml Soft Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "featured": true
+    },
+    {
+        "id": "fb_deal_2",
+        "name": "Deal 2",
+        "categoryId": "cat_deals",
+        "price": 1140,
+        "description": "2 Zinger Burgers + 2 PC Crispy Chicken + 2 345ml Soft Drinks.",
+        "imageUrl": "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "featured": true
+    },
+    {
+        "id": "fb_deal_3",
+        "name": "Deal 3",
+        "categoryId": "cat_deals",
+        "price": 2600,
+        "description": "4 Zinger Burgers + 1 Large Pizza + 1.5 Ltr Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "featured": true
+    },
+    {
+        "id": "fb_deal_4",
+        "name": "Deal 4",
+        "categoryId": "cat_deals",
+        "price": 990,
+        "description": "3 PC Crispy Chicken + 1 Large Fries + 1 500ml Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80
+    },
+    {
+        "id": "fb_deal_5",
+        "name": "Deal 5",
+        "categoryId": "cat_deals",
+        "price": 950,
+        "description": "2 Small Pizzas (Choice of Flavors) + 1 500ml Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80
+    },
+    {
+        "id": "fb_deal_6",
+        "name": "Deal 6",
+        "categoryId": "cat_deals",
+        "price": 1700,
+        "description": "2 Medium Pizzas (Choice of Flavors) + 1.5 Ltr Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "featured": true
+    },
+    {
+        "id": "fb_deal_7",
+        "name": "Deal 7",
+        "categoryId": "cat_deals",
+        "price": 2500,
+        "description": "2 Large Pizzas (Choice of Flavors) + 1.5 Ltr Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 80,
+        "featured": true
+    },
+    {
+        "id": "fb_deal_8",
+        "name": "Deal 8",
+        "categoryId": "cat_deals",
+        "price": 2200,
+        "description": "4 Zinger Burgers + 4 PC Crispy Chicken + 1.5 Ltr Cold Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 70
+    },
+    {
+        "id": "fb_deal_9",
+        "name": "Deal 9",
+        "categoryId": "cat_deals",
+        "price": 999,
+        "description": "1 Small Pizza + 1 Zinger / Chicken Burger + 1 Small Fries + 1 500ml Drink.",
+        "imageUrl": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 100,
+        "featured": true
+    },
+    {
+        "id": "fb_drink_345",
+        "name": "Soft Drink 345ml",
+        "categoryId": "cat_beverages",
+        "price": 80,
+        "description": "Chilled soft drink bottle (Pepsi, 7Up, Mirinda, Mountain Dew).",
+        "imageUrl": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 200,
+        "variations": [
+            {
+                "name": "Flavor",
+                "options": [
+                    "Pepsi 345ml",
+                    "7Up 345ml",
+                    "Mirinda 345ml",
+                    "Mountain Dew 345ml"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "fb_drink_500",
+        "name": "Soft Drink 500ml",
+        "categoryId": "cat_beverages",
+        "price": 120,
+        "description": "Chilled 500ml soft drink bottle (Pepsi, 7Up, Mirinda).",
+        "imageUrl": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 150
+    },
+    {
+        "id": "fb_drink_1500",
+        "name": "Soft Drink 1.5 Liter",
+        "categoryId": "cat_beverages",
+        "price": 220,
+        "description": "Family size 1.5 liter chilled soft drink (Pepsi, 7Up, Mirinda).",
+        "imageUrl": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 120
+    },
+    {
+        "id": "fb_water_500",
+        "name": "Mineral Water 500ml",
+        "categoryId": "cat_beverages",
+        "price": 60,
+        "description": "Pure purified chilled mineral water bottle 500ml.",
+        "imageUrl": "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 200
+    },
+    {
+        "id": "fb_water_1500",
+        "name": "Mineral Water 1.5 Liter",
+        "categoryId": "cat_beverages",
+        "price": 110,
+        "description": "Pure purified mineral water large family bottle 1.5 Liter.",
+        "imageUrl": "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&q=80",
+        "available": true,
+        "inStock": true,
+        "stockLevel": 150
     }
 ];

@@ -46,8 +46,9 @@ const Reports = () => {
         setFilteredOrders(filtered);
         setStats(getOrderStats(filtered));
         setBestSellers(getBestSellingItems(filtered, 10));
-        setRevenueByDay(getRevenueByDay(filtered, 7));
-        setRevenueByMonth(getRevenueByMonth(filtered, 6));
+        // Pass allOrders to time-series historical charts so trailing 7-day and 6-month trends remain intact
+        setRevenueByDay(getRevenueByDay(allOrders, 7));
+        setRevenueByMonth(getRevenueByMonth(allOrders, 6));
     };
 
     const formatCurrency = (amount) => `Rs. ${amount.toLocaleString()}`;

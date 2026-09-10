@@ -579,11 +579,12 @@ export const getUnusedSignupCodes = async () => {
     try {
         const q = query(
             collection(db, 'riderSignupCodes'),
-            where('used', '==', false),
-            orderBy('createdAt', 'desc')
+            where('used', '==', false)
         );
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     } catch (error) {
         console.error('Error fetching unused codes:', error);
         return [];
@@ -594,16 +595,20 @@ export const getUnusedSignupCodes = async () => {
 export const subscribeToUnusedCodes = (callback) => {
     const q = query(
         collection(db, 'riderSignupCodes'),
-        where('used', '==', false),
-        orderBy('createdAt', 'desc')
+        where('used', '==', false)
     );
 
     return onSnapshot(q, (querySnapshot) => {
-        const codes = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        const codes = querySnapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }))
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         callback(codes);
+    }, (err) => {
+        console.warn('Unused codes snapshot error:', err);
+        callback([]);
     });
 };
 

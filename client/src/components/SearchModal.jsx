@@ -56,7 +56,7 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
                     quantity: 1,
                     selectedVariations: {},
                     totalPrice: item.price
-                });
+                }, 1, {});
             }
             // Flash "Added!" indicator
             setAddedIds(prev => ({ ...prev, [item.id]: true }));

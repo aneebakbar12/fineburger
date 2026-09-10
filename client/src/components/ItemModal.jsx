@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ItemModal.css';
 
+const parseVariationPriceDelta = (optionString) => {
+    if (typeof optionString !== 'string') return 0;
+    const match = optionString.match(/\(\s*\+\s*(?:Rs\.?|PKR)?\s*([0-9]+)\s*\)/i);
+    return match && match[1] ? Number(match[1]) : 0;
+};
+
 const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     const [quantity, setQuantity] = useState(1);
     const [selectedVariations, setSelectedVariations] = useState({});
@@ -12,16 +18,34 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
             setSelectedVariations({});
             setVariationError('');
             document.body.style.overflow = 'hidden';
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Escape') {
+                    onClose();
+                }
+            };
+            window.addEventListener('keydown', handleKeyDown);
+            return () => {
+                window.removeEventListener('keydown', handleKeyDown);
+                document.body.style.overflow = 'unset';
+            };
         } else {
             document.body.style.overflow = 'unset';
         }
-
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     if (!isOpen || !item) return null;
+
+    const computeUnitPrice = () => {
+        let base = Number(item.price) || 0;
+        Object.values(selectedVariations).forEach(val => {
+            base += parseVariationPriceDelta(val);
+        });
+        return base;
+    };
+
+    const currentUnitPrice = computeUnitPrice();
+    const currentTotalPrice = currentUnitPrice * quantity;
 
     const handleVariationChange = (variationName, option) => {
         setSelectedVariations(prev => ({
@@ -52,20 +76,24 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
 
         const cartItem = {
             ...item,
+            price: currentUnitPrice,
+            basePrice: item.price,
             quantity,
             selectedVariations,
-            totalPrice: item.price * quantity
+            totalPrice: currentTotalPrice
         };
-        onAddToCart(cartItem);
+
+        // Pass both full item object and explicit quantity/variations for maximum compatibility
+        onAddToCart(cartItem, quantity, selectedVariations);
         onClose();
     };
 
-    const canAddToCart = storeOpen && item.available && item.inStock !== false;
+    const canAddToCart = storeOpen && item.available !== false && item.inStock !== false;
 
     return (
         <>
             <div className="modal-backdrop" onClick={onClose}></div>
-            <div className="modal">
+            <div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-item-title">
                 <div className="modal-content">
                     {/* Close button */}
                     <button className="modal-close" onClick={onClose} aria-label="Close modal">
@@ -84,13 +112,20 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
 
                     {/* Item Details */}
                     <div className="modal-body">
-                        <h2 className="modal-title">{item.name}</h2>
+                        <h2 id="modal-item-title" className="modal-title">{item.name}</h2>
 
                         {item.description && (
                             <p className="modal-description">{item.description}</p>
                         )}
 
-                        <div className="modal-price">Rs. {item.price}</div>
+                        <div className="modal-price">
+                            Rs. {currentUnitPrice}
+                            {currentUnitPrice > item.price && (
+                                <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', textDecoration: 'line-through', marginLeft: '8px' }}>
+                                    Rs. {item.price}
+                                </span>
+                            )}
+                        </div>
 
                         {/* Variations */}
                         {item.variations && item.variations.length > 0 && (
@@ -167,7 +202,7 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                             onClick={handleAddToCart}
                             disabled={!canAddToCart}
                         >
-                            {canAddToCart ? `Add to Cart - Rs. ${item.price * quantity}` : 'Currently Unavailable'}
+                            {canAddToCart ? `Add to Cart • Rs. ${currentTotalPrice}` : 'Currently Unavailable'}
                         </button>
                     </div>
                 </div>

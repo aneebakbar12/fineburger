@@ -47,7 +47,7 @@ const Orders = ({ user }) => {
         <div className="orders-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
                 <h1 style={{ margin: 0 }}>{isGuest ? 'Your Recent Orders' : 'My Order History'}</h1>
-                <Link to="/track" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '13px' }}>
+                <Link to="/track-order" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '13px' }}>
                     🔍 Track an Order
                 </Link>
             </div>
@@ -145,7 +145,7 @@ const Orders = ({ user }) => {
                                         <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '18px' }}>Rs. {order.total}</span>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/track/${orderId}`)}
+                                        onClick={() => navigate(`/track-order/${orderId}`)}
                                         className="btn btn-primary"
                                         style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                     >

@@ -10,6 +10,24 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const userMenuRef = useRef(null);
+    const logoTapsRef = useRef(0);
+    const lastTapTimeRef = useRef(0);
+
+    const handleLogoClick = (e) => {
+        const now = Date.now();
+        if (now - lastTapTimeRef.current < 600) {
+            logoTapsRef.current += 1;
+        } else {
+            logoTapsRef.current = 1;
+        }
+        lastTapTimeRef.current = now;
+
+        if (logoTapsRef.current >= 5) {
+            e.preventDefault();
+            logoTapsRef.current = 0;
+            window.dispatchEvent(new CustomEvent('openStaffPinModal'));
+        }
+    };
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -35,7 +53,7 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                 <div className="container">
                     <div className="header-content">
                         {/* Logo */}
-                        <Link to="/" className="logo">
+                        <Link to="/" className="logo" onClick={handleLogoClick}>
                             <span className="logo-text">FINE</span>
                             <span className="logo-accent">BURGER</span>
                         </Link>
@@ -44,9 +62,18 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                         <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
                             {!isStaffMode && <Link to="/" className="nav-link" onClick={closeNav}>Home</Link>}
                             <Link to="/menu" className="nav-link" onClick={closeNav}>Menu</Link>
-                            {!isStaffMode && <Link to="/track" className="nav-link" onClick={closeNav}>Track Order</Link>}
+                            {!isStaffMode && <Link to="/track-order" className="nav-link" onClick={closeNav}>Track Order</Link>}
                             {!isStaffMode && <Link to="/about" className="nav-link" onClick={closeNav}>About Us</Link>}
                         </nav>
+
+                        {/* Mobile Nav Backdrop */}
+                        {isMenuOpen && (
+                            <div
+                                className="nav-backdrop"
+                                onClick={closeNav}
+                                aria-hidden="true"
+                            />
+                        )}
 
                         {/* Right side actions */}
                         <div className="header-actions">

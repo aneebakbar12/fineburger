@@ -8,21 +8,49 @@ import {
     showPushNotification
 } from '../services/notificationService';
 import LocationPicker from './LocationPicker';
-import AuthModal from './AuthModal'; // Import AuthModal
+import AuthModal from './AuthModal';
 import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/Cart.css';
 
-const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user, onClearCart }) => {
+// Parse price increments from variation strings, e.g. "Large 13 inch (+Rs. 450)"
+export const getItemUnitPrice = (item) => {
+    let price = Number(item.price) || 0;
+    if (item.selectedVariations && typeof item.selectedVariations === 'object') {
+        Object.values(item.selectedVariations).forEach(val => {
+            if (typeof val === 'string') {
+                const match = val.match(/\(\s*\+\s*(?:Rs\.?|PKR)?\s*([0-9]+)\s*\)/i);
+                if (match && match[1]) {
+                    price += Number(match[1]);
+                }
+            }
+        });
+    }
+    return price;
+};
+
+const Cart = ({
+    isOpen,
+    onClose,
+    cartItems,
+    items,
+    onUpdateQuantity,
+    onRemoveItem,
+    user,
+    onClearCart,
+    storeSettings
+}) => {
     const navigate = useNavigate();
     const { isStaffMode } = useStaffMode();
+    const activeCartItems = cartItems || items || [];
+
     const [isCheckout, setIsCheckout] = useState(false);
-    const [authChoice, setAuthChoice] = useState(false); // New state to show auth choice
+    const [authChoice, setAuthChoice] = useState(false);
     const [customerDetails, setCustomerDetails] = useState({
         name: '',
         phone: '',
         address: '',
-        location: null, // { lat, lng }
-        tableNumber: '' // For Dine-in
+        location: null,
+        tableNumber: ''
     });
     const [orderType, setOrderType] = useState('Delivery'); // 'Delivery', 'Takeaway', 'Dine-in'
     const [loading, setLoading] = useState(false);
@@ -32,13 +60,12 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
 
-    // Auto-fill user details when user logs in
+    // Auto-fill user details when user is logged in
     useEffect(() => {
         if (user && isCheckout) {
             setCustomerDetails(prev => ({
                 ...prev,
-                name: user.displayName || prev.name || '',
-                // phone: user.phoneNumber || prev.phone || '' // Firebase auth often doesn't have phone by default
+                name: user.displayName || prev.name || ''
             }));
         }
     }, [user, isCheckout]);
@@ -52,8 +79,14 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         }
     }, [isStaffMode]);
 
+    const calculateSubtotal = () => {
+        return activeCartItems.reduce((total, item) => total + (getItemUnitPrice(item) * item.quantity), 0);
+    };
+
+    const deliveryFee = orderType === 'Delivery' ? (Number(storeSettings?.deliveryFee) || 120) : 0;
+
     const calculateTotal = () => {
-        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return calculateSubtotal() + deliveryFee;
     };
 
     const handleInputChange = (e) => {
@@ -66,18 +99,16 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const handleAddressSelect = (address, latlng) => {
         setCustomerDetails(prev => ({
             ...prev,
-            address: address, // Auto-fill address
-            location: { lat: latlng.lat, lng: latlng.lng } // Store as plain object
+            address: address,
+            location: { lat: latlng.lat, lng: latlng.lng }
         }));
     };
 
     const handleProceedToCheckout = () => {
         if (user || isStaffMode) {
-            // Skip auth for staff mode or logged-in users
             setIsCheckout(true);
             setAuthChoice(false);
         } else {
-            // Show auth choice for regular users
             setAuthChoice(true);
             setIsCheckout(false);
         }
@@ -91,23 +122,46 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
 
-        // Phone number validation for customer orders
+        // Phone number validation for non-staff orders
         if (!(isStaffMode && orderType === 'Dine-in')) {
             const cleanPhone = (customerDetails.phone || '').replace(/[\s\-()]/g, '');
             const pakistaniRegex = /^(\+92|92|0)?3[0-9]{9}$/;
             const generalRegex = /^\+?[0-9]{10,14}$/;
             if (!pakistaniRegex.test(cleanPhone) && !generalRegex.test(cleanPhone)) {
-                alert('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+                alert('Please enter a valid Pakistani phone number (e.g. 0300 1234567 or +92 300 1234567)');
                 return;
             }
         }
 
+        // Table number validation for dine-in
+        if (orderType === 'Dine-in' && !customerDetails.tableNumber?.trim()) {
+            alert('Please enter your table number for Dine-in orders.');
+            return;
+        }
+
+        // Address validation for delivery
+        if (orderType === 'Delivery' && !customerDetails.address?.trim()) {
+            alert('Please enter your complete delivery address.');
+            return;
+        }
+
         setLoading(true);
+
+        const subtotal = calculateSubtotal();
+        const finalTotal = calculateTotal();
+
+        const orderItems = activeCartItems.map(item => ({
+            ...item,
+            unitPrice: getItemUnitPrice(item),
+            itemTotal: getItemUnitPrice(item) * item.quantity
+        }));
 
         const orderData = {
             customer: customerDetails,
-            items: cartItems,
-            total: calculateTotal(),
+            items: orderItems,
+            subtotal: subtotal,
+            deliveryFee: deliveryFee,
+            total: finalTotal,
             paymentMethod: 'COD',
             orderType: orderType,
             userId: user ? user.uid : null,
@@ -121,8 +175,10 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
             const confirmed = {
                 orderId: result.orderId,
                 orderReference: ref,
-                total: calculateTotal(),
-                items: [...cartItems],
+                subtotal: subtotal,
+                deliveryFee: deliveryFee,
+                total: finalTotal,
+                items: [...orderItems],
                 customer: { ...customerDetails },
                 orderType: orderType
             };
@@ -133,11 +189,11 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
             const orderRecord = {
                 orderId: result.orderId,
                 orderReference: ref,
-                total: calculateTotal(),
+                total: finalTotal,
                 orderType: orderType,
-                itemCount: cartItems.reduce((s, i) => s + i.quantity, 0),
-                itemsSummary: cartItems.map(i => `${i.quantity}x ${i.name}`).join(', '),
-                items: [...cartItems],
+                itemCount: activeCartItems.reduce((s, i) => s + i.quantity, 0),
+                itemsSummary: activeCartItems.map(i => `${i.quantity}x ${i.name}`).join(', '),
+                items: [...orderItems],
                 customer: { ...customerDetails },
                 placedAt: Date.now()
             };
@@ -170,7 +226,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
         if (confirmedOrder?.orderId) {
             const id = confirmedOrder.orderId;
             handleDismissSuccess();
-            navigate(`/track/${id}`);
+            navigate(`/track-order/${id}`);
         }
     };
 
@@ -187,12 +243,11 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
     const handleShareWhatsApp = () => {
         if (!confirmedOrder) return;
 
-        // Monospace item list for clean column alignment in WhatsApp
         const itemsList = confirmedOrder.items
             .map(i => {
-                const itemTotal = `Rs. ${i.price * i.quantity}`;
-                const nameStr = `${i.quantity}x ${i.name}`.slice(0, 20);
-                return `• ${nameStr.padEnd(20, ' ')} ${itemTotal}`;
+                const itemTotal = `Rs. ${(i.unitPrice || i.price) * i.quantity}`;
+                const nameStr = `${i.quantity}x ${i.name}`.slice(0, 22);
+                return `• ${nameStr.padEnd(22, ' ')} ${itemTotal}`;
             })
             .join('\n');
 
@@ -205,9 +260,11 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
             destInfo = `Type   : Takeaway`;
         }
 
-        const trackUrl = `${window.location.origin}/track/${confirmedOrder.orderId}`;
+        const trackUrl = `${window.location.origin}/track-order/${confirmedOrder.orderId}`;
+        const storePhoneRaw = storeSettings?.storePhone || '0321 4854410';
+        const cleanStoreDigits = storePhoneRaw.replace(/[^0-9]/g, '');
+        const waRecipient = cleanStoreDigits.startsWith('0') ? '92' + cleanStoreDigits.slice(1) : (cleanStoreDigits.startsWith('92') ? cleanStoreDigits : '92' + cleanStoreDigits);
 
-        // Triple backticks (```) trigger WhatsApp Monospace font for receipt styling
         const msg = encodeURIComponent(
 `🍔 *FINE BURGER & FAST FOOD*
 📍 _Main G.T. Road, Baghbanpura, Lahore_
@@ -224,7 +281,8 @@ ${destInfo}
 ITEMS:
 ${itemsList}
 ------------------------------
-TOTAL     : Rs. ${confirmedOrder.total}
+Subtotal  : Rs. ${confirmedOrder.subtotal || confirmedOrder.total}
+${confirmedOrder.deliveryFee ? `Delivery  : Rs. ${confirmedOrder.deliveryFee}\n` : ''}TOTAL     : Rs. ${confirmedOrder.total}
 Payment   : Cash on Delivery
 ==============================
 CUSTOMER:
@@ -237,8 +295,7 @@ Phone : ${confirmedOrder.customer?.phone || 'N/A'}
 ${trackUrl}`
         );
 
-        // Send to restaurant WhatsApp so ticket is received
-        window.open(`https://wa.me/923214854410?text=${msg}`, '_blank');
+        window.open(`https://wa.me/${waRecipient}?text=${msg}`, '_blank');
     };
 
     if (!isOpen) return null;
@@ -255,8 +312,8 @@ ${trackUrl}`
                         </button>
                     </div>
                     <div className="cart-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--spacing-lg)' }}>
-                        <div style={{ color: '#4ade80', marginBottom: 'var(--spacing-md)' }}>
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <div style={{ color: '#10B981', marginBottom: 'var(--spacing-md)' }}>
+                            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                                 <polyline points="22 4 12 14.01 9 11.01" />
                             </svg>
@@ -268,20 +325,20 @@ ${trackUrl}`
                         <div style={{
                             margin: 'var(--spacing-md) 0',
                             padding: 'var(--spacing-md)',
-                            backgroundColor: 'rgba(255, 180, 0, 0.12)',
-                            border: '1px solid #FFB400',
+                            backgroundColor: 'rgba(255, 180, 0, 0.1)',
+                            border: '1px solid var(--color-accent)',
                             borderRadius: 'var(--radius-md)',
                             width: '100%'
                         }}>
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                 Order Reference
                             </div>
-                            <div style={{ fontSize: 'var(--font-size-2xl)', color: '#FFB400', fontWeight: 'bold', marginTop: '4px' }}>
+                            <div style={{ fontSize: 'var(--font-size-2xl)', color: 'var(--color-accent)', fontWeight: 'bold', marginTop: '4px' }}>
                                 #{confirmedOrder.orderReference}
                             </div>
                         </div>
 
-                        <div style={{ width: '100%', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)', textAlign: 'left' }}>
+                        <div style={{ width: '100%', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)', textAlign: 'left', border: '1px solid var(--color-light-gray)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                 <span>Type:</span>
                                 <strong style={{ color: 'var(--color-white)' }}>{confirmedOrder.orderType}</strong>
@@ -302,21 +359,21 @@ ${trackUrl}`
                             )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-white)', fontWeight: 600 }}>
                                 <span>Total Amount:</span>
-                                <span style={{ color: '#FFB400' }}>Rs. {confirmedOrder.total}</span>
+                                <span style={{ color: 'var(--color-accent)' }}>Rs. {confirmedOrder.total}</span>
                             </div>
                         </div>
 
                         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-lg)' }}>
                             {isStaffMode && confirmedOrder.orderType === 'Dine-in'
                                 ? 'Kitchen staff has been notified.'
-                                : 'Please keep your reference number for order tracking.'}
+                                : 'Save your reference number to track live status.'}
                         </p>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                             <button
                                 className="btn btn-primary"
                                 onClick={handleTrackOrder}
-                                style={{ width: '100%', padding: '12px', fontSize: 'var(--font-size-md)', cursor: 'pointer' }}
+                                style={{ width: '100%', padding: '12px', fontSize: 'var(--font-size-base)', cursor: 'pointer' }}
                             >
                                 Track Live Order ➔
                             </button>
@@ -329,7 +386,7 @@ ${trackUrl}`
                                         padding: '10px',
                                         fontSize: 'var(--font-size-sm)',
                                         cursor: 'pointer',
-                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                        backgroundColor: 'rgba(255, 180, 0, 0.12)',
                                         border: '1px dashed var(--color-accent)',
                                         color: 'var(--color-accent)',
                                         borderRadius: 'var(--radius-md)',
@@ -362,7 +419,7 @@ ${trackUrl}`
                                     gap: '6px'
                                 }}
                             >
-                                <span>📱</span> Share Order on WhatsApp
+                                <span>📱</span> Send Receipt to Restaurant WhatsApp
                             </button>
 
                             <button
@@ -386,7 +443,6 @@ ${trackUrl}`
         );
     }
 
-    // Helper to close specific views
     const handleClose = () => {
         if (isCheckout || authChoice) {
             setIsCheckout(false);
@@ -410,16 +466,19 @@ ${trackUrl}`
                         {(isCheckout || authChoice) ? '← Back' : ''}
                     </button>
                     <h2 className="cart-title">
-                        {authChoice ? 'Sign In' : (isCheckout ? (isStaffMode ? '⚡ Quick Order' : 'Checkout') : 'Your Cart')}
+                        {authChoice ? 'Sign In' : (isCheckout ? (isStaffMode ? '⚡ Quick POS Order' : 'Checkout') : 'Your Order')}
                     </h2>
                     {isStaffMode && isCheckout && (
                         <span style={{
-                            fontSize: '12px',
-                            color: '#4ade80',
+                            fontSize: '11px',
+                            color: '#10B981',
                             fontWeight: 'bold',
-                            marginLeft: '8px'
+                            marginLeft: '8px',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)'
                         }}>
-                            STAFF
+                            STAFF POS
                         </span>
                     )}
                     {(!isCheckout && !authChoice) && (
@@ -435,11 +494,11 @@ ${trackUrl}`
                     {authChoice ? (
                         <div className="auth-choice-container">
                             <div className="auth-benefits">
-                                <h3>Create an account for:</h3>
+                                <h3>Order with Fine Burger</h3>
                                 <ul>
-                                    <li>Order tracking & history</li>
-                                    <li>Faster checkout next time</li>
-                                    <li>Exclusive offers</li>
+                                    <li>Track live delivery in real time</li>
+                                    <li>Save delivery addresses</li>
+                                    <li>Quick 1-tap reordering</li>
                                 </ul>
                             </div>
 
@@ -447,7 +506,7 @@ ${trackUrl}`
                                 className="auth-choice-btn primary"
                                 onClick={() => setIsAuthModalOpen(true)}
                             >
-                                Sign In / Sign Up
+                                Sign In / Register
                             </button>
 
                             <div className="auth-divider">
@@ -465,32 +524,33 @@ ${trackUrl}`
                         <form onSubmit={handlePlaceOrder} className="checkout-form">
                             {/* Order Type Selector */}
                             <div className="form-group">
-                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Order Type</label>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    {(isStaffMode ? ['Dine-in'] : ['Takeaway', 'Delivery']).map(type => (
+                                <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Fulfillment Method</label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    {(isStaffMode ? ['Dine-in'] : ['Delivery', 'Takeaway', 'Dine-in']).map(type => (
                                         <button
                                             key={type}
                                             type="button"
                                             onClick={() => setOrderType(type)}
                                             style={{
                                                 flex: 1,
-                                                padding: '8px',
+                                                padding: '10px 6px',
                                                 borderRadius: '6px',
-                                                border: orderType === type ? '1px solid var(--color-accent)' : '1px solid #333',
-                                                backgroundColor: orderType === type ? 'var(--color-accent)' : '#222',
-                                                color: orderType === type ? '#000' : '#ccc',
-                                                fontWeight: orderType === type ? 'bold' : 'normal',
-                                                cursor: 'pointer'
+                                                border: orderType === type ? '1px solid var(--color-accent)' : '1px solid var(--color-medium-gray)',
+                                                backgroundColor: orderType === type ? 'var(--color-accent)' : 'var(--color-surface)',
+                                                color: orderType === type ? '#000' : 'var(--color-text-primary)',
+                                                fontWeight: orderType === type ? 700 : 500,
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                transition: 'all 0.15s ease'
                                             }}
                                         >
-                                            {type}
+                                            {type === 'Delivery' ? '🛵 Delivery' : type === 'Takeaway' ? '🛍️ Takeaway' : '🍽️ Dine-in'}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Checkout Form Content */}
-                            {/* Name - Optional for staff dine-in */}
+                            {/* Customer Details */}
                             {!(isStaffMode && orderType === 'Dine-in') && (
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
@@ -498,35 +558,37 @@ ${trackUrl}`
                                         type="text"
                                         name="name"
                                         className="form-input"
-                                        placeholder="John Doe"
+                                        placeholder="Your full name"
                                         value={customerDetails.name}
                                         onChange={handleInputChange}
                                         required
                                     />
                                 </div>
                             )}
-                            {/* Phone - Optional for staff dine-in */}
+
                             {!(isStaffMode && orderType === 'Dine-in') && (
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Phone Number</label>
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Mobile Phone</label>
                                     <input
                                         type="tel"
                                         name="phone"
                                         className="form-input"
-                                        placeholder="+92 300 1234567"
+                                        placeholder="0300 1234567"
                                         value={customerDetails.phone}
                                         onChange={handleInputChange}
                                         required
                                     />
+                                    <small style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                                        For order updates and rider communication
+                                    </small>
                                 </div>
                             )}
 
-
-                            {/* Address - Only for Delivery */}
+                            {/* Delivery Address & Map */}
                             {orderType === 'Delivery' && (
                                 <div className="form-group">
-                                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--color-text-secondary)' }}>
-                                        <span>Delivery Address</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <label className="form-label" style={{ margin: 0, color: 'var(--color-text-secondary)' }}>Delivery Address</label>
                                         <button
                                             type="button"
                                             onClick={() => setShowMap(!showMap)}
@@ -534,28 +596,25 @@ ${trackUrl}`
                                                 background: 'none',
                                                 border: 'none',
                                                 color: 'var(--color-accent)',
+                                                fontSize: '12px',
                                                 cursor: 'pointer',
-                                                fontSize: 'var(--font-size-xs)',
-                                                fontWeight: 'bold'
+                                                textDecoration: 'underline'
                                             }}
                                         >
-                                            {showMap ? 'Hide Map' : '📍 Auto Detect / Pin on Map'}
+                                            {showMap ? 'Hide Map' : '📍 Pin on Map'}
                                         </button>
-                                    </label>
+                                    </div>
 
                                     {showMap && (
-                                        <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                                        <div style={{ marginBottom: '10px' }}>
                                             <LocationPicker onAddressSelect={handleAddressSelect} />
-                                            <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
-                                                * Click map to manually set location. Address will auto-fill.
-                                            </p>
                                         </div>
                                     )}
 
                                     <textarea
                                         name="address"
                                         className="form-textarea"
-                                        placeholder="Full street address..."
+                                        placeholder="House #, Street #, Area, Landmark (e.g. Near Shalimar Gardens, Baghbanpura)"
                                         value={customerDetails.address}
                                         onChange={handleInputChange}
                                         required
@@ -564,7 +623,7 @@ ${trackUrl}`
                                 </div>
                             )}
 
-                            {/* Table Number - Only for Dine-in */}
+                            {/* Table Number - Dine-in */}
                             {orderType === 'Dine-in' && (
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number</label>
@@ -572,37 +631,41 @@ ${trackUrl}`
                                         type="text"
                                         name="tableNumber"
                                         className="form-input"
-                                        placeholder="Enter table number (e.g. 5)"
+                                        placeholder="Enter your table number (e.g. 4)"
                                         value={customerDetails.tableNumber}
                                         onChange={handleInputChange}
                                         required
-                                        style={{
-                                            backgroundColor: '#222',
-                                            color: '#fff',
-                                            border: '1px solid #333',
-                                            padding: '12px',
-                                            borderRadius: '6px'
-                                        }}
                                     />
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 'var(--spacing-lg)', borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-md)' }}>
-                                <div className="cart-total" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                                    <span className="cart-total-label">Subtotal:</span>
-                                    <span className="cart-total-amount" style={{ fontSize: 'var(--font-size-lg)' }}>Rs. {calculateTotal()}</span>
+                            {/* Price Summary */}
+                            <div style={{ marginTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-md)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    <span>Subtotal:</span>
+                                    <span style={{ color: 'var(--color-text-primary)' }}>Rs. {calculateSubtotal()}</span>
                                 </div>
-                                <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', textAlign: 'right' }}>
-                                    Payment Method: Cash on Delivery
+                                {orderType === 'Delivery' && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                        <span>Delivery Fee:</span>
+                                        <span style={{ color: 'var(--color-text-primary)' }}>Rs. {deliveryFee}</span>
+                                    </div>
+                                )}
+                                <div className="cart-total" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                                    <span className="cart-total-label">Grand Total:</span>
+                                    <span className="cart-total-amount">Rs. {calculateTotal()}</span>
+                                </div>
+                                <div style={{ color: 'var(--color-text-muted)', fontSize: '12px', textAlign: 'right', marginTop: '4px' }}>
+                                    Payment: Cash on Delivery (COD)
                                 </div>
                             </div>
 
                             <button type="submit" className="cart-checkout-btn" disabled={loading} style={{ marginTop: 'var(--spacing-lg)' }}>
-                                {loading ? 'Placing Order...' : 'Confirm Order'}
+                                {loading ? 'Placing Order...' : (isStaffMode ? 'Send to Kitchen' : 'Confirm Order')}
                             </button>
                         </form>
                     ) : (
-                        cartItems.length === 0 ? (
+                        activeCartItems.length === 0 ? (
                             <div className="cart-empty">
                                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                     <circle cx="9" cy="21" r="1" />
@@ -610,83 +673,95 @@ ${trackUrl}`
                                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
                                 </svg>
                                 <p>Your cart is empty</p>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={onClose}
+                                    style={{ marginTop: '16px', fontSize: '13px' }}
+                                >
+                                    Browse Menu
+                                </button>
                             </div>
                         ) : (
                             <div className="cart-items">
-                                {cartItems.map((item, index) => (
-                                    <div key={index} className="cart-item">
-                                        <div
-                                            className="cart-item-image"
-                                            style={{ backgroundImage: `url(${item.imageUrl})` }}
-                                        ></div>
+                                {activeCartItems.map((item, index) => {
+                                    const unitPrice = getItemUnitPrice(item);
+                                    const lineTotal = unitPrice * item.quantity;
+                                    return (
+                                        <div key={index} className="cart-item">
+                                            <div
+                                                className="cart-item-image"
+                                                style={{ backgroundImage: `url(${item.imageUrl})` }}
+                                            ></div>
 
-                                        <div className="cart-item-details">
-                                            <h3 className="cart-item-name">{item.name}</h3>
+                                            <div className="cart-item-details">
+                                                <h3 className="cart-item-name">{item.name}</h3>
 
-                                            {item.selectedVariations && Object.keys(item.selectedVariations).length > 0 && (
-                                                <div className="cart-item-variations">
-                                                    {Object.entries(item.selectedVariations).map(([key, value]) => (
-                                                        <span key={key} className="variation-tag">
-                                                            {key}: {value}
-                                                        </span>
-                                                    ))}
+                                                {item.selectedVariations && Object.keys(item.selectedVariations).length > 0 && (
+                                                    <div className="cart-item-variations">
+                                                        {Object.entries(item.selectedVariations).map(([key, value]) => (
+                                                            <span key={key} className="variation-tag">
+                                                                {key}: {value}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="cart-item-footer">
+                                                    <div className="cart-item-quantity">
+                                                        <button
+                                                            className="quantity-btn-small"
+                                                            onClick={() => onUpdateQuantity(index, -1)}
+                                                            aria-label="Decrease quantity"
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <span>{item.quantity}</span>
+                                                        <button
+                                                            className="quantity-btn-small"
+                                                            onClick={() => {
+                                                                if (item.stockLevel !== undefined && item.quantity >= item.stockLevel) return;
+                                                                onUpdateQuantity(index, 1);
+                                                            }}
+                                                            disabled={item.stockLevel !== undefined && item.quantity >= item.stockLevel}
+                                                            aria-label="Increase quantity"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+
+                                                    <span className="cart-item-price">Rs. {lineTotal}</span>
                                                 </div>
-                                            )}
-
-                                            <div className="cart-item-footer">
-                                                <div className="cart-item-quantity">
-                                                    <button
-                                                        className="quantity-btn-small"
-                                                        onClick={() => onUpdateQuantity(index, item.quantity - 1)}
-                                                    >
-                                                        −
-                                                    </button>
-                                                    <span>{item.quantity}</span>
-                                                    <button
-                                                        className="quantity-btn-small"
-                                                        onClick={() => {
-                                                            if (item.stockLevel !== undefined && item.quantity >= item.stockLevel) return;
-                                                            onUpdateQuantity(index, item.quantity + 1);
-                                                        }}
-                                                        disabled={item.stockLevel !== undefined && item.quantity >= item.stockLevel}
-                                                        style={{ opacity: item.stockLevel !== undefined && item.quantity >= item.stockLevel ? 0.5 : 1 }}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-
-                                                <span className="cart-item-price">Rs. {item.price * item.quantity}</span>
                                             </div>
-                                        </div>
 
-                                        <button
-                                            className="cart-item-remove"
-                                            onClick={() => onRemoveItem(index)}
-                                            aria-label="Remove item"
-                                        >
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ))}
+                                            <button
+                                                className="cart-item-remove"
+                                                onClick={() => onRemoveItem(index)}
+                                                aria-label="Remove item"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )
                     )}
                 </div>
 
-                {!isCheckout && !authChoice && cartItems.length > 0 && (
+                {!isCheckout && !authChoice && activeCartItems.length > 0 && (
                     <div className="cart-footer">
                         <div className="cart-total">
-                            <span className="cart-total-label">Total:</span>
-                            <span className="cart-total-amount">Rs. {calculateTotal()}</span>
+                            <span className="cart-total-label">Subtotal:</span>
+                            <span className="cart-total-amount">Rs. {calculateSubtotal()}</span>
                         </div>
                         <button className="cart-checkout-btn" onClick={handleProceedToCheckout}>
-                            Proceed to Checkout
+                            Proceed to Checkout ➔
                         </button>
                     </div>
                 )}
-            </div >
+            </div>
 
             <AuthModal
                 isOpen={isAuthModalOpen}
@@ -694,7 +769,7 @@ ${trackUrl}`
                 onLoginSuccess={() => {
                     setIsAuthModalOpen(false);
                     setAuthChoice(false);
-                    setIsCheckout(true); // Proceed to checkout after login
+                    setIsCheckout(true);
                 }}
             />
         </>

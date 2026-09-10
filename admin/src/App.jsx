@@ -28,6 +28,7 @@ function App() {
 
     const audioContextRef = useRef(null);
     const prevOrdersRef = useRef([]);
+    const hasInitializedRef = useRef(false);
     const pendingSoundRef = useRef(false);
     const isAudioMutedRef = useRef(isAudioMuted);
 
@@ -126,8 +127,8 @@ function App() {
             body: count === 1
                 ? 'A new order has been placed. Tap to view.'
                 : `${count} new orders have been placed. Tap to view.`,
-            icon: '/favicon.ico',
-            badge: '/favicon.ico',
+            icon: '/favicon.svg',
+            badge: '/favicon.svg',
             tag: 'new-order',
             renotify: true,
             requireInteraction: true
@@ -165,7 +166,7 @@ function App() {
                     const pendingOrders = newOrders.filter(o => o.status === 'pending');
                     setPendingCount(pendingOrders.length);
 
-                    if (prevOrdersRef.current.length > 0) {
+                    if (hasInitializedRef.current) {
                         const previousIds = new Set(prevOrdersRef.current.map(o => o.id));
                         const newPendingOrders = newOrders.filter(
                             o => !previousIds.has(o.id) && o.status === 'pending'
@@ -188,6 +189,8 @@ function App() {
                                 showOrderNotification(newPreparingDineIn.length);
                             }
                         }
+                    } else {
+                        hasInitializedRef.current = true;
                     }
                     prevOrdersRef.current = newOrders;
                 });
@@ -261,6 +264,7 @@ function App() {
                             <Route path="/financial-dashboard" element={<FinancialDashboard />} />
                             <Route path="/sliders" element={<SliderManager />} />
                             <Route path="/settings" element={<Settings />} />
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
                         </Routes>
                     </main>
                 </div>

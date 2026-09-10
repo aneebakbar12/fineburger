@@ -159,6 +159,21 @@ const MenuItemManager = () => {
         setItemToDelete(null);
     };
 
+    const handleToggleStock = async (item) => {
+        const newStatus = item.inStock === false ? true : false;
+        try {
+            const result = await updateMenuItem(item.id, { inStock: newStatus });
+            if (result.success) {
+                toast.success(`"${item.name}" is now ${newStatus ? 'In Stock' : 'Sold Out'}`);
+                fetchData();
+            } else {
+                toast.error('Failed to update stock: ' + result.error);
+            }
+        } catch (err) {
+            toast.error('Error: ' + err.message);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -581,40 +596,28 @@ const MenuItemManager = () => {
                                             </span>
                                         </td>
                                         <td>
-                                            {isOutOfStock ? (
-                                                <span style={{
-                                                    padding: '4px 10px',
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleStock(item)}
+                                                style={{
+                                                    padding: '5px 12px',
                                                     borderRadius: '4px',
                                                     fontSize: '11px',
                                                     fontWeight: 700,
-                                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                                    color: '#ef4444'
-                                                }}>
-                                                    Out of Stock
-                                                </span>
-                                            ) : isLowStock ? (
-                                                <span style={{
-                                                    padding: '4px 10px',
-                                                    borderRadius: '4px',
-                                                    fontSize: '11px',
-                                                    fontWeight: 700,
-                                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                                    color: '#f59e0b'
-                                                }}>
-                                                    Low Stock
-                                                </span>
-                                            ) : (
-                                                <span style={{
-                                                    padding: '4px 10px',
-                                                    borderRadius: '4px',
-                                                    fontSize: '11px',
-                                                    fontWeight: 700,
-                                                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                                    color: '#10b981'
-                                                }}>
-                                                    Active
-                                                </span>
-                                            )}
+                                                    cursor: 'pointer',
+                                                    border: 'none',
+                                                    backgroundColor: item.inStock !== false ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                    color: item.inStock !== false ? '#10b981' : '#ef4444',
+                                                    transition: 'all 0.15s ease',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                                title="Click to toggle In Stock / Sold Out instantly"
+                                            >
+                                                <span>{item.inStock !== false ? '●' : '○'}</span>
+                                                <span>{item.inStock !== false ? 'In Stock' : 'Sold Out'}</span>
+                                            </button>
                                         </td>
                                         <td>
                                             <div className="table-actions" style={{ justifyContent: 'flex-end' }}>

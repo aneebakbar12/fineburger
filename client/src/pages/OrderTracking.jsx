@@ -23,7 +23,6 @@ const getGuestOrders = () => {
         const o1 = JSON.parse(localStorage.getItem('fb_recent_orders') || '[]');
         const o2 = JSON.parse(localStorage.getItem('fb_guest_orders') || '[]');
         const combined = [...o1, ...o2];
-        // Deduplicate by orderId
         const seen = new Set();
         const unique = [];
         for (const item of combined) {
@@ -107,12 +106,12 @@ const OrderTracking = ({ storeSettings }) => {
         );
 
         if (matchedLocal) {
-            navigate(`/track/${matchedLocal.orderId}`);
+            navigate(`/track-order/${matchedLocal.orderId}`);
             return;
         }
 
-        // 2. Otherwise navigate directly (subscribeToOrder will resolve via orderLookup in Firestore)
-        navigate(`/track/${raw}`);
+        // 2. Otherwise navigate directly
+        navigate(`/track-order/${raw}`);
     };
 
     const getActiveStep = () => {
@@ -126,12 +125,17 @@ const OrderTracking = ({ storeSettings }) => {
     };
 
     const activeStepIndex = getActiveStep();
-    const progressPercent = (activeStepIndex / (STATUS_STEPS.length - 1)) * 100;
+    const isCancelled = order?.status === 'cancelled';
+    const isDelivered = order?.status === 'delivered';
+    const progressPercent = isCancelled
+        ? 0
+        : (activeStepIndex / (STATUS_STEPS.length - 1)) * 100;
 
     const getWhatsAppUrl = () => {
-        const phone = storeSettings?.storeInfo?.phone || '923214854410';
+        const phone = storeSettings?.storeInfo?.phone || storeSettings?.phone || '0321 4854410';
         const cleanPhone = phone.replace(/[^0-9]/g, '');
-        const ref = order?.orderReference || orderId?.substring(0, 6).toUpperCase();
+        const waRecipient = cleanPhone.startsWith('0') ? '92' + cleanPhone.slice(1) : (cleanPhone.startsWith('92') ? cleanPhone : '92' + cleanPhone);
+        const ref = order?.orderReference || orderId?.substring(0, 6).toUpperCase() || 'N/A';
         const statusStr = order?.status ? ` [Status: ${order.status.toUpperCase()}]` : '';
         const text = encodeURIComponent(
 `🍔 *FINE BURGER & FAST FOOD*
@@ -142,7 +146,7 @@ Order Status Inquiry
 
 Hi! I would like to check the latest update on my order. Thank you! 👋`
         );
-        return `https://wa.me/${cleanPhone}?text=${text}`;
+        return `https://wa.me/${waRecipient}?text=${text}`;
     };
 
     return (
@@ -152,7 +156,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                     <div className="tracking-header">
                         <h1 className="tracking-title">Live Order Tracking</h1>
                         <p className="tracking-subtitle">
-                            Watch your delicious burger make its way from the grill to your hands
+                            Watch your fresh burger make its way from the kitchen to your hands
                         </p>
                     </div>
 
@@ -173,7 +177,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                     {loading && (
                         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-accent)' }}>
                             <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
-                            <p>Locating your order in the kitchen...</p>
+                            <p>Locating your order...</p>
                         </div>
                     )}
 
@@ -189,7 +193,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                             <div style={{ fontSize: '36px', marginBottom: '8px' }}>🔍</div>
                             <h3>Order Not Found</h3>
                             <p style={{ marginTop: '6px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                                Please double check your Order ID or contact our team on WhatsApp for assistance.
+                                Please verify your Order Reference (e.g. FB-XXXX) or message our team on WhatsApp for quick help.
                             </p>
                             <a
                                 href={getWhatsAppUrl()}
@@ -198,7 +202,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                 className="btn-whatsapp"
                                 style={{ marginTop: '16px', display: 'inline-flex' }}
                             >
-                                Chat with Restaurant on WhatsApp
+                                WhatsApp Restaurant Support
                             </a>
                         </div>
                     )}
@@ -213,7 +217,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                 {guestOrders.map((go) => (
                                     <button
                                         key={go.orderId}
-                                        onClick={() => navigate(`/track/${go.orderId}`)}
+                                        onClick={() => navigate(`/track-order/${go.orderId}`)}
                                         style={{
                                             display: 'flex',
                                             justifyContent: 'space-between',
@@ -238,11 +242,11 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                     >
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#FFB400', fontWeight: 800, fontSize: '16px' }}>#{go.orderReference}</span>
+                                                <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '16px' }}>#{go.orderReference}</span>
                                                 <span style={{
                                                     fontSize: '11px',
                                                     padding: '2px 8px',
-                                                    borderRadius: '12px',
+                                                    borderRadius: '4px',
                                                     backgroundColor: 'rgba(255, 180, 0, 0.15)',
                                                     color: 'var(--color-accent)',
                                                     fontWeight: 600
@@ -285,7 +289,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                     {!orderId && !loading && guestOrders.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-secondary)' }}>
                             <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍔</div>
-                            <p>Have an active order? Enter your Order ID above to see live updates.</p>
+                            <p>Have an active order? Enter your Order Reference above to see live updates.</p>
                             <Link to="/menu" className="btn btn-primary" style={{ marginTop: '16px', display: 'inline-block' }}>
                                 View Menu &amp; Order
                             </Link>
@@ -321,43 +325,45 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                     </div>
                                 )}
                                 {notificationPermission === 'granted' && (
-                                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                         <span>✓</span> Live push alerts enabled for this order
                                     </div>
                                 )}
                             </div>
 
-                            {/* Stepper */}
-                            <div className="tracking-stepper">
-                                <div
-                                    className="tracking-stepper-progress"
-                                    style={{ width: `${progressPercent * 0.8}%` }}
-                                ></div>
-                                {STATUS_STEPS.map((step, idx) => {
-                                    const isCompleted = idx < activeStepIndex || order.status === 'delivered';
-                                    const isActive = idx === activeStepIndex && order.status !== 'delivered';
+                            {/* Stepper (Only for non-cancelled orders) */}
+                            {!isCancelled ? (
+                                <div className="tracking-stepper">
+                                    <div
+                                        className="tracking-stepper-progress"
+                                        style={{ width: `${progressPercent}%` }}
+                                    ></div>
+                                    {STATUS_STEPS.map((step, idx) => {
+                                        const isCompleted = idx < activeStepIndex || isDelivered;
+                                        const isActive = idx === activeStepIndex && !isDelivered;
 
-                                    let stepLabel = step.label;
-                                    if (step.key === 'ready_or_out') {
-                                        stepLabel = order.orderType === 'Delivery' ? 'On The Way' : 'Ready For You';
-                                    }
+                                        let stepLabel = step.label;
+                                        if (step.key === 'ready_or_out') {
+                                            stepLabel = order.orderType === 'Delivery' ? 'On The Way' : 'Ready For You';
+                                        }
 
-                                    return (
-                                        <div
-                                            key={step.key}
-                                            className={`step-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}
-                                        >
-                                            <div className="step-icon-wrap">
-                                                {isCompleted ? '✓' : step.icon}
+                                        return (
+                                            <div
+                                                key={step.key}
+                                                className={`step-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}
+                                            >
+                                                <div className="step-icon-wrap">
+                                                    {isCompleted ? '✓' : step.icon}
+                                                </div>
+                                                <span className="step-label">{stepLabel}</span>
                                             </div>
-                                            <span className="step-label">{stepLabel}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : null}
 
                             {/* Status Callout Banner */}
-                            <div className="status-callout">
+                            <div className="status-callout" style={isCancelled ? { borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' } : {}}>
                                 <span className="status-callout-icon">
                                     {order.status === 'pending' && '🕒'}
                                     {order.status === 'preparing' && '🔥'}
@@ -367,18 +373,18 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                     {order.status === 'cancelled' && '❌'}
                                 </span>
                                 <div className="status-callout-text">
-                                    <h4>
+                                    <h4 style={isCancelled ? { color: '#EF4444' } : {}}>
                                         {order.status === 'pending' && 'Order Received & Awaiting Kitchen Confirmation'}
                                         {order.status === 'preparing' && 'Fresh on the Grill! Kitchen is Preparing'}
                                         {order.status === 'out_for_delivery' && 'Out for Delivery with Rider'}
-                                        {order.status === 'ready' && 'Order is Ready for Pickup / Table!'}
+                                        {order.status === 'ready' && (order.orderType === 'Delivery' ? 'Packed & Ready for Rider Pickup' : 'Ready for Pickup / Table!')}
                                         {order.status === 'delivered' && 'Delivered! Enjoy Your Fine Burger!'}
                                         {order.status === 'cancelled' && 'Order Cancelled'}
                                     </h4>
                                     <p>
-                                        {order.status === 'pending' && 'We are assigning kitchen priority to your ticket.'}
-                                        {order.status === 'preparing' && 'Our chefs are crafting your meal with fresh ingredients.'}
-                                        {order.status === 'out_for_delivery' && 'Rider has picked up your food and is heading to your address.'}
+                                        {order.status === 'pending' && 'The kitchen is reviewing your ticket.'}
+                                        {order.status === 'preparing' && 'Our team is crafting your meal with fresh ingredients.'}
+                                        {order.status === 'out_for_delivery' && 'The rider is en route to your address.'}
                                         {order.status === 'ready' && 'Your food is packaged hot and fresh.'}
                                         {order.status === 'delivered' && 'Thank you for ordering with Fine Burger.'}
                                         {order.status === 'cancelled' && 'If this was a mistake, please reach out via WhatsApp below.'}
@@ -395,8 +401,8 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                         <strong>{order.orderType}</strong>
                                     </div>
                                     <div className="info-row">
-                                        <span>Payment:</span>
-                                        <strong>{order.paymentMethod || 'Cash on Delivery'}</strong>
+                                        <span>Payment Method:</span>
+                                        <strong>{order.paymentMethod || 'Cash on Delivery (COD)'}</strong>
                                     </div>
                                     {order.customer?.name && (
                                         <div className="info-row">
@@ -404,15 +410,21 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                             <strong>{order.customer.name}</strong>
                                         </div>
                                     )}
+                                    {order.assignedRiderName && (
+                                        <div className="info-row">
+                                            <span>Assigned Rider:</span>
+                                            <strong style={{ color: 'var(--color-accent)' }}>🛵 {order.assignedRiderName}</strong>
+                                        </div>
+                                    )}
                                     {order.orderType === 'Dine-in' && order.customer?.tableNumber && (
                                         <div className="info-row">
-                                            <span>Table:</span>
+                                            <span>Table Number:</span>
                                             <strong>Table #{order.customer.tableNumber}</strong>
                                         </div>
                                     )}
                                     {order.orderType === 'Delivery' && order.customer?.address && (
                                         <div className="info-row">
-                                            <span>Address:</span>
+                                            <span>Delivery Address:</span>
                                             <strong style={{ maxWidth: '60%', textAlign: 'right', display: 'inline-block', wordBreak: 'break-word' }}>
                                                 {order.customer.address}
                                             </strong>
@@ -423,28 +435,39 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                 <div className="info-section">
                                     <h4>Items ({order.items?.length || 0})</h4>
                                     <div className="items-list">
-                                        {order.items?.map((item, idx) => (
-                                            <div key={idx} className="item-row">
-                                                <div>
-                                                    <span style={{ fontWeight: 600, color: 'var(--color-white)' }}>
-                                                        {item.quantity}x {item.name}
+                                        {order.items?.map((item, idx) => {
+                                            const itemPrice = item.unitPrice || item.price;
+                                            return (
+                                                <div key={idx} className="item-row">
+                                                    <div>
+                                                        <span style={{ fontWeight: 600, color: 'var(--color-white)' }}>
+                                                            {item.quantity}x {item.name}
+                                                        </span>
+                                                        {item.selectedVariations && Object.keys(item.selectedVariations).length > 0 && (
+                                                            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                                                                {Object.entries(item.selectedVariations).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+                                                        Rs. {itemPrice * item.quantity}
                                                     </span>
-                                                    {item.selectedVariations && Object.keys(item.selectedVariations).length > 0 && (
-                                                        <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                                                            {Object.entries(item.selectedVariations).map(([k, v]) => `${k}: ${v}`).join(', ')}
-                                                        </div>
-                                                    )}
                                                 </div>
-                                                <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
-                                                    Rs. {item.price * item.quantity}
-                                                </span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
+
+                                    {order.deliveryFee ? (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                                            <span>Delivery Fee:</span>
+                                            <span>Rs. {order.deliveryFee}</span>
+                                        </div>
+                                    ) : null}
+
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
-                                        marginTop: '12px',
+                                        marginTop: '10px',
                                         paddingTop: '8px',
                                         borderTop: '1px solid rgba(255, 255, 255, 0.1)',
                                         fontWeight: 700,
@@ -464,7 +487,7 @@ Hi! I would like to check the latest update on my order. Thank you! 👋`
                                     rel="noopener noreferrer"
                                     className="btn-whatsapp"
                                 >
-                                    <span>📱</span> WhatsApp Restaurant Support
+                                    <span>📱</span> Chat with Restaurant Support
                                 </a>
                                 <Link
                                     to="/menu"
