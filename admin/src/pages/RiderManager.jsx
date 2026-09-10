@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebase-config';
 import {
     subscribeToRiders,
     subscribeToOrders,
@@ -43,9 +45,6 @@ const RiderManager = () => {
     }, []);
 
     const handleResetPassword = async (rider) => {
-        const { sendPasswordResetEmail } = await import('firebase/auth');
-        const { auth } = await import('../firebase-config');
-
         try {
             await sendPasswordResetEmail(auth, rider.email);
             toast.success(`Password reset link sent to ${rider.email}`);
