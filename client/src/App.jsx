@@ -37,18 +37,27 @@ function App() {
     const [storeSettings, setStoreSettings] = useState(null);
     const [cartItems, setCartItems] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [user, setUser] = useState(null); // Auth user state
+    const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    // Track whether Firestore has responded at least once before falling back to demo data
+    const [firestoreLoaded, setFirestoreLoaded] = useState(false);
 
-    // Fallback to rich demo data if Firestore is not yet populated
-    const effectiveCategories = categories.length > 0 ? categories : DEMO_CATEGORIES;
-    const effectiveMenuItems = menuItems.length > 0 ? menuItems : DEMO_MENU_ITEMS;
+    // Use live Firestore data once loaded; fall back to demo only before first Firestore response
+    const effectiveCategories = (firestoreLoaded && categories.length > 0) ? categories
+        : (!firestoreLoaded ? DEMO_CATEGORIES : categories.length > 0 ? categories : DEMO_CATEGORIES);
+    const effectiveMenuItems = (firestoreLoaded && menuItems.length > 0) ? menuItems
+        : (!firestoreLoaded ? DEMO_MENU_ITEMS : menuItems.length > 0 ? menuItems : DEMO_MENU_ITEMS);
     const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
 
     // Subscribe to real-time updates and auth
     useEffect(() => {
-        const unsubscribeCategories = subscribeToCategories(setCategories);
+        let loaded = false;
+        const handleCategories = (data) => {
+            setCategories(data);
+            if (!loaded) { loaded = true; setFirestoreLoaded(true); }
+        };
+        const unsubscribeCategories = subscribeToCategories(handleCategories);
         const unsubscribeItems = subscribeToMenuItems(setMenuItems);
         const unsubscribeSettings = subscribeToStoreSettings(setStoreSettings);
 

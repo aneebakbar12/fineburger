@@ -368,22 +368,24 @@ export const subscribeToMenuItems = (callback) => {
         callback(items);
     }, (error) => {
         console.error("Error subscribing to menu items:", error);
-        callback([]);
+        // Do not call callback([]) on error — keep last known state
     });
 };
 
-// Real-time listener for categories
+// Real-time listener for categories — sorts in memory to avoid Firestore index requirement
 export const subscribeToCategories = (callback) => {
-    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    const q = query(collection(db, 'categories'));
     return onSnapshot(q, (querySnapshot) => {
         const categories = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
-        callback(categories);
+        // Sort in memory — same result without requiring a Firestore composite index
+        const sorted = categories.sort((a, b) => (a.order || 0) - (b.order || 0));
+        callback(sorted);
     }, (error) => {
         console.error("Error subscribing to categories:", error);
-        callback([]);
+        // Do not call callback([]) on error — keep last known state
     });
 };
 
