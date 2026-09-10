@@ -1,285 +1,366 @@
 import React, { useState, useEffect } from 'react';
-import { subscribeToRiders, subscribeToOrders, generateRiderSignupCode, deleteRider } from '../services/firebase';
+import {
+    subscribeToRiders,
+    subscribeToOrders,
+    generateRiderSignupCode,
+    deleteRider,
+    subscribeToUnusedCodes
+} from '../services/firebase';
+import { useToast } from '../context/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
+import { SearchIcon, RidersIcon, CheckIcon, CloseIcon } from '../components/Icons';
 import '../styles/admin.css';
 
 const RiderManager = () => {
+    const toast = useToast();
     const [riders, setRiders] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [unusedCodes, setUnusedCodes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [codeModal, setCodeModal] = useState(null); // { show: bool, code: string }
-
-    const handleResetPassword = async (rider) => {
-        if (window.confirm(`Send password reset email to ${rider.email}?`)) {
-            // Import sendPasswordResetEmail from firebase/auth
-            const { sendPasswordResetEmail } = await import('firebase/auth');
-            const { auth } = await import('../firebase-config');
-
-            try {
-                await sendPasswordResetEmail(auth, rider.email);
-                alert(`Password reset email sent to ${rider.email}`);
-            } catch (error) {
-                alert('Failed to send reset email: ' + error.message);
-            }
-        }
-    };
-
-    const handleGenerateCode = async () => {
-        const result = await generateRiderSignupCode();
-        if (result.success) {
-            setCodeModal({ show: true, code: result.code });
-        } else {
-            alert('Failed to generate code: ' + result.error);
-        }
-    };
-
-    const handleCopyCode = () => {
-        if (codeModal?.code) {
-            navigator.clipboard.writeText(codeModal.code);
-            alert('Code copied to clipboard!');
-        }
-    };
-
-    const closeCodeModal = () => {
-        setCodeModal(null);
-    };
-
-    const handleDeleteRider = async (rider) => {
-        if (window.confirm(`Delete rider ${rider.name}?\n\nThis will remove their profile from the system and they will be immediately logged out.`)) {
-            console.log('Deleting rider:', rider.id, rider.name);
-            const result = await deleteRider(rider.id);
-            if (result.success) {
-                alert(`Rider ${rider.name} deleted successfully`);
-            } else {
-                console.error('Delete failed:', result.error);
-                alert(`Failed to delete rider: ${result.error}\n\nPlease check the browser console for more details.`);
-            }
-        }
-    };
+    const [riderToDelete, setRiderToDelete] = useState(null);
 
     useEffect(() => {
         const unsubscribeRiders = subscribeToRiders((ridersData) => {
-            setRiders(ridersData);
+            setRiders(ridersData || []);
             setLoading(false);
         });
 
         const unsubscribeOrders = subscribeToOrders((ordersData) => {
-            setOrders(ordersData);
+            setOrders(ordersData || []);
+        });
+
+        const unsubscribeCodes = subscribeToUnusedCodes((codesData) => {
+            setUnusedCodes(codesData || []);
         });
 
         return () => {
             unsubscribeRiders();
             unsubscribeOrders();
+            unsubscribeCodes();
         };
     }, []);
 
-    // Calculate stats for each rider
-    const getRiderStats = (riderId) => {
-        const riderOrders = orders.filter(o => o.assignedRiderId === riderId);
-        const assignedOrders = riderOrders.filter(o => o.status === 'ready' || o.status === 'out_for_delivery').length;
-        const deliveredOrders = riderOrders.filter(o => o.status === 'delivered').length;
-        return { assignedOrders, deliveredOrders };
+    const handleResetPassword = async (rider) => {
+        const { sendPasswordResetEmail } = await import('firebase/auth');
+        const { auth } = await import('../firebase-config');
+
+        try {
+            await sendPasswordResetEmail(auth, rider.email);
+            toast.success(`Password reset link sent to ${rider.email}`);
+        } catch (error) {
+            toast.error('Failed to send reset email: ' + error.message);
+        }
+    };
+
+    const handleGenerateCode = async () => {
+        try {
+            const result = await generateRiderSignupCode();
+            if (result.success) {
+                setCodeModal({ show: true, code: result.code });
+                toast.success(`Generated signup code: ${result.code}`);
+            } else {
+                toast.error('Failed to generate code: ' + result.error);
+            }
+        } catch (err) {
+            toast.error('Error generating code: ' + err.message);
+        }
+    };
+
+    const handleCopyCode = (code) => {
+        if (code) {
+            navigator.clipboard.writeText(code);
+            toast.success(`Code ${code} copied to clipboard!`);
+        }
+    };
+
+    const confirmDeleteRider = async () => {
+        if (!riderToDelete) return;
+        try {
+            const result = await deleteRider(riderToDelete.id);
+            if (result.success) {
+                toast.success(`Rider "${riderToDelete.name}" was removed.`);
+            } else {
+                toast.error(`Failed to delete rider: ${result.error}`);
+            }
+        } catch (err) {
+            toast.error('Error deleting rider: ' + err.message);
+        }
+        setRiderToDelete(null);
+    };
+
+    // Calculate live order counts for each rider
+    const getRiderStats = (rider) => {
+        const riderOrders = orders.filter(o => o.assignedRiderId === rider.id);
+        const activeOrders = riderOrders.filter(o => o.status === 'ready' || o.status === 'out_for_delivery').length;
+        // Prefer persistent stat if available, otherwise fall back to orders array count
+        const deliveredOrders = rider.stats?.deliveredOrders !== undefined
+            ? rider.stats.deliveredOrders
+            : riderOrders.filter(o => o.status === 'delivered').length;
+
+        return { activeOrders, deliveredOrders };
     };
 
     // Filter riders by search term
     const filteredRiders = riders.filter(rider =>
         rider.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        rider.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        rider.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rider.phone?.includes(searchTerm)
     );
 
     return (
         <div>
-            <div className="admin-header">
+            {/* Header */}
+            <div className="admin-header" style={{ padding: '20px 24px', marginBottom: '24px' }}>
                 <div>
-                    <h1 className="admin-title">Rider Management</h1>
-                    <p className="admin-subtitle">Manage delivery riders and track performance</p>
+                    <h1 className="admin-title" style={{ fontSize: '24px' }}>Rider Fleet Management</h1>
+                    <p className="admin-subtitle" style={{ fontSize: '13px', marginTop: '4px' }}>
+                        Active delivery couriers, online status, and onboarding codes ({riders.length} registered)
+                    </p>
                 </div>
-            </div>
-
-            {/* Search Bar */}
-            <div style={{ marginBottom: '24px' }}>
-                <input
-                    type="text"
-                    placeholder="Search riders by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                        width: '100%',
-                        maxWidth: '400px',
-                        padding: '12px 16px',
-                        backgroundColor: '#1a1a1a',
-                        border: '1px solid #333',
-                        borderRadius: '8px',
-                        color: 'white',
-                        fontSize: '14px'
-                    }}
-                />
-            </div>
-
-            {/* Generate Code Button */}
-            <div style={{ marginBottom: '32px' }}>
                 <button
                     onClick={handleGenerateCode}
-                    style={{
-                        padding: '12px 24px',
-                        backgroundColor: '#4ade80',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: '#000',
-                        fontSize: '15px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#22c55e'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#4ade80'}
+                    className="btn btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 >
-                    ➕ Generate Rider Signup Code
+                    <span>➕</span>
+                    <span>Generate Signup Code</span>
                 </button>
             </div>
 
+            {/* Active / Unused Signup Codes Drawer */}
+            {unusedCodes.length > 0 && (
+                <div style={{
+                    backgroundColor: 'var(--surface-card, #14171f)',
+                    border: '1px solid var(--surface-border, rgba(255,255,255,0.1))',
+                    borderRadius: 'var(--radius-lg, 12px)',
+                    padding: '16px 20px',
+                    marginBottom: '24px'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '14px', color: 'var(--color-accent, #FFB400)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            🔑 Active Onboarding Codes ({unusedCodes.length})
+                        </h3>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Share one with a new rider during registration</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {unusedCodes.map(codeItem => (
+                            <div
+                                key={codeItem.id}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    backgroundColor: 'var(--surface-elevated, #1d222d)',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--surface-border)'
+                                }}
+                            >
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: 'var(--text-primary)' }}>
+                                    {codeItem.code}
+                                </span>
+                                <button
+                                    onClick={() => handleCopyCode(codeItem.code)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--color-accent)',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        padding: '2px 4px'
+                                    }}
+                                    title="Copy code"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Search Bar */}
+            <div style={{ marginBottom: '24px' }}>
+                <div className="filter-search-box" style={{ maxWidth: '400px' }}>
+                    <SearchIcon width={16} height={16} stroke="var(--text-muted)" />
+                    <input
+                        type="text"
+                        placeholder="Search riders by name, email, or phone..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="filter-search-input"
+                    />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                        >
+                            <CloseIcon width={14} height={14} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
             {loading ? (
-                <div style={{ color: 'white' }}>Loading riders...</div>
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    Loading courier profiles...
+                </div>
             ) : filteredRiders.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-                    {searchTerm ? 'No riders found matching your search.' : 'No riders registered yet.'}
+                <div style={{
+                    padding: '60px 20px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--surface-card)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--surface-border)',
+                    margin: '20px 0'
+                }}>
+                    <RidersIcon width={40} height={40} stroke="var(--text-muted)" style={{ margin: '0 auto 16px auto', display: 'block' }} />
+                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>No Delivery Riders Found</h3>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        {searchTerm ? 'No couriers match your search.' : 'Click "Generate Signup Code" to onboard your first courier.'}
+                    </p>
                 </div>
             ) : (
-                <div className="responsive-grid">
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: '20px'
+                }}>
                     {filteredRiders.map(rider => {
-                        const stats = getRiderStats(rider.id);
+                        const stats = getRiderStats(rider);
+                        const isOnline = rider.isOnline === true;
+
                         return (
                             <div
                                 key={rider.id}
                                 style={{
-                                    backgroundColor: '#1a1a1a',
+                                    backgroundColor: 'var(--surface-card, #14171f)',
                                     borderRadius: '12px',
-                                    padding: '24px',
-                                    border: '1px solid #333',
-                                    transition: 'transform 0.2s, box-shadow 0.2s'
+                                    padding: '20px',
+                                    border: '1px solid var(--surface-border)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    transition: 'transform 0.15s ease, border-color 0.15s ease',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)'
                                 }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)';
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
+                                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-accent)'}
+                                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--surface-border)'}
                             >
-                                {/* Rider Info */}
-                                <div style={{ marginBottom: '20px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                        <div style={{
-                                            width: '48px',
-                                            height: '48px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'var(--color-accent)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '20px',
-                                            fontWeight: 'bold',
-                                            color: '#000'
+                                <div>
+                                    {/* Top: Avatar, Name & Online Badge */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                width: '44px',
+                                                height: '44px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'var(--color-accent, #FFB400)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '18px',
+                                                fontWeight: 800,
+                                                color: '#000',
+                                                flexShrink: 0
+                                            }}>
+                                                {rider.name?.charAt(0).toUpperCase() || 'R'}
+                                            </div>
+                                            <div>
+                                                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700 }}>
+                                                    {rider.name || 'Courier'}
+                                                </h3>
+                                                <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
+                                                    {rider.email}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <span style={{
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            padding: '3px 8px',
+                                            borderRadius: '4px',
+                                            backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                                            color: isOnline ? '#10b981' : 'var(--text-muted)',
+                                            border: `1px solid ${isOnline ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`
                                         }}>
-                                            {rider.name?.charAt(0).toUpperCase() || 'R'}
+                                            {isOnline ? '🟢 On Duty' : '⚪ Offline'}
+                                        </span>
+                                    </div>
+
+                                    {rider.phone && (
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                                            📞 <a href={`tel:${rider.phone}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>{rider.phone}</a>
+                                        </div>
+                                    )}
+
+                                    {/* Stats Grid */}
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '1fr 1fr',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        backgroundColor: 'var(--surface-elevated, #1d222d)',
+                                        borderRadius: '8px',
+                                        marginBottom: '16px'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#3b82f6' }}>
+                                                {stats.activeOrders}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                In Transit / Ready
+                                            </div>
                                         </div>
                                         <div>
-                                            <h3 style={{ margin: 0, color: 'white', fontSize: '18px' }}>
-                                                {rider.name || 'Unknown Rider'}
-                                            </h3>
-                                            <p style={{ margin: '4px 0 0 0', color: '#888', fontSize: '13px' }}>
-                                                {rider.email}
-                                            </p>
+                                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>
+                                                {stats.deliveredOrders}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                Total Delivered
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Stats */}
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '1fr 1fr',
-                                    gap: '12px',
-                                    paddingTop: '16px',
-                                    borderTop: '1px solid #333'
-                                }}>
-                                    <div style={{
-                                        backgroundColor: 'rgba(142, 68, 173, 0.1)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid rgba(142, 68, 173, 0.3)'
-                                    }}>
-                                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9b59b6' }}>
-                                            {stats.assignedOrders}
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                                            Active Orders
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid rgba(74, 222, 128, 0.3)'
-                                    }}>
-                                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4ade80' }}>
-                                            {stats.deliveredOrders}
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                                            Delivered
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Joined Date */}
-                                {rider.createdAt && (
-                                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #333' }}>
-                                        <div style={{ fontSize: '12px', color: '#666' }}>
-                                            Joined: {new Date(rider.createdAt.seconds * 1000).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Reset Password Button */}
-                                <div style={{ marginTop: '16px' }}>
+                                {/* Actions */}
+                                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--surface-border)', paddingTop: '12px' }}>
                                     <button
                                         onClick={() => handleResetPassword(rider)}
                                         style={{
-                                            width: '100%',
-                                            padding: '10px',
-                                            backgroundColor: '#e74c3c',
-                                            border: 'none',
+                                            flex: 1,
+                                            padding: '8px',
+                                            backgroundColor: 'var(--surface-elevated)',
+                                            border: '1px solid var(--surface-border)',
                                             borderRadius: '6px',
-                                            color: 'white',
-                                            fontSize: '13px',
-                                            fontWeight: '500',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '12px',
                                             cursor: 'pointer',
-                                            transition: 'background-color 0.2s',
-                                            marginBottom: '8px'
+                                            fontWeight: 600
                                         }}
-                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#c0392b'}
-                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#e74c3c'}
+                                        title="Send password reset link"
                                     >
-                                        📧 Reset Password (Email)
+                                        📧 Reset Password
                                     </button>
                                     <button
-                                        onClick={() => handleDeleteRider(rider)}
+                                        onClick={() => setRiderToDelete(rider)}
                                         style={{
-                                            width: '100%',
-                                            padding: '10px',
-                                            backgroundColor: '#95a5a6',
-                                            border: 'none',
+                                            padding: '8px 12px',
+                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                            border: '1px solid rgba(239, 68, 68, 0.3)',
                                             borderRadius: '6px',
-                                            color: 'white',
-                                            fontSize: '13px',
-                                            fontWeight: '500',
+                                            color: '#ef4444',
+                                            fontSize: '12px',
                                             cursor: 'pointer',
-                                            transition: 'background-color 0.2s'
+                                            fontWeight: 600
                                         }}
-                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#7f8c8d'}
-                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#95a5a6'}
+                                        title="Delete courier account"
                                     >
-                                        🗑️ Delete Rider
+                                        Delete
                                     </button>
                                 </div>
                             </div>
@@ -288,7 +369,7 @@ const RiderManager = () => {
                 </div>
             )}
 
-            {/* Signup Code Modal */}
+            {/* Generated Code Modal */}
             {codeModal?.show && (
                 <div style={{
                     position: 'fixed',
@@ -297,98 +378,93 @@ const RiderManager = () => {
                     right: 0,
                     bottom: 0,
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backdropFilter: 'blur(4px)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    zIndex: 1000
-                }} onClick={closeCodeModal}>
+                    zIndex: 2000
+                }} onClick={() => setCodeModal(null)}>
                     <div style={{
-                        backgroundColor: '#1a1a1a',
+                        backgroundColor: 'var(--surface-card, #14171f)',
                         borderRadius: '12px',
-                        padding: '32px',
-                        maxWidth: '500px',
+                        padding: '28px',
+                        maxWidth: '420px',
                         width: '90%',
-                        border: '2px solid #4ade80'
+                        border: '1px solid var(--color-accent, #FFB400)',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
                     }} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={{ margin: '0 0 16px 0', color: '#4ade80', fontSize: '24px' }}>
-                            ✅ Signup Code Generated
-                        </h2>
-                        <p style={{ margin: '0 0 24px 0', color: '#888', fontSize: '14px' }}>
-                            Share this code with the rider to allow them to sign up.
-                        </p>
-
-                        <div style={{
-                            backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                            border: '2px solid #4ade80',
-                            borderRadius: '8px',
-                            padding: '20px',
-                            marginBottom: '24px'
-                        }}>
-                            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-                                Signup Code:
-                            </div>
-                            <code style={{
-                                display: 'block',
-                                padding: '16px',
-                                backgroundColor: '#2a2a2a',
-                                borderRadius: '6px',
-                                color: '#4ade80',
-                                fontSize: '32px',
-                                fontWeight: 'bold',
-                                letterSpacing: '6px',
-                                textAlign: 'center',
-                                marginBottom: '12px'
-                            }}>
-                                {codeModal.code}
-                            </code>
-                            <button
-                                onClick={handleCopyCode}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    backgroundColor: '#4ade80',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    color: '#000',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                📋 Copy Code
-                            </button>
-                        </div>
-
-                        <div style={{
-                            padding: '16px',
-                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                            border: '1px solid rgba(255, 193, 7, 0.3)',
-                            borderRadius: '6px',
-                            marginBottom: '20px'
-                        }}>
-                            <p style={{ margin: 0, fontSize: '13px', color: '#ffc107' }}>
-                                ⚠️ <strong>Important:</strong> This code can only be used once. The rider must enter it during signup.
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <div style={{ fontSize: '32px', marginBottom: '6px' }}>🔑</div>
+                            <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '20px', fontWeight: 800 }}>
+                                Rider Signup Code
+                            </h2>
+                            <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                                Share this single-use code with your new courier to register on the Rider App.
                             </p>
                         </div>
 
-                        <button
-                            onClick={closeCodeModal}
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                backgroundColor: '#444',
-                                border: 'none',
-                                borderRadius: '6px',
-                                color: 'white',
-                                fontSize: '14px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Close
-                        </button>
+                        <div style={{
+                            backgroundColor: 'var(--surface-elevated, #1d222d)',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            marginBottom: '20px',
+                            border: '1px dashed var(--color-accent)'
+                        }}>
+                            <div style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '4px', color: 'var(--color-accent)', fontFamily: 'monospace' }}>
+                                {codeModal.code}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                onClick={() => handleCopyCode(codeModal.code)}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    backgroundColor: 'var(--color-accent, #FFB400)',
+                                    color: '#000',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Copy Code
+                            </button>
+                            <button
+                                onClick={() => setCodeModal(null)}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    backgroundColor: 'var(--surface-elevated)',
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--surface-border)',
+                                    borderRadius: '6px',
+                                    fontWeight: 600,
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal for Delete */}
+            <ConfirmModal
+                isOpen={!!riderToDelete}
+                title="Remove Courier"
+                message={`Are you sure you want to remove "${riderToDelete?.name}"? They will be logged out and cannot accept deliveries.`}
+                confirmText="Yes, Remove"
+                cancelText="Keep"
+                isDanger={true}
+                onConfirm={confirmDeleteRider}
+                onCancel={() => setRiderToDelete(null)}
+            />
         </div>
     );
 };
