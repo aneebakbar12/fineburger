@@ -22,8 +22,6 @@ const FinancialDashboard = () => {
         // Use PKT for correct date ranges
         const { startDate, endDate } = getPKTRange(dateRange);
 
-        console.log(`Fetching financial data:`, { dateRange, startDate, endDate });
-
         const data = await getFinancialSummary(startDate, endDate);
         setSummary(data);
         setLoading(false);
@@ -53,7 +51,8 @@ const FinancialDashboard = () => {
         </div>
     );
 
-    const isProfitable = summary.profit >= 0;
+    const hasData = summary.revenue > 0 || summary.expenses > 0;
+    const isProfitable = summary.profit > 0;
 
     return (
         <div>
@@ -113,11 +112,11 @@ const FinancialDashboard = () => {
                             subtext="All business costs"
                         />
                         <MetricCard
-                            icon={isProfitable ? "✅" : "❌"}
+                            icon={!hasData ? '📊' : isProfitable ? '✅' : summary.profit === 0 ? '➖' : '❌'}
                             label="Net Profit"
                             value={formatCurrency(summary.profit)}
-                            color={isProfitable ? "#4ade80" : "#ef4444"}
-                            subtext={`${summary.profitMargin}% profit margin`}
+                            color={!hasData ? '#888' : isProfitable ? '#4ade80' : summary.profit === 0 ? '#f59e0b' : '#ef4444'}
+                            subtext={hasData ? `${summary.profitMargin}% profit margin` : 'No data for this period'}
                         />
                     </div>
 
@@ -191,25 +190,35 @@ const FinancialDashboard = () => {
 
                     {/* Insights */}
                     <div style={{
-                        backgroundColor: isProfitable ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        border: `1px solid ${isProfitable ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                        backgroundColor: !hasData ? 'rgba(100,100,100,0.1)' : isProfitable ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        border: `1px solid ${!hasData ? 'rgba(100,100,100,0.3)' : isProfitable ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
                         borderRadius: '8px',
                         padding: '20px'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <span style={{ fontSize: '24px' }}>{isProfitable ? '🎉' : '⚠️'}</span>
+                            <span style={{ fontSize: '24px' }}>{!hasData ? '📊' : isProfitable ? '🎉' : '⚠️'}</span>
                             <div>
                                 <h3 style={{
                                     margin: '0 0 8px 0',
-                                    color: isProfitable ? '#4ade80' : '#ef4444',
+                                    color: !hasData ? '#888' : isProfitable ? '#4ade80' : '#ef4444',
                                     fontSize: '16px'
                                 }}>
-                                    {isProfitable ? 'Business is Profitable!' : 'Business is in Loss'}
+                                    {!hasData
+                                        ? 'No Data Yet'
+                                        : isProfitable
+                                            ? 'Business is Profitable!'
+                                            : summary.profit === 0
+                                                ? 'Breaking Even'
+                                                : 'Business is in Loss'}
                                 </h3>
                                 <p style={{ margin: 0, color: '#aaa', fontSize: '14px' }}>
-                                    {isProfitable
-                                        ? `You're making ${summary.profitMargin}% profit margin. Keep up the good work!`
-                                        : `Your expenses exceed revenue by ${formatCurrency(Math.abs(summary.profit))}. Consider reducing costs or increasing prices.`
+                                    {!hasData
+                                        ? 'Add expenses and ensure orders are marked as delivered to see financial insights.'
+                                        : isProfitable
+                                            ? `You're making a ${summary.profitMargin}% profit margin. Keep up the good work!`
+                                            : summary.profit === 0
+                                                ? 'Revenue exactly covers expenses. Add more delivered orders or reduce costs to turn a profit.'
+                                                : `Your expenses exceed revenue by ${formatCurrency(Math.abs(summary.profit))}. Consider reducing costs or increasing prices.`
                                     }
                                 </p>
                             </div>
