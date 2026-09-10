@@ -15,8 +15,9 @@ import {
     serverTimestamp,
     onSnapshot,
     writeBatch,
-    sum, // Added
-    getAggregateFromServer // Added
+    increment,
+    sum,
+    getAggregateFromServer
 } from 'firebase/firestore';
 
 
@@ -375,6 +376,20 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             ...additionalData,
             updatedAt: serverTimestamp()
         });
+
+        // Increment rider delivery stats when order is marked delivered
+        if (status === 'delivered') {
+            const orderSnap = await getDoc(doc(db, 'orders', id));
+            if (orderSnap.exists()) {
+                const riderId = orderSnap.data().assignedRiderId;
+                if (riderId) {
+                    await updateDoc(doc(db, 'riders', riderId), {
+                        'stats.deliveredOrders': increment(1),
+                        'stats.lastDeliveredAt': serverTimestamp()
+                    });
+                }
+            }
+        }
 
         // Restore inventory when an order is CANCELLED
         // (stock was already deducted when the order was placed)
