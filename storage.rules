@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Anyone can read public restaurant assets (menu images, banners)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Admins only can upload menu and slider images (Max 5MB, images only)
+    match /menu-images/{imageId} {
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'aneeb458@gmail.com'
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    match /slider-images/{imageId} {
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'aneeb458@gmail.com'
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Other uploads by authenticated admin only
+    match /{allPaths=**} {
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'aneeb458@gmail.com'
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}

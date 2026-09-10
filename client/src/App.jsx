@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Cart from './components/Cart';
@@ -40,25 +41,42 @@ function App() {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    // Track whether Firestore has responded at least once before falling back to demo data
     const [firestoreLoaded, setFirestoreLoaded] = useState(false);
 
-    // Use live Firestore data once loaded; fall back to demo only before first Firestore response
-    const effectiveCategories = (firestoreLoaded && categories.length > 0) ? categories
-        : (!firestoreLoaded ? DEMO_CATEGORIES : categories.length > 0 ? categories : DEMO_CATEGORIES);
-    const effectiveMenuItems = (firestoreLoaded && menuItems.length > 0) ? menuItems
-        : (!firestoreLoaded ? DEMO_MENU_ITEMS : menuItems.length > 0 ? menuItems : DEMO_MENU_ITEMS);
+    // Once Firestore data has arrived, never fall back to demo data again.
+    // If Firestore sends a transient empty snapshot, keep the last known real data.
+    const effectiveCategories = firestoreLoaded
+        ? (categories.length > 0 ? categories : DEMO_CATEGORIES)
+        : DEMO_CATEGORIES;
+    const effectiveMenuItems = firestoreLoaded
+        ? (menuItems.length > 0 ? menuItems : DEMO_MENU_ITEMS)
+        : DEMO_MENU_ITEMS;
     const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
 
-    // Subscribe to real-time updates and auth
     useEffect(() => {
-        let loaded = false;
+        let firstCategoryLoad = true;
+
         const handleCategories = (data) => {
-            setCategories(data);
-            if (!loaded) { loaded = true; setFirestoreLoaded(true); }
+            // Ignore empty snapshots once we have real data (prevents revert on transient errors)
+            setCategories(prev => {
+                if (prev.length > 0 && data.length === 0) return prev;
+                return data;
+            });
+            if (firstCategoryLoad) {
+                firstCategoryLoad = false;
+                setFirestoreLoaded(true);
+            }
         };
+
+        const handleMenuItems = (data) => {
+            setMenuItems(prev => {
+                if (prev.length > 0 && data.length === 0) return prev;
+                return data;
+            });
+        };
+
         const unsubscribeCategories = subscribeToCategories(handleCategories);
-        const unsubscribeItems = subscribeToMenuItems(setMenuItems);
+        const unsubscribeItems = subscribeToMenuItems(handleMenuItems);
         const unsubscribeSettings = subscribeToStoreSettings(setStoreSettings);
 
         const unsubscribeAuth = onAuthChange((currentUser) => {
@@ -148,6 +166,7 @@ function App() {
     return (
         <StaffModeProvider>
             <Router>
+                <ScrollToTop />
                 <div className="app">
                     <StaffModeActivator />
                     <Header

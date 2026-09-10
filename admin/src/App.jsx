@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -216,6 +217,7 @@ function App() {
 
     return (
         <Router>
+            <ScrollToTop />
             <div className="admin-layout">
                 <Sidebar onLogout={handleLogout} />
                 <main className="admin-main">

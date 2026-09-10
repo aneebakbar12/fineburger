@@ -167,8 +167,34 @@ exports.onOrderCancelled = functions.firestore
     });
 
 // ============================================================
-// CALLABLE: Reset Rider Password (Admin Only)
+// TRIGGER: Increment rider delivery stats when order delivered
+// Runs server-side — riders cannot self-modify their own stats
 // ============================================================
+exports.onOrderDelivered = functions.firestore
+    .document('orders/{orderId}')
+    .onUpdate(async (change, context) => {
+        const before = change.before.data();
+        const after = change.after.data();
+
+        // Only act when status transitions TO 'delivered'
+        if (before.status === after.status || after.status !== 'delivered') return null;
+
+        const riderId = after.assignedRiderId;
+        if (!riderId) return null;
+
+        try {
+            await db.collection('riders').doc(riderId).update({
+                'stats.deliveredOrders': admin.firestore.FieldValue.increment(1),
+                'stats.lastDeliveredAt': admin.firestore.FieldValue.serverTimestamp()
+            });
+            console.log(`✅ Stats incremented for rider ${riderId} on order ${context.params.orderId}`);
+        } catch (err) {
+            console.error(`❌ Failed to update rider stats for ${riderId}:`, err);
+        }
+
+        return null;
+    });
+
 exports.resetRiderPassword = functions.https.onCall(async (data, context) => {
     try {
         await verifyIsAdmin(context);

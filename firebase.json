@@ -1,6 +1,9 @@
 {
     "firestore": {
-        "rules": "FIREBASE_RULES.txt"
+        "rules": "firestore.rules"
+    },
+    "storage": {
+        "rules": "storage.rules"
     },
     "hosting": {
         "public": "client/dist",
