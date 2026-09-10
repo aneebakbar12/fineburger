@@ -1,6 +1,6 @@
 # Fine Burger & Fast Food — Restaurant Owner Operating Guide
 
-*Last updated: September 2026 — reflects current live system*
+*Last updated: 10 September 2026 — all features live, no pending items*
 
 ---
 
@@ -31,8 +31,9 @@
 | Inventory manager | ✅ Live | |
 | Stock auto-deduction on order | ✅ Live | Cloud Function |
 | Stock restore on cancellation | ✅ Live | Cloud Function |
-| Rider delivery stats | ✅ Live | Incremented by admin panel on delivery |
-| Rider push notifications | ✅ Live | Real-time via Firestore (instant, no delay) |
+| Rider delivery stats | ✅ Live | Auto-increments when you click Delivered in admin |
+| Rider order alerts | ✅ Live | Instant via Firestore — appears the moment you assign |
+| Image uploads (menu & sliders) | ✅ Live | Cloudinary — 25 GB free, no Firebase billing needed |
 | Firebase Storage | N/A | Not used — Cloudinary handles all images |
 
 ---
@@ -62,7 +63,7 @@ Pending → Preparing → Ready / Out for Delivery → Delivered
 3. When food is ready:
    - **Dine-in or Pickup** → Click **"Ready"**
    - **Delivery** → Click **"Out for Delivery"** → Select a rider from the dropdown
-4. Rider picks up and delivers → Click **"Delivered"**
+4. Rider picks up and delivers → Click **"Delivered"** — rider's delivery count updates automatically
 5. If a customer cancels → Click **"Cancel"** (stock is automatically restored)
 
 **Searching for an order:**
@@ -217,7 +218,7 @@ Sidebar → **Reports**
    - Tap **"Accept"** → heading to pickup
    - Tap the address to open Google Maps navigation
    - After delivering → tap **"Delivered"**
-4. The order is marked complete in your admin panel automatically
+4. The order is marked complete in your admin panel automatically — rider's stats update instantly
 
 ---
 
