@@ -88,11 +88,11 @@ service cloud.firestore {
     }
 
     // Rider signup codes:
-    // - Unused codes can be read by authenticated users during registration validation
+    // - Unused codes can be read during registration validation
     // - Only admins can generate or delete codes
     // - Newly registered riders can mark a code as used during registration
     match /riderSignupCodes/{codeId} {
-      allow read: if isAuthenticated() && ((resource != null && resource.data.used == false) || isAdmin());
+      allow read: if (resource != null && resource.data.used == false) || isAdmin();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         isAuthenticated() &&

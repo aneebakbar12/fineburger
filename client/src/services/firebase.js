@@ -21,10 +21,22 @@ import {
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    GoogleAuthProvider,
+    signInWithPopup
 } from 'firebase/auth';
 
 // --- Authentication ---
+
+export const loginWithGoogle = async () => {
+    try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        return { success: true, user: result.user };
+    } catch (error) {
+        return { success: false, error: error.message, code: error.code };
+    }
+};
 
 export const registerUser = async (email, password, name) => {
     try {

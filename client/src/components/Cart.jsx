@@ -90,6 +90,18 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, user
 
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
+
+        // Phone number validation for customer orders
+        if (!(isStaffMode && orderType === 'Dine-in')) {
+            const cleanPhone = (customerDetails.phone || '').replace(/[\s\-()]/g, '');
+            const pakistaniRegex = /^(\+92|92|0)?3[0-9]{9}$/;
+            const generalRegex = /^\+?[0-9]{10,14}$/;
+            if (!pakistaniRegex.test(cleanPhone) && !generalRegex.test(cleanPhone)) {
+                alert('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+                return;
+            }
+        }
+
         setLoading(true);
 
         const orderData = {

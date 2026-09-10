@@ -42,19 +42,14 @@ function App() {
     const [authLoading, setAuthLoading] = useState(true);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-    // Harmonize foundational FineBurger catalog with live Firestore records.
-    // Ensures signature burgers, rolls, and fries are permanently available while
-    // seamlessly incorporating any live updates and custom items from Firestore.
     const effectiveCategories = useMemo(() => {
         if (!categories || categories.length === 0) {
             return DEMO_CATEGORIES;
         }
 
-        // Start with the standard base categories
         const merged = [...DEMO_CATEGORIES];
         const addedNames = new Set(DEMO_CATEGORIES.map(c => c.name.toLowerCase().trim()));
 
-        // Add any custom categories from Firestore (e.g. "bbq", "Sweets")
         categories.forEach(liveCat => {
             const normName = (liveCat.name || '').toLowerCase().trim();
             if (!addedNames.has(normName) && normName !== '') {
@@ -78,19 +73,15 @@ function App() {
 
         const itemsMap = new Map();
 
-        // 1. Seed base burger and fast food menu items
         DEMO_MENU_ITEMS.forEach(item => {
             itemsMap.set(item.name.toLowerCase().trim(), { ...item });
         });
 
-        // 2. Merge live items from Firestore (updating existing or appending new ones)
         menuItems.forEach(liveItem => {
             const key = (liveItem.name || '').toLowerCase().trim();
             if (itemsMap.has(key)) {
-                // Live Firestore item updates base item (price, stock, availability)
                 itemsMap.set(key, { ...itemsMap.get(key), ...liveItem });
             } else {
-                // New custom item from Firestore (e.g., malai boti, tawa peice)
                 itemsMap.set(liveItem.id || key, { ...liveItem });
             }
         });

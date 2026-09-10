@@ -38,12 +38,20 @@ export const loginRider = async (email, password) => {
     }
 };
 
-export const registerRider = async (email, password, name, signupCode) => {
+export const registerRider = async (email, password, name, phone, signupCode) => {
     try {
+        // If phone is omitted (e.g. legacy call), handle 4-arg signature
+        let actualPhone = phone;
+        let actualCode = signupCode;
+        if (!signupCode && phone && phone.length <= 8 && !phone.startsWith('0') && !phone.startsWith('+')) {
+            actualCode = phone;
+            actualPhone = '';
+        }
+
         // 1. Validate signup code first
         const codesQuery = query(
             collection(db, 'riderSignupCodes'),
-            where('code', '==', signupCode.toUpperCase()),
+            where('code', '==', actualCode.toUpperCase()),
             where('used', '==', false)
         );
         const codesSnapshot = await getDocs(codesQuery);
@@ -73,8 +81,9 @@ export const registerRider = async (email, password, name, signupCode) => {
         await setDoc(doc(db, 'riders', userId), {
             name: name,
             email: email,
+            phone: actualPhone || '',
             userId: userId,
-            signupCode: signupCode.toUpperCase(),
+            signupCode: actualCode.toUpperCase(),
             tempPassword: tempPassword,
             createdAt: serverTimestamp(),
             stats: {
