@@ -88,8 +88,8 @@ export const createOrder = async (orderData) => {
         let initialStatus = 'pending';
         let additionalFields = {};
 
-        if (orderData.placedByStaff && orderData.orderType === 'Dine-in') {
-            initialStatus = 'preparing'; // Auto-confirm staff dine-in orders
+        if (orderData.placedByStaff && (orderData.orderType === 'Dine-in' || orderData.orderType === 'Takeaway')) {
+            initialStatus = 'preparing'; // Auto-confirm staff in-store orders (Dine-in and Takeaway)
             additionalFields.preparingStartedAt = serverTimestamp();
         }
 

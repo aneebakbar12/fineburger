@@ -61,15 +61,15 @@ const Cart = ({
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
 
-    // Auto-fill user details when user is logged in
+    // Auto-fill user details ONLY for personal customer orders (never in staff POS mode)
     useEffect(() => {
-        if (user && isCheckout) {
+        if (user && isCheckout && !isStaffMode) {
             setCustomerDetails(prev => ({
                 ...prev,
                 name: user.displayName || prev.name || ''
             }));
         }
-    }, [user, isCheckout]);
+    }, [user, isCheckout, isStaffMode]);
 
     // Set default order type based on staff mode
     useEffect(() => {
@@ -79,6 +79,29 @@ const Cart = ({
             setOrderType('Delivery');
         }
     }, [isStaffMode]);
+
+    // Clean up incompatible fields when changing order type
+    const handleOrderTypeChange = (type) => {
+        setOrderType(type);
+        setCustomerDetails(prev => {
+            const next = { ...prev };
+            if (type === 'Dine-in') {
+                next.address = '';
+                next.location = null;
+                if (isStaffMode) {
+                    next.name = '';
+                    next.phone = '';
+                }
+            } else if (type === 'Takeaway') {
+                next.tableNumber = '';
+                next.address = '';
+                next.location = null;
+            } else if (type === 'Delivery') {
+                next.tableNumber = '';
+            }
+            return next;
+        });
+    };
 
     const calculateSubtotal = () => {
         return activeCartItems.reduce((total, item) => total + (getItemUnitPrice(item) * item.quantity), 0);
@@ -134,6 +157,12 @@ const Cart = ({
                 return;
             }
         } else {
+            // Customer full name validation (no whitespace bypass)
+            if (!customerDetails.name?.trim()) {
+                alert('Please enter your full name.');
+                return;
+            }
+
             // Online customer orders require valid phone number
             const cleanPhone = (customerDetails.phone || '').replace(/[\s\-()]/g, '');
             const pakistaniRegex = /^(\+92|92|0)?3[0-9]{9}$/;
@@ -165,15 +194,25 @@ const Cart = ({
             itemTotal: getItemUnitPrice(item) * item.quantity
         }));
 
+        // Clean customer details object according to fulfillment type
+        const cleanCustomer = {
+            name: customerDetails.name?.trim() || '',
+            phone: customerDetails.phone?.trim() || '',
+            address: orderType === 'Delivery' ? customerDetails.address?.trim() : '',
+            location: orderType === 'Delivery' ? customerDetails.location : null,
+            tableNumber: orderType === 'Dine-in' ? customerDetails.tableNumber?.trim() : ''
+        };
+
         const orderData = {
-            customer: customerDetails,
+            customer: cleanCustomer,
             items: orderItems,
             subtotal: subtotal,
             deliveryFee: deliveryFee,
             total: finalTotal,
             paymentMethod: 'COD',
             orderType: orderType,
-            userId: user ? user.uid : null,
+            // In POS mode, do not bind the cashier's private userId to in-store customer orders
+            userId: (!isStaffMode && user) ? user.uid : null,
             placedByStaff: isStaffMode
         };
 
@@ -188,34 +227,36 @@ const Cart = ({
                 deliveryFee: deliveryFee,
                 total: finalTotal,
                 items: [...orderItems],
-                customer: { ...customerDetails },
+                customer: { ...cleanCustomer },
                 orderType: orderType
             };
             setConfirmedOrder(confirmed);
             setOrderSuccess(true);
             if (onClearCart) onClearCart();
 
-            const orderRecord = {
-                orderId: result.orderId,
-                orderReference: ref,
-                total: finalTotal,
-                orderType: orderType,
-                itemCount: activeCartItems.reduce((s, i) => s + i.quantity, 0),
-                itemsSummary: activeCartItems.map(i => `${i.quantity}x ${i.name}`).join(', '),
-                items: [...orderItems],
-                customer: { ...customerDetails },
-                placedAt: Date.now()
-            };
+            // Write to guest history only for online customers (not staff POS counter orders)
+            if (!isStaffMode) {
+                const orderRecord = {
+                    orderId: result.orderId,
+                    orderReference: ref,
+                    total: finalTotal,
+                    orderType: orderType,
+                    itemCount: activeCartItems.reduce((s, i) => s + i.quantity, 0),
+                    itemsSummary: activeCartItems.map(i => `${i.quantity}x ${i.name}`).join(', '),
+                    items: [...orderItems],
+                    customer: { ...cleanCustomer },
+                    placedAt: Date.now()
+                };
 
-            // Save to localStorage so guest can track anytime without logging in
-            try {
-                const existing = JSON.parse(localStorage.getItem('fb_recent_orders') || '[]');
-                const filtered = existing.filter(o => o.orderId !== result.orderId);
-                filtered.unshift(orderRecord);
-                const trimmed = filtered.slice(0, 10);
-                localStorage.setItem('fb_recent_orders', JSON.stringify(trimmed));
-                localStorage.setItem('fb_guest_orders', JSON.stringify(trimmed));
-            } catch (_) {}
+                try {
+                    const existing = JSON.parse(localStorage.getItem('fb_recent_orders') || '[]');
+                    const filtered = existing.filter(o => o.orderId !== result.orderId);
+                    filtered.unshift(orderRecord);
+                    const trimmed = filtered.slice(0, 10);
+                    localStorage.setItem('fb_recent_orders', JSON.stringify(trimmed));
+                    localStorage.setItem('fb_guest_orders', JSON.stringify(trimmed));
+                } catch (_) {}
+            }
         } else {
             alert('Failed to place order: ' + result.error);
         }
@@ -262,11 +303,9 @@ const Cart = ({
 
         let destInfo = '';
         if (confirmedOrder.orderType === 'Delivery') {
-            destInfo = `Address: ${confirmedOrder.customer?.address || 'N/A'}`;
+            destInfo = `Address   : ${confirmedOrder.customer?.address || 'N/A'}`;
         } else if (confirmedOrder.orderType === 'Dine-in') {
-            destInfo = `Table  : #${confirmedOrder.customer?.tableNumber || 'N/A'}`;
-        } else {
-            destInfo = `Type   : Takeaway`;
+            destInfo = `Table     : #${confirmedOrder.customer?.tableNumber || 'N/A'}`;
         }
 
         const trackUrl = `${window.location.origin}/track-order/${confirmedOrder.orderId}`;
@@ -285,8 +324,7 @@ const Cart = ({
 ==============================
 Order Ref : #${confirmedOrder.orderReference}
 Order Type: ${confirmedOrder.orderType}
-${destInfo}
-------------------------------
+${destInfo ? `${destInfo}\n` : ''}------------------------------
 ITEMS:
 ${itemsList}
 ------------------------------
@@ -295,7 +333,7 @@ ${confirmedOrder.deliveryFee ? `Delivery  : Rs. ${confirmedOrder.deliveryFee}\n`
 Payment   : Cash on Delivery
 ==============================
 CUSTOMER:
-Name  : ${confirmedOrder.customer?.name || 'Guest'}
+Name  : ${confirmedOrder.customer?.name || (confirmedOrder.orderType === 'Dine-in' ? `Table #${confirmedOrder.customer?.tableNumber || ''}` : 'Guest')}
 Phone : ${confirmedOrder.customer?.phone || 'N/A'}
 ==============================
 \`\`\`
@@ -354,13 +392,25 @@ ${trackUrl}`
                                 <span>Type:</span>
                                 <strong style={{ color: 'var(--color-white)' }}>{confirmedOrder.orderType}</strong>
                             </div>
-                            {confirmedOrder.orderType === 'Dine-in' && confirmedOrder.customer.tableNumber && (
+
+                            {/* Show customer name when provided */}
+                            {confirmedOrder.customer?.name && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    <span>Customer:</span>
+                                    <strong style={{ color: 'var(--color-white)' }}>{confirmedOrder.customer.name}</strong>
+                                </div>
+                            )}
+
+                            {/* Table Number for Dine-in */}
+                            {confirmedOrder.orderType === 'Dine-in' && confirmedOrder.customer?.tableNumber && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                     <span>Table:</span>
                                     <strong style={{ color: 'var(--color-white)' }}>Table #{confirmedOrder.customer.tableNumber}</strong>
                                 </div>
                             )}
-                            {confirmedOrder.orderType === 'Delivery' && confirmedOrder.customer.address && (
+
+                            {/* Delivery Address */}
+                            {confirmedOrder.orderType === 'Delivery' && confirmedOrder.customer?.address && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                     <span>Address:</span>
                                     <strong style={{ color: 'var(--color-white)', maxWidth: '65%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -368,6 +418,7 @@ ${trackUrl}`
                                     </strong>
                                 </div>
                             )}
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-white)', fontWeight: 600 }}>
                                 <span>Total Amount:</span>
                                 <span style={{ color: 'var(--color-accent)' }}>Rs. {confirmedOrder.total}</span>
@@ -375,7 +426,7 @@ ${trackUrl}`
                         </div>
 
                         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-lg)' }}>
-                            {isStaffMode && confirmedOrder.orderType === 'Dine-in'
+                            {isStaffMode
                                 ? 'Kitchen staff has been notified.'
                                 : 'Save your reference number to track live status.'}
                         </p>
@@ -541,7 +592,7 @@ ${trackUrl}`
                                         <button
                                             key={type}
                                             type="button"
-                                            onClick={() => setOrderType(type)}
+                                            onClick={() => handleOrderTypeChange(type)}
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 6px',
@@ -560,24 +611,6 @@ ${trackUrl}`
                                     ))}
                                 </div>
                             </div>
-
-                            {/* POS Mode: Dine-in Fields */}
-                            {isStaffMode && orderType === 'Dine-in' && (
-                                <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
-                                    <input
-                                        type="text"
-                                        name="tableNumber"
-                                        className="form-input"
-                                        placeholder="e.g. Table 4"
-                                        value={customerDetails.tableNumber}
-                                        onChange={handleInputChange}
-                                        autoFocus
-                                        required
-                                        style={{ fontSize: '18px', fontWeight: 'bold' }}
-                                    />
-                                </div>
-                            )}
 
                             {/* POS Mode: Takeaway Fields */}
                             {isStaffMode && orderType === 'Takeaway' && (
@@ -638,24 +671,28 @@ ${trackUrl}`
                                             required
                                         />
                                         <small style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                                            For order updates and rider communication
+                                            {orderType === 'Delivery'
+                                                ? 'For order status and delivery courier updates'
+                                                : 'For order status and pickup updates'}
                                         </small>
                                     </div>
                                 </>
                             )}
 
-                            {/* Online Customer: Table Number for Dine-in */}
-                            {!isStaffMode && orderType === 'Dine-in' && (
+                            {/* Unified Table Number for Dine-in (both POS and Online customer) */}
+                            {orderType === 'Dine-in' && (
                                 <div className="form-group">
                                     <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
                                     <input
                                         type="text"
                                         name="tableNumber"
                                         className="form-input"
-                                        placeholder="Enter your table number (e.g. 4)"
+                                        placeholder="e.g. Table 4"
                                         value={customerDetails.tableNumber}
                                         onChange={handleInputChange}
+                                        autoFocus={isStaffMode}
                                         required
+                                        style={{ fontSize: isStaffMode ? '18px' : 'inherit', fontWeight: isStaffMode ? 'bold' : 'normal' }}
                                     />
                                 </div>
                             )}
