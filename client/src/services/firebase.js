@@ -406,24 +406,27 @@ export const subscribeToStoreSettings = (callback) => {
     const q = query(collection(db, 'settings'));
     return onSnapshot(q, (querySnapshot) => {
         if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
+            // Find store_config if it exists, otherwise fall back to first doc
+            const targetDoc = querySnapshot.docs.find(d => d.id === 'store_config')
+                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name)
+                || querySnapshot.docs[0];
+
             callback({
-                id: doc.id,
-                ...doc.data()
+                id: targetDoc.id,
+                ...targetDoc.data()
             });
         }
     }, (error) => {
         console.error("Error subscribing to settings:", error);
-        // Don't callback null here as it might break things if not handled
     });
 };
 
 // Check if store is currently open
-// Check if store is currently open
 export const isStoreOpen = (settings) => {
-    if (!settings || !settings.storeOpen) return false;
+    if (!settings) return true;
+    if (settings.storeOpen === false) return false;
 
-    // Check manual override first - if enabled, store is always open
+    // Check manual override first - if forceOpen is true, store is always open 24/7
     if (settings.forceOpen === true) {
         return true;
     }
@@ -439,33 +442,41 @@ export const isStoreOpen = (settings) => {
     });
 
     const parts = formatter.formatToParts(now);
-    const getPart = (type) => parts.find(p => p.type === type).value;
+    const getPart = (type) => parts.find(p => p.type === type)?.value;
 
-    const currentDay = getPart('weekday').toLowerCase();
+    const currentDay = (getPart('weekday') || '').toLowerCase().trim();
 
     // Construct "HH:MM"
-    let hour = getPart('hour');
+    let hour = getPart('hour') || '00';
     if (hour === '24') hour = '00';
-    const currentTime = `${hour}:${getPart('minute')}`;
+    const currentTime = `${hour}:${getPart('minute') || '00'}`;
 
-    // console.log removed — was leaking internal timezone logic to DevTools in production
+    // Case-insensitive lookup for current weekday in operatingHours map
+    const operatingHours = settings.operatingHours || {};
+    const matchingKey = Object.keys(operatingHours).find(
+        key => key.toLowerCase().trim() === currentDay
+    );
 
-    const todayHours = settings.operatingHours?.[currentDay];
-    if (!todayHours) return false;
-
-    const { open, close } = todayHours;
-
-    // Special case: 24-hour operation (00:00 to 23:59)
-    if (open === '00:00' && close === '23:59') {
+    const todayHours = matchingKey ? operatingHours[matchingKey] : null;
+    if (!todayHours) {
+        // If no explicit hours configured for this day, default to open
         return true;
     }
 
-    // Check if hours cross midnight (e.g., 22:00 to 02:00)
+    const { open, close } = todayHours;
+    if (!open || !close) return true;
+
+    // Special case: 24-hour operation (00:00 to 23:59 or equal)
+    if ((open === '00:00' && close === '23:59') || open === close) {
+        return true;
+    }
+
+    // Check if hours cross midnight (e.g., 17:00 to 03:00)
     if (close < open) {
-        // Store is open if current time is after opening OR before closing
+        // Store is open if current time is after opening OR before closing next morning
         return currentTime >= open || currentTime <= close;
     }
 
-    // Normal case: opening and closing on the same day
+    // Normal case: opening and closing on the same day (e.g., 10:00 to 22:00)
     return currentTime >= open && currentTime <= close;
 };

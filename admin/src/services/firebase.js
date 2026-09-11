@@ -261,7 +261,9 @@ export const getSettings = async () => {
     try {
         const querySnapshot = await getDocs(collection(db, 'settings'));
         if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
+            const doc = querySnapshot.docs.find(d => d.id === 'store_config')
+                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name)
+                || querySnapshot.docs[0];
             return {
                 id: doc.id,
                 ...doc.data()
