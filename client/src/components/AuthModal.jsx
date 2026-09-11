@@ -56,7 +56,9 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             onClose();
         } else {
             if (result.code === 'auth/operation-not-allowed') {
-                setError('Google sign-in is not enabled in Firebase Console. Enable Google under Authentication > Sign-in method.');
+                setError('Google sign-in is not enabled in Firebase Console. Please enable Google provider under Authentication > Sign-in method.');
+            } else if (result.code === 'auth/unauthorized-domain') {
+                setError(`This domain (${window.location.hostname}) is not authorized in Firebase Console. Add "${window.location.hostname}" under Firebase Console > Authentication > Settings > Authorized domains.`);
             } else if (result.code === 'auth/popup-closed-by-user') {
                 setError('Google sign-in popup was closed before completion.');
             } else {
