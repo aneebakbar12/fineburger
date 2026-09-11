@@ -123,8 +123,18 @@ const Cart = ({
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
 
-        // Phone number validation for non-staff orders
-        if (!(isStaffMode && orderType === 'Dine-in')) {
+        // Validation based on mode and order type
+        if (isStaffMode) {
+            if (orderType === 'Dine-in' && !customerDetails.tableNumber?.trim()) {
+                alert('Please enter the Table Number for Dine-in.');
+                return;
+            }
+            if (orderType === 'Takeaway' && !customerDetails.name?.trim()) {
+                alert('Please enter the Customer Name for Takeaway.');
+                return;
+            }
+        } else {
+            // Online customer orders require valid phone number
             const cleanPhone = (customerDetails.phone || '').replace(/[\s\-()]/g, '');
             const pakistaniRegex = /^(\+92|92|0)?3[0-9]{9}$/;
             const generalRegex = /^\+?[0-9]{10,14}$/;
@@ -132,18 +142,16 @@ const Cart = ({
                 alert('Please enter a valid Pakistani phone number (e.g. 0300 1234567 or +92 300 1234567)');
                 return;
             }
-        }
 
-        // Table number validation for dine-in
-        if (orderType === 'Dine-in' && !customerDetails.tableNumber?.trim()) {
-            alert('Please enter your table number for Dine-in orders.');
-            return;
-        }
+            if (orderType === 'Dine-in' && !customerDetails.tableNumber?.trim()) {
+                alert('Please enter your table number for Dine-in orders.');
+                return;
+            }
 
-        // Address validation for delivery
-        if (orderType === 'Delivery' && !customerDetails.address?.trim()) {
-            alert('Please enter your complete delivery address.');
-            return;
+            if (orderType === 'Delivery' && !customerDetails.address?.trim()) {
+                alert('Please enter your complete delivery address.');
+                return;
+            }
         }
 
         setLoading(true);
@@ -320,7 +328,9 @@ ${trackUrl}`
                             </svg>
                         </div>
                         <h2 style={{ color: 'var(--color-white)', fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--spacing-xs)' }}>
-                            {isStaffMode && confirmedOrder.orderType === 'Dine-in' ? 'Order Sent to Kitchen!' : 'Order Confirmed!'}
+                            {isStaffMode
+                                ? (confirmedOrder.orderType === 'Dine-in' ? 'Table Order Sent to Kitchen!' : 'Takeaway Order Sent to Kitchen!')
+                                : 'Order Confirmed!'}
                         </h2>
 
                         <div style={{
@@ -527,7 +537,7 @@ ${trackUrl}`
                             <div className="form-group">
                                 <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Fulfillment Method</label>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    {(isStaffMode ? ['Dine-in'] : ['Delivery', 'Takeaway', 'Dine-in']).map(type => (
+                                    {(isStaffMode ? ['Dine-in', 'Takeaway'] : ['Delivery', 'Takeaway', 'Dine-in']).map(type => (
                                         <button
                                             key={type}
                                             type="button"
@@ -551,45 +561,110 @@ ${trackUrl}`
                                 </div>
                             </div>
 
-                            {/* Customer Details */}
-                            {!(isStaffMode && orderType === 'Dine-in') && (
+                            {/* POS Mode: Dine-in Fields */}
+                            {isStaffMode && orderType === 'Dine-in' && (
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name</label>
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
                                     <input
                                         type="text"
-                                        name="name"
+                                        name="tableNumber"
                                         className="form-input"
-                                        placeholder="Your full name"
-                                        value={customerDetails.name}
+                                        placeholder="e.g. Table 4"
+                                        value={customerDetails.tableNumber}
                                         onChange={handleInputChange}
+                                        autoFocus
                                         required
+                                        style={{ fontSize: '18px', fontWeight: 'bold' }}
                                     />
                                 </div>
                             )}
 
-                            {!(isStaffMode && orderType === 'Dine-in') && (
+                            {/* POS Mode: Takeaway Fields */}
+                            {isStaffMode && orderType === 'Takeaway' && (
+                                <>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Customer Name *</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            className="form-input"
+                                            placeholder="Customer name (e.g. Ali Ahmed)"
+                                            value={customerDetails.name}
+                                            onChange={handleInputChange}
+                                            autoFocus
+                                            required
+                                            style={{ fontSize: '16px' }}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Mobile Phone (Optional)</label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            className="form-input"
+                                            placeholder="0300 1234567"
+                                            value={customerDetails.phone}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Online Customer: Name & Phone */}
+                            {!isStaffMode && (
+                                <>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Full Name *</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            className="form-input"
+                                            placeholder="Your full name"
+                                            value={customerDetails.name}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Mobile Phone *</label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            className="form-input"
+                                            placeholder="0300 1234567"
+                                            value={customerDetails.phone}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                        <small style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                                            For order updates and rider communication
+                                        </small>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Online Customer: Table Number for Dine-in */}
+                            {!isStaffMode && orderType === 'Dine-in' && (
                                 <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Mobile Phone</label>
+                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
                                     <input
-                                        type="tel"
-                                        name="phone"
+                                        type="text"
+                                        name="tableNumber"
                                         className="form-input"
-                                        placeholder="0300 1234567"
-                                        value={customerDetails.phone}
+                                        placeholder="Enter your table number (e.g. 4)"
+                                        value={customerDetails.tableNumber}
                                         onChange={handleInputChange}
                                         required
                                     />
-                                    <small style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                                        For order updates and rider communication
-                                    </small>
                                 </div>
                             )}
 
-                            {/* Delivery Address & Map */}
-                            {orderType === 'Delivery' && (
+                            {/* Online Customer: Delivery Address & Map */}
+                            {!isStaffMode && orderType === 'Delivery' && (
                                 <div className="form-group">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                        <label className="form-label" style={{ margin: 0, color: 'var(--color-text-secondary)' }}>Delivery Address</label>
+                                        <label className="form-label" style={{ margin: 0, color: 'var(--color-text-secondary)' }}>Delivery Address *</label>
                                         <button
                                             type="button"
                                             onClick={() => setShowMap(!showMap)}
@@ -621,22 +696,6 @@ ${trackUrl}`
                                         required
                                         rows="3"
                                     ></textarea>
-                                </div>
-                            )}
-
-                            {/* Table Number - Dine-in */}
-                            {orderType === 'Dine-in' && (
-                                <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number</label>
-                                    <input
-                                        type="text"
-                                        name="tableNumber"
-                                        className="form-input"
-                                        placeholder="Enter your table number (e.g. 4)"
-                                        value={customerDetails.tableNumber}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
                                 </div>
                             )}
 
