@@ -352,7 +352,7 @@ const OrderDetailsModal = ({
                                         onClick={() => onUpdateStatus(order.id, 'delivered')}
                                         style={{ backgroundColor: '#10b981', color: 'black', padding: '10px 20px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer', border: 'none' }}
                                     >
-                                        {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Mark Delivered'}
+                                        {order.orderType === 'Dine-in' ? '✓ Paid & Done' : order.orderType === 'Takeaway' ? '✓ Hand Over / Paid' : '✓ Mark Delivered'}
                                     </button>
                                 </>
                             )}
@@ -900,7 +900,7 @@ const OrderManager = () => {
                                                 onClick={() => handleStatusUpdate(order.id, 'delivered')}
                                                 style={{ width: '100%', padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
                                             >
-                                                {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Mark Delivered'}
+                                                {order.orderType === 'Dine-in' ? '✓ Paid & Done' : order.orderType === 'Takeaway' ? '✓ Hand Over / Paid' : '✓ Mark Delivered'}
                                             </button>
                                         )}
 

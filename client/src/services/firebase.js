@@ -44,7 +44,7 @@ export const registerUser = async (email, password, name) => {
         await updateProfile(userCredential.user, { displayName: name });
         return { success: true, user: userCredential.user };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     }
 };
 
@@ -53,7 +53,7 @@ export const loginUser = async (email, password) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         return { success: true, user: userCredential.user };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     }
 };
 

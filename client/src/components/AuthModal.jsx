@@ -2,6 +2,31 @@ import React, { useState } from 'react';
 import { loginUser, registerUser, loginWithGoogle } from '../services/firebase';
 import '../styles/AuthModal.css';
 
+const formatFriendlyAuthError = (code, fallbackMessage) => {
+    switch (code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+            return 'Incorrect email or password. Please check and try again.';
+        case 'auth/email-already-in-use':
+            return 'An account with this email already exists. Please log in instead.';
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/weak-password':
+            return 'Password is too weak. Please use at least 6 characters.';
+        case 'auth/too-many-requests':
+            return 'Too many failed login attempts. Please wait a moment and try again.';
+        case 'auth/network-request-failed':
+            return 'Network connection problem. Please verify your internet connection.';
+        default:
+            if (fallbackMessage) {
+                // Strip raw Firebase: Error (auth/xxx). prefixes
+                return fallbackMessage.replace(/^Firebase:\s*Error\s*\([^)]+\):\s*/i, '').replace(/^Firebase:\s*/i, '');
+            }
+            return 'Authentication failed. Please try again.';
+    }
+};
+
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
@@ -40,7 +65,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             if (onLoginSuccess) onLoginSuccess(result.user);
             onClose();
         } else {
-            setError(result.error);
+            setError(formatFriendlyAuthError(result.code, result.error));
         }
     };
 

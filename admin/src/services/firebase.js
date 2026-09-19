@@ -99,7 +99,7 @@ export const loginAdmin = async (email, password) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         return { success: true, user: userCredential.user };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     }
 };
 

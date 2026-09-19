@@ -34,7 +34,7 @@ export const loginRider = async (email, password) => {
 
         return { success: true, user: userCredential.user };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     }
 };
 
@@ -94,7 +94,7 @@ export const registerRider = async (email, password, name, phone, signupCode) =>
 
         return { success: true, user: userCredential.user, tempPassword };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     }
 };
 

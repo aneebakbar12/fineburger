@@ -2,6 +2,26 @@ import React, { useState } from 'react';
 import { loginAdmin } from '../services/firebase';
 import '../styles/admin.css';
 
+const formatAdminLoginError = (code, rawMessage) => {
+    switch (code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+            return 'Invalid email or password. Please check your admin credentials.';
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/too-many-requests':
+            return 'Too many failed login attempts. Please wait a moment and try again.';
+        case 'auth/network-request-failed':
+            return 'Network error. Please check your internet connection.';
+        default:
+            if (rawMessage) {
+                return rawMessage.replace(/^Firebase:\s*Error\s*\([^)]+\):\s*/i, '').replace(/^Firebase:\s*/i, '');
+            }
+            return 'Login failed. Please check your credentials.';
+    }
+};
+
 const Login = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,7 +38,7 @@ const Login = ({ onLoginSuccess }) => {
         if (result.success) {
             onLoginSuccess(result.user);
         } else {
-            setError(result.error || 'Login failed. Please check your credentials.');
+            setError(formatAdminLoginError(result.code, result.error));
         }
 
         setLoading(false);

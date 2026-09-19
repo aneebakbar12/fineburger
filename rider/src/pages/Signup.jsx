@@ -11,6 +11,24 @@ const isValidPhoneNumber = (phone) => {
     return pakistaniRegex.test(cleaned) || generalRegex.test(cleaned);
 };
 
+const formatFriendlyRiderSignupError = (code, rawMessage) => {
+    switch (code) {
+        case 'auth/email-already-in-use':
+            return 'An account with this email already exists. Please log in instead.';
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/weak-password':
+            return 'Password is too weak. Please use at least 6 characters.';
+        case 'auth/network-request-failed':
+            return 'Network error. Please check your internet connection.';
+        default:
+            if (rawMessage) {
+                return rawMessage.replace(/^Firebase:\s*Error\s*\([^)]+\):\s*/i, '').replace(/^Firebase:\s*/i, '');
+            }
+            return 'Registration failed. Please check your information.';
+    }
+};
+
 const Signup = () => {
     const [signupCode, setSignupCode] = useState('');
     const [name, setName] = useState('');
@@ -56,7 +74,7 @@ const Signup = () => {
         if (result.success) {
             navigate('/');
         } else {
-            setError('Signup failed: ' + result.error);
+            setError(formatFriendlyRiderSignupError(result.code, result.error));
         }
     };
 
