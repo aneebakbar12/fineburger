@@ -125,6 +125,11 @@ const Sidebar = ({ onLogout, pendingCount = 0, isAudioMuted = false, onToggleAud
                         </svg>
                         Logout
                     </button>
+
+                    <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        <span>Crafted by </span>
+                        <a href="mailto:ammar.akbar2002@gmail.com" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>Ammar Akbar</a>
+                    </div>
                 </div>
             </aside>
         </>

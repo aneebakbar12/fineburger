@@ -282,7 +282,7 @@ const OrderDetailsModal = ({
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', fontSize: '13px' }}
                         >
                             <PrinterIcon width={16} height={16} />
-                            <span>Print Thermal Ticket</span>
+                            <span>Print Bill</span>
                         </button>
 
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -486,19 +486,19 @@ const OrderManager = () => {
         const orderRef = getOrderRef(order);
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
-            alert('Please allow popups to print receipts.');
+            alert('Please allow popups in your browser to print the bill.');
             return;
         }
 
         const customerSection = order.orderType === 'Dine-in'
             ? `<div class="customer">
-                <p style="font-size: 16px; font-weight: bold;">TABLE #${order.customer?.tableNumber || 'N/A'}</p>
+                <p style="font-size: 16px; font-weight: bold; margin: 4px 0;">TABLE #${order.customer?.tableNumber || 'N/A'}</p>
                 <p><strong>Service:</strong> Dine-in</p>
                </div>`
             : `<div class="customer">
                 <p><strong>Customer:</strong> ${order.customer?.name || 'Guest'}</p>
-                <p><strong>Phone:</strong> ${order.customer?.phone || 'N/A'}</p>
-                ${order.orderType === 'Delivery' ? `<p><strong>Address:</strong> ${order.customer?.address || 'N/A'}</p>` : ''}
+                ${order.customer?.phone ? `<p><strong>Phone:</strong> ${order.customer.phone}</p>` : ''}
+                ${order.orderType === 'Delivery' && order.customer?.address ? `<p><strong>Address:</strong> ${order.customer.address}</p>` : ''}
                 <p><strong>Fulfillment:</strong> ${order.orderType || 'Standard'}</p>
                 ${order.assignedRiderName ? `<p><strong>Rider:</strong> ${order.assignedRiderName}</p>` : ''}
                </div>`;
@@ -507,26 +507,76 @@ const OrderManager = () => {
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>Ticket #${orderRef}</title>
+                    <title>Bill #${orderRef}</title>
                     <meta charset="utf-8" />
                     <style>
-                        body { font-family: 'Courier New', monospace; padding: 10px; max-width: 280px; margin: 0 auto; color: #000; font-size: 13px; line-height: 1.3; }
-                        .header { text-align: center; margin-bottom: 12px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
-                        .item { display: flex; justify-content: space-between; margin-bottom: 4px; }
-                        .total { border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
-                        .customer { margin-bottom: 12px; border-bottom: 1px dashed #000; padding-bottom: 8px; font-size: 12px; }
-                        h2 { margin: 0 0 4px 0; font-size: 18px; }
+                        @page { margin: 0; size: auto; }
+                        body {
+                            font-family: 'Courier New', Courier, monospace;
+                            padding: 12px;
+                            max-width: 300px;
+                            margin: 0 auto;
+                            color: #000000;
+                            font-size: 13px;
+                            line-height: 1.35;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 12px;
+                            border-bottom: 1px dashed #000000;
+                            padding-bottom: 8px;
+                        }
+                        .bill-title {
+                            font-size: 14px;
+                            font-weight: 800;
+                            margin: 6px 0;
+                            padding: 4px 0;
+                            border-top: 1px dashed #000000;
+                            border-bottom: 1px dashed #000000;
+                        }
+                        .item {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 4px;
+                        }
+                        .total {
+                            border-top: 1px dashed #000000;
+                            margin-top: 8px;
+                            padding-top: 6px;
+                            font-weight: 800;
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 15px;
+                        }
+                        .customer {
+                            margin-bottom: 12px;
+                            border-bottom: 1px dashed #000000;
+                            padding-bottom: 8px;
+                            font-size: 12px;
+                        }
+                        h2 { margin: 0 0 2px 0; font-size: 18px; font-weight: 900; }
                         p { margin: 2px 0; }
+                        .footer-note {
+                            text-align: center;
+                            margin-top: 14px;
+                            font-size: 11px;
+                        }
                     </style>
                 </head>
                 <body>
                     <div class="header">
                         <h2>FINE BURGER</h2>
+                        <p style="font-size: 11px;">Fast Food & Grill • Since 1981</p>
                         <p style="font-size: 11px;">Main G.T. Road, Baghbanpura, Lahore</p>
-                        <p style="font-size: 15px; font-weight: bold; margin-top: 6px;">REF: #${orderRef}</p>
-                        <p style="font-size: 11px; color: #444;">${new Date().toLocaleString()}</p>
+                        <p style="font-size: 11px;">Phone: 0321-4854410</p>
+                        <div class="bill-title">
+                            CUSTOMER BILL • #${orderRef}
+                        </div>
+                        <p style="font-size: 10px; color: #333;">${new Date().toLocaleString()}</p>
                     </div>
+
                     ${customerSection}
+
                     <div class="items">
                         ${(order.items || []).map(item => `
                             <div style="margin-bottom: 6px;">
@@ -534,7 +584,7 @@ const OrderManager = () => {
                                     <span>${item.quantity}x ${item.name}</span>
                                     <span>Rs. ${(item.unitPrice || item.price) * item.quantity}</span>
                                 </div>
-                                ${item.selectedVariations ? `
+                                ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
                                     <div style="font-size: 11px; color: #444; padding-left: 8px;">
                                         ${Object.values(item.selectedVariations).join(', ')}
                                     </div>
@@ -542,30 +592,54 @@ const OrderManager = () => {
                             </div>
                         `).join('')}
                     </div>
+
                     ${order.deliveryFee ? `
-                        <div class="item" style="font-size: 12px; border-top: 1px dotted #ccc; padding-top: 4px;">
+                        <div class="item" style="font-size: 12px; border-top: 1px dotted #888; padding-top: 4px; margin-top: 4px;">
                             <span>Delivery Fee</span>
                             <span>Rs. ${order.deliveryFee}</span>
                         </div>
                     ` : ''}
+
                     <div class="total">
-                        <span>TOTAL</span>
+                        <span>BILL TOTAL</span>
                         <span>Rs. ${order.total}</span>
                     </div>
-                    <div style="text-align: center; margin-top: 16px; font-size: 11px;">
-                        <p>*** Fresh Burgers. Hot Pizza. ***</p>
-                        <p>Thank you for ordering!</p>
+                    <p style="text-align: right; font-size: 11px; margin-top: 4px;">Payment: Cash on Delivery</p>
+
+                    <div class="footer-note">
+                        <p>*** Fresh Burgers • Hot Pizza ***</p>
+                        <p>Thank you for choosing Fine Burger!</p>
                     </div>
-                    <div style="text-align: center; margin-top: 14px;" class="no-print">
-                        <button onclick="window.print()" style="padding: 6px 14px; cursor: pointer;">Print Ticket</button>
+
+                    <div style="text-align: center; margin-top: 16px;" class="no-print">
+                        <button onclick="window.print()" style="padding: 8px 18px; font-weight: bold; cursor: pointer; font-size: 13px;">
+                            Print Bill
+                        </button>
                     </div>
+
                     <style>
                         @media print { .no-print { display: none; } }
                     </style>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.focus();
+                                window.print();
+                            }, 200);
+                        };
+                    </script>
                 </body>
             </html>
         `);
+
         printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            try {
+                printWindow.print();
+            } catch (_) {}
+        }, 300);
     };
 
     const formatDate = (timestamp) => {
@@ -921,7 +995,7 @@ const OrderManager = () => {
                                                 onClick={() => handlePrintReceipt(order)}
                                             >
                                                 <PrinterIcon width={14} height={14} />
-                                                <span>Print Ticket</span>
+                                                <span>Print Bill</span>
                                             </button>
                                         )}
                                     </div>

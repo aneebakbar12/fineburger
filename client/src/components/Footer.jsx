@@ -124,29 +124,35 @@ const Footer = ({ storeSettings }) => {
                 </div>
 
                 <div className="footer-bottom">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                         <p>
                             &copy; {new Date().getFullYear()} Fine Burger &amp; Fast Food, Lahore. Fresh food crafted daily.
                         </p>
-                        <button
-                            type="button"
-                            onClick={() => window.dispatchEvent(new CustomEvent('openStaffPinModal'))}
-                            className="footer-staff-btn"
-                            style={{
-                                background: 'none',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                color: 'rgba(255, 255, 255, 0.4)',
-                                fontSize: '11px',
-                                padding: '4px 10px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-accent)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-                        >
-                            🔒 Staff POS Login
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                            <span>
+                                Crafted by <a href="mailto:ammar.akbar2002@gmail.com" style={{ color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }} title="Contact Developer">Ammar Akbar</a>
+                            </span>
+                            <span>•</span>
+                            <button
+                                type="button"
+                                onClick={() => window.dispatchEvent(new CustomEvent('openStaffPinModal'))}
+                                className="footer-staff-btn"
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    color: 'rgba(255, 255, 255, 0.4)',
+                                    fontSize: '11px',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-accent)'; e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                            >
+                                🔒 Staff POS Login
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

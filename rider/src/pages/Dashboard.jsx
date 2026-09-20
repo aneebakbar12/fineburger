@@ -434,6 +434,11 @@ const Dashboard = () => {
                         })
                     )}
                 </div>
+
+                <footer style={{ marginTop: '36px', textAlign: 'center', fontSize: '11px', color: 'var(--text-subtle)' }}>
+                    <span>Fine Burger Delivery Operations • Crafted by </span>
+                    <a href="mailto:ammar.akbar2002@gmail.com" style={{ color: 'var(--rider-gold)', textDecoration: 'none', fontWeight: 600 }}>Ammar Akbar</a>
+                </footer>
             </div>
         </div>
     );
