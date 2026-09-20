@@ -22,9 +22,26 @@ import {
     SettingsIcon,
     ClockIcon,
     TrendingUpIcon,
-    AlertCircleIcon,
-    CheckIcon
+    AlertCircleIcon
 } from '../components/Icons';
+
+const parseOrderDateStr = (createdAt) => {
+    if (!createdAt) return null;
+    try {
+        let d;
+        if (typeof createdAt.toDate === 'function') {
+            d = createdAt.toDate();
+        } else if (createdAt.seconds !== undefined && createdAt.seconds !== null) {
+            d = new Date(createdAt.seconds * 1000);
+        } else {
+            d = new Date(createdAt);
+        }
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString().split('T')[0];
+    } catch {
+        return null;
+    }
+};
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -32,7 +49,8 @@ const Dashboard = () => {
         totalRevenue: 0,
         totalOrders: 0,
         avgOrderValue: 0,
-        pendingOrders: 0
+        pendingOrders: 0,
+        completionRate: 0
     });
     const [graphData, setGraphData] = useState([]);
     const [categoryData, setCategoryData] = useState([]);
@@ -43,14 +61,22 @@ const Dashboard = () => {
     useEffect(() => {
         let cancelled = false;
         const fetchData = async () => {
-            const categories = await getCategories();
-            const items = await getMenuItems();
-            if (cancelled) return;
+            try {
+                const [categories, items] = await Promise.all([
+                    getCategories(),
+                    getMenuItems()
+                ]);
+                if (cancelled) return;
 
-            unsubscribeRef.current = subscribeToOrders((orders) => {
-                processAnalytics(orders, items, categories);
-                setLoading(false);
-            });
+                unsubscribeRef.current = subscribeToOrders((orders) => {
+                    if (cancelled) return;
+                    processAnalytics(orders || [], items || [], categories || []);
+                    setLoading(false);
+                });
+            } catch (err) {
+                console.error("Error loading dashboard data:", err);
+                if (!cancelled) setLoading(false);
+            }
         };
 
         fetchData();
@@ -61,104 +87,108 @@ const Dashboard = () => {
     }, []);
 
     const processAnalytics = (orders, items, categories) => {
-        const deliveredOrders = orders.filter(o => o.status === 'delivered');
-        const totalRevenue = deliveredOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-        const pendingOrders = orders.filter(o => o.status === 'pending').length;
-        const avgOrderValue = deliveredOrders.length > 0 ? (totalRevenue / deliveredOrders.length).toFixed(0) : 0;
+        try {
+            const deliveredOrders = orders.filter(o => o.status === 'delivered');
+            const totalRevenue = deliveredOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+            const pendingOrders = orders.filter(o => o.status === 'pending').length;
+            const avgOrderValue = deliveredOrders.length > 0 ? Math.round(totalRevenue / deliveredOrders.length) : 0;
+            const completionRate = orders.length > 0 ? Math.round((deliveredOrders.length / orders.length) * 100) : 0;
 
-        setStats({
-            totalRevenue,
-            totalOrders: orders.length,
-            avgOrderValue,
-            pendingOrders
-        });
-
-        // Last 7 Days Revenue
-        const last7Days = [...Array(7)].map((_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            return d.toISOString().split('T')[0];
-        }).reverse();
-
-        const revenueByDay = last7Days.map(date => {
-            const dayOrders = orders.filter(o => {
-                if (!o.createdAt) return false;
-                const orderDate = new Date(o.createdAt.seconds * 1000).toISOString().split('T')[0];
-                return orderDate === date && o.status === 'delivered';
+            setStats({
+                totalRevenue,
+                totalOrders: orders.length,
+                avgOrderValue,
+                pendingOrders,
+                completionRate
             });
-            return {
-                name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-                sales: dayOrders.reduce((sum, o) => sum + (o.total || 0), 0)
-            };
-        });
-        setGraphData(revenueByDay);
 
-        // Category Distribution
-        const categoryCounts = {};
-        orders.forEach(order => {
-            (order.items || []).forEach(item => {
-                const originalItem = items.find(i => i.id === item.id);
-                if (originalItem) {
-                    const catId = originalItem.categoryId;
-                    const catName = categories.find(c => c.id === catId)?.name || 'Other';
-                    categoryCounts[catName] = (categoryCounts[catName] || 0) + (item.quantity || 1);
-                }
+            // Last 7 Days Revenue
+            const last7Days = [...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                return d.toISOString().split('T')[0];
+            }).reverse();
+
+            const revenueByDay = last7Days.map(date => {
+                const dayOrders = orders.filter(o => {
+                    const orderDate = parseOrderDateStr(o.createdAt);
+                    return orderDate === date && o.status === 'delivered';
+                });
+                return {
+                    name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+                    sales: dayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+                };
             });
-        });
+            setGraphData(revenueByDay);
 
-        const pieData = Object.keys(categoryCounts).map(key => ({
-            name: key,
-            value: categoryCounts[key]
-        }));
-        setCategoryData(pieData.length > 0 ? pieData : [{ name: 'Burgers', value: 1 }]);
-
-        // Operational & AI Insights
-        const insights = [];
-
-        // 1. Stock Intelligence
-        const lowStock = items.filter(i => (i.stockLevel || 0) <= (i.lowStockThreshold || 10) && i.available);
-        if (lowStock.length > 0) {
-            insights.push({
-                type: 'critical',
-                title: 'Inventory Alert',
-                message: `${lowStock.length} items critically low on stock. Check ${lowStock.slice(0, 2).map(i => i.name).join(', ')}.`
+            // Category Distribution
+            const categoryCounts = {};
+            orders.forEach(order => {
+                (order.items || []).forEach(item => {
+                    const originalItem = items.find(i => i.id === item.id);
+                    const catId = originalItem?.categoryId || item.categoryId;
+                    const catName = categories.find(c => c.id === catId)?.name || item.categoryName || 'Other';
+                    categoryCounts[catName] = (categoryCounts[catName] || 0) + (Number(item.quantity) || 1);
+                });
             });
+
+            const pieData = Object.keys(categoryCounts).map(key => ({
+                name: key,
+                value: categoryCounts[key]
+            }));
+            setCategoryData(pieData.length > 0 ? pieData : [{ name: 'Burgers', value: 1 }]);
+
+            // Operational & AI Insights
+            const insights = [];
+
+            // 1. Stock Intelligence
+            const lowStock = items.filter(i => (Number(i.stockLevel) || 0) <= (Number(i.lowStockThreshold) || 10) && i.available !== false);
+            if (lowStock.length > 0) {
+                insights.push({
+                    type: 'critical',
+                    title: 'Inventory Notice',
+                    message: `${lowStock.length} items low on stock (${lowStock.slice(0, 2).map(i => i.name).join(', ')}).`
+                });
+            }
+
+            // 2. Sales Velocity
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todaySales = orders.filter(o => {
+                const orderDate = parseOrderDateStr(o.createdAt);
+                return orderDate === todayStr && o.status === 'delivered';
+            }).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+            if (todaySales > 0) {
+                insights.push({
+                    type: 'positive',
+                    title: "Today's Delivered Sales",
+                    message: `Rs. ${todaySales.toLocaleString()} delivered today. Operations on track.`
+                });
+            }
+
+            // 3. Operational Load
+            if (pendingOrders > 4) {
+                insights.push({
+                    type: 'warning',
+                    title: 'High Kitchen Volume',
+                    message: `Kitchen has ${pendingOrders} pending orders awaiting confirmation.`
+                });
+            }
+
+            if (insights.length === 0) {
+                insights.push({
+                    type: 'positive',
+                    title: 'Smooth Operations',
+                    message: 'All kitchen, menu, and dispatch metrics are healthy.'
+                });
+            }
+
+            setAiInsights(insights);
+        } catch (err) {
+            console.error("Error processing dashboard analytics:", err);
+        } finally {
+            setLoading(false);
         }
-
-        // 2. Sales Velocity
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todaySales = orders.filter(o => {
-            if (!o.createdAt) return false;
-            return new Date(o.createdAt.seconds * 1000).toISOString().split('T')[0] === todayStr && o.status === 'delivered';
-        }).reduce((sum, o) => sum + (o.total || 0), 0);
-
-        if (todaySales > 0) {
-            insights.push({
-                type: 'positive',
-                title: 'Today\'s Sales Activity',
-                message: `Generated Rs. ${todaySales.toLocaleString()} today. Keeping a healthy pace.`
-            });
-        }
-
-        // 3. Operational Load
-        if (pendingOrders > 4) {
-            insights.push({
-                type: 'warning',
-                title: 'High Kitchen Volume',
-                message: `Kitchen has ${pendingOrders} pending orders awaiting confirmation.`
-            });
-        }
-
-        if (insights.length === 0) {
-            insights.push({
-                type: 'positive',
-                title: 'Smooth Operations',
-                message: 'All kitchen, menu, and dispatch metrics are healthy.'
-            });
-        }
-
-        setAiInsights(insights);
-        setLoading(false);
     };
 
     const COLORS = ['#FFB400', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#F97316'];
@@ -207,7 +237,7 @@ const Dashboard = () => {
                 />
                 <KPICard
                     title="Completion Rate"
-                    value={`${stats.totalOrders > 0 ? Math.round((orders.filter(o => o.status === 'delivered').length / stats.totalOrders) * 100) : 0}%`}
+                    value={`${stats.completionRate || 0}%`}
                     Icon={TrendingUpIcon}
                     accentColor="#FFB400"
                     badge="Fulfilled"
@@ -254,7 +284,7 @@ const Dashboard = () => {
                                         borderRadius: '8px',
                                         color: 'var(--text-primary)'
                                     }}
-                                    formatter={(value) => [`Rs. ${value.toLocaleString()}`, 'Delivered Sales']}
+                                    formatter={(value) => [`Rs. ${Number(value).toLocaleString()}`, 'Delivered Sales']}
                                 />
                                 <Line
                                     type="monotone"
@@ -269,7 +299,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Operations & AI Assistant */}
+                {/* Operations & Intelligence */}
                 <div style={{
                     backgroundColor: 'var(--surface-card)',
                     padding: '24px',
@@ -458,23 +488,20 @@ const ActionButton = ({ label, Icon, onClick, color }) => (
             borderRadius: 'var(--radius-md)',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            color: 'var(--text-primary)',
             gap: '8px'
         }}
-        onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)';
+        onMouseEnter={e => {
             e.currentTarget.style.borderColor = color;
             e.currentTarget.style.transform = 'translateY(-2px)';
         }}
-        onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--surface-elevated)';
+        onMouseLeave={e => {
             e.currentTarget.style.borderColor = 'var(--surface-border)';
             e.currentTarget.style.transform = 'translateY(0)';
         }}
     >
-        <div style={{ color }}>
-            <Icon width={22} height={22} stroke={color} />
-        </div>
-        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>{label}</span>
+        <Icon width={22} height={22} stroke={color} />
+        <span style={{ fontSize: '13px', fontWeight: 600 }}>{label}</span>
     </button>
 );
 
