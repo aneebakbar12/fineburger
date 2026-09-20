@@ -7,7 +7,7 @@ import '../styles/admin.css';
 const DEFAULT_SLIDER_FORM = {
     title: '',
     subtitle: '',
-    badge: '🔥 SIGNATURE BURGERS',
+    badge: '',
     tag1: '100% Fresh Gourmet Beef',
     tag2: 'Fast Delivery in 30 Mins',
     ctaText: 'Explore Menu',
@@ -179,17 +179,16 @@ const SliderManager = () => {
                         {/* Top Badge & Order */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                             <div className="form-group">
-                                <label className="form-label">Top Highlight Badge *</label>
+                                <label className="form-label">Top Highlight Badge (Optional)</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. 🔥 SIGNATURE BURGERS or 🍗 CRISPY BROAST"
+                                    placeholder="Leave blank to hide badge, or e.g. 🔥 SIGNATURE BURGERS"
                                     value={formData.badge}
                                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-                                    required
                                 />
                                 <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                                    Appears in the glowing pill above the main title
+                                    Leave empty if you do not want a badge on this slide
                                 </small>
                             </div>
 
@@ -360,19 +359,21 @@ const SliderManager = () => {
                         </div>
 
                         <div style={{ padding: '16px' }}>
-                            <div style={{
-                                display: 'inline-block',
-                                backgroundColor: 'rgba(255, 180, 0, 0.15)',
-                                color: 'var(--color-accent)',
-                                border: '1px solid rgba(255, 180, 0, 0.3)',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                marginBottom: '8px'
-                            }}>
-                                {slider.badge || '🔥 SIGNATURE BURGERS'}
-                            </div>
+                            {slider.badge && slider.badge.trim() ? (
+                                <div style={{
+                                    display: 'inline-block',
+                                    backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                    color: 'var(--color-accent)',
+                                    border: '1px solid rgba(255, 180, 0, 0.3)',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    marginBottom: '8px'
+                                }}>
+                                    {slider.badge}
+                                </div>
+                            ) : null}
 
                             <h3 style={{ color: 'var(--color-white)', fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>
                                 {slider.title}

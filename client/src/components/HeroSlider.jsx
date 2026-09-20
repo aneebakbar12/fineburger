@@ -51,14 +51,22 @@ const sanitizeSlides = (rawSlides) => {
             slide.imageUrl.includes('rancherscafe.com') ||
             slide.imageUrl.trim() === '';
 
+        // If slide explicitly has badge property (including empty string to hide badge), respect it
+        let resolvedBadge = '';
+        if (slide.badge !== undefined && slide.badge !== null) {
+            resolvedBadge = typeof slide.badge === 'string' ? slide.badge.trim() : '';
+        } else if (fallback.badge) {
+            resolvedBadge = fallback.badge;
+        }
+
         return {
             ...slide,
             id: slide.id || `slide-${index}`,
             title: (slide.title && slide.title.trim()) ? slide.title : fallback.title,
             subtitle: (slide.subtitle && slide.subtitle.trim()) ? slide.subtitle : fallback.subtitle,
-            badge: (slide.badge && slide.badge.trim()) ? slide.badge : fallback.badge,
-            tag1: (slide.tag1 && slide.tag1.trim()) ? slide.tag1 : fallback.tag1,
-            tag2: (slide.tag2 && slide.tag2.trim()) ? slide.tag2 : fallback.tag2,
+            badge: resolvedBadge,
+            tag1: slide.tag1 !== undefined ? (slide.tag1 ? slide.tag1.trim() : '') : (fallback.tag1 || ''),
+            tag2: slide.tag2 !== undefined ? (slide.tag2 ? slide.tag2.trim() : '') : (fallback.tag2 || ''),
             ctaText: (slide.ctaText && slide.ctaText.trim()) ? slide.ctaText : fallback.ctaText,
             imageUrl: isBrokenUrl ? fallback.imageUrl : slide.imageUrl
         };
@@ -200,11 +208,13 @@ const HeroSlider = ({ slides }) => {
 
                 {/* Foreground Hero Content */}
                 <div className="hero-content" ref={contentRef}>
-                    <div className="hero-badge-container">
-                        <span className="hero-badge" ref={badgeRef}>
-                            {currentSlideData.badge || '🔥 Lahore\'s Favorite'}
-                        </span>
-                    </div>
+                    {currentSlideData.badge && currentSlideData.badge.trim() ? (
+                        <div className="hero-badge-container">
+                            <span className="hero-badge" ref={badgeRef}>
+                                {currentSlideData.badge}
+                            </span>
+                        </div>
+                    ) : null}
 
                     <h1 className="hero-title" ref={titleRef}>
                         {currentSlideData.title}
