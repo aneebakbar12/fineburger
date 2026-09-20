@@ -4,12 +4,24 @@ import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import '../styles/admin.css';
 
+const DEFAULT_SLIDER_FORM = {
+    title: '',
+    subtitle: '',
+    badge: '🔥 SIGNATURE BURGERS',
+    tag1: '100% Fresh Gourmet Beef',
+    tag2: 'Fast Delivery in 30 Mins',
+    ctaText: 'Explore Menu',
+    imageUrl: '',
+    order: 1,
+    active: true
+};
+
 const SliderManager = () => {
     const toast = useToast();
     const [sliders, setSliders] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [formData, setFormData] = useState({ title: '', subtitle: '', imageUrl: '', order: 1, active: true });
+    const [formData, setFormData] = useState(DEFAULT_SLIDER_FORM);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const [loading, setLoading] = useState(false);
@@ -41,6 +53,10 @@ const SliderManager = () => {
         setFormData({
             title: slider.title || '',
             subtitle: slider.subtitle || '',
+            badge: slider.badge || '🔥 SIGNATURE BURGERS',
+            tag1: slider.tag1 || '100% Fresh Gourmet Beef',
+            tag2: slider.tag2 || 'Fast Delivery in 30 Mins',
+            ctaText: slider.ctaText || 'Explore Menu',
             imageUrl: slider.imageUrl || '',
             order: slider.order || 1,
             active: slider.active !== false
@@ -52,7 +68,7 @@ const SliderManager = () => {
     };
 
     const resetForm = () => {
-        setFormData({ title: '', subtitle: '', imageUrl: '', order: 1, active: true });
+        setFormData(DEFAULT_SLIDER_FORM);
         setImageFile(null);
         setImagePreview('');
         setEditingId(null);
@@ -77,6 +93,12 @@ const SliderManager = () => {
 
         const payload = {
             ...formData,
+            title: formData.title.trim(),
+            subtitle: formData.subtitle.trim(),
+            badge: formData.badge.trim(),
+            tag1: formData.tag1.trim(),
+            tag2: formData.tag2.trim(),
+            ctaText: formData.ctaText.trim(),
             imageUrl,
             order: parseInt(formData.order) || 1
         };
@@ -84,7 +106,7 @@ const SliderManager = () => {
         if (editingId) {
             const result = await updateSlider(editingId, payload);
             if (result.success) {
-                toast.success('Slider banner updated!');
+                toast.success('Slider banner updated successfully!');
                 resetForm();
                 fetchSliders();
             } else {
@@ -93,7 +115,7 @@ const SliderManager = () => {
         } else {
             const result = await addSlider(payload);
             if (result.success) {
-                toast.success('New slider banner added!');
+                toast.success('New slider banner added successfully!');
                 resetForm();
                 fetchSliders();
             } else {
@@ -131,7 +153,7 @@ const SliderManager = () => {
             <div className="admin-header">
                 <div>
                     <h1 className="admin-title">Hero Banner Carousel</h1>
-                    <p className="admin-subtitle">Manage customer homepage marketing banners ({sliders.length} slides)</p>
+                    <p className="admin-subtitle">Manage homepage banners, headline texts, top badges & feature pills ({sliders.length} slides)</p>
                 </div>
                 <button
                     className="btn btn-primary"
@@ -150,36 +172,40 @@ const SliderManager = () => {
             {showForm && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-2xl)', padding: 'var(--spacing-xl)', backgroundColor: 'var(--surface-card)', border: '1px solid var(--surface-border)' }}>
                     <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px', fontWeight: 700 }}>
-                        {editingId ? 'Edit Hero Banner' : 'Add New Hero Banner'}
+                        {editingId ? 'Edit Hero Banner & Texts' : 'Add New Hero Banner & Texts'}
                     </h2>
 
                     <form onSubmit={handleSubmit}>
+                        {/* Top Badge & Order */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                             <div className="form-group">
-                                <label className="form-label">Headline Title *</label>
+                                <label className="form-label">Top Highlight Badge *</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. SIZZLING DOUBLE SMASH"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    placeholder="e.g. 🔥 SIGNATURE BURGERS or 🍗 CRISPY BROAST"
+                                    value={formData.badge}
+                                    onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                                     required
                                 />
+                                <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                                    Appears in the glowing pill above the main title
+                                </small>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Subtitle / Promotion</label>
+                                <label className="form-label">CTA Button Text</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. 100% Prime Beef with Melted Cheese"
-                                    value={formData.subtitle}
-                                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                                    placeholder="e.g. Explore Menu or Order Now"
+                                    value={formData.ctaText}
+                                    onChange={(e) => setFormData({ ...formData, ctaText: e.target.value })}
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Display Order (Sequence)</label>
+                                <label className="form-label">Display Sequence (Order)</label>
                                 <input
                                     type="number"
                                     className="form-input"
@@ -190,6 +216,58 @@ const SliderManager = () => {
                             </div>
                         </div>
 
+                        {/* Title and Subtitle */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                            <div className="form-group">
+                                <label className="form-label">Headline Title *</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. Juicy, Sizzling & Unmatched Taste"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Subtitle / Description</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. Since 1981 — Handcrafted gourmet burgers & pure Lahore flavor"
+                                    value={formData.subtitle}
+                                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Feature Pills */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                            <div className="form-group">
+                                <label className="form-label">Feature Tag 1 (Orange Dot)</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. 100% Fresh Gourmet Beef or Crispy Chicken"
+                                    value={formData.tag1}
+                                    onChange={(e) => setFormData({ ...formData, tag1: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Feature Tag 2 (Green Dot)</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. Fast Delivery in 30 Mins or Stone Baked"
+                                    value={formData.tag2}
+                                    onChange={(e) => setFormData({ ...formData, tag2: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Banner Image */}
                         <div className="form-group" style={{ marginBottom: '16px' }}>
                             <label className="form-label">Banner Image (Best size: 1920 × 600 px)</label>
                             <input
@@ -241,12 +319,13 @@ const SliderManager = () => {
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {/* Slider Cards List */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
                 {sliders.map(slider => (
                     <div key={slider.id} className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: 'var(--surface-card)', border: '1px solid var(--surface-border)' }}>
                         <div style={{
                             height: '180px',
-                            backgroundImage: `url(${slider.imageUrl})`,
+                            backgroundImage: `url(${slider.imageUrl || 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=1600&q=80'})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             position: 'relative'
@@ -255,7 +334,7 @@ const SliderManager = () => {
                                 position: 'absolute',
                                 top: '12px',
                                 right: '12px',
-                                backgroundColor: slider.active ? 'rgba(16, 185, 129, 0.9)' : 'rgba(0,0,0,0.7)',
+                                backgroundColor: slider.active !== false ? 'rgba(16, 185, 129, 0.9)' : 'rgba(0,0,0,0.75)',
                                 color: '#fff',
                                 padding: '3px 8px',
                                 borderRadius: '4px',
@@ -263,7 +342,7 @@ const SliderManager = () => {
                                 fontWeight: 700,
                                 textTransform: 'uppercase'
                             }}>
-                                {slider.active ? 'Live' : 'Hidden'}
+                                {slider.active !== false ? 'Live' : 'Hidden'}
                             </span>
                             <span style={{
                                 position: 'absolute',
@@ -281,14 +360,47 @@ const SliderManager = () => {
                         </div>
 
                         <div style={{ padding: '16px' }}>
+                            <div style={{
+                                display: 'inline-block',
+                                backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                color: 'var(--color-accent)',
+                                border: '1px solid rgba(255, 180, 0, 0.3)',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                marginBottom: '8px'
+                            }}>
+                                {slider.badge || '🔥 SIGNATURE BURGERS'}
+                            </div>
+
                             <h3 style={{ color: 'var(--color-white)', fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>
                                 {slider.title}
                             </h3>
                             {slider.subtitle && (
-                                <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '14px' }}>
+                                <p style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginBottom: '12px', lineHeight: 1.4 }}>
                                     {slider.subtitle}
                                 </p>
                             )}
+
+                            {/* Tags Preview */}
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                                {slider.tag1 && (
+                                    <span style={{ fontSize: '10px', backgroundColor: 'var(--surface-elevated)', padding: '2px 6px', borderRadius: '4px', color: '#cbd5e1' }}>
+                                        🟠 {slider.tag1}
+                                    </span>
+                                )}
+                                {slider.tag2 && (
+                                    <span style={{ fontSize: '10px', backgroundColor: 'var(--surface-elevated)', padding: '2px 6px', borderRadius: '4px', color: '#cbd5e1' }}>
+                                        🟢 {slider.tag2}
+                                    </span>
+                                )}
+                                {slider.ctaText && (
+                                    <span style={{ fontSize: '10px', backgroundColor: 'var(--surface-elevated)', padding: '2px 6px', borderRadius: '4px', color: 'var(--color-accent)' }}>
+                                        🔘 {slider.ctaText}
+                                    </span>
+                                )}
+                            </div>
 
                             <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--surface-border)', paddingTop: '12px' }}>
                                 <button
@@ -300,10 +412,10 @@ const SliderManager = () => {
                                 </button>
                                 <button
                                     className="btn btn-secondary"
-                                    onClick={() => toggleActive(slider.id, slider.active)}
+                                    onClick={() => toggleActive(slider.id, slider.active !== false)}
                                     style={{ flex: 1, padding: '8px', fontSize: '12px' }}
                                 >
-                                    {slider.active ? 'Hide' : 'Activate'}
+                                    {slider.active !== false ? 'Hide' : 'Activate'}
                                 </button>
                                 <button
                                     className="btn btn-delete"

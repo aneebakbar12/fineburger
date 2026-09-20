@@ -130,7 +130,7 @@ const Footer = ({ storeSettings }) => {
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                             <span>
-                                Crafted by <a href="mailto:ammar.akbar2002@gmail.com" style={{ color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }} title="Contact Developer">Ammar Akbar</a>
+                                Crafted by <a href="https://ammar.works" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }} title="Ammar Akbar Portfolio">Ammar Akbar</a>
                             </span>
                             <span>•</span>
                             <button

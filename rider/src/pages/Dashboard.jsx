@@ -279,9 +279,17 @@ const Dashboard = () => {
                             const orderRef = order.orderReference || (order.id ? `FB-${order.id.slice(0, 5).toUpperCase()}` : 'FB-ORDER');
                             const waPhone = formatPakistaniWhatsAppPhone(order.customer?.phone);
                             const waText = encodeURIComponent(`Hi ${order.customer?.name || ''}! This is your Fine Burger delivery courier with order #${orderRef}. I am on my way to your address!`);
-                            const mapUrl = order.customer?.address
-                                ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.customer.address)}`
-                                : 'https://maps.google.com';
+
+                            const lat = order.customer?.location?.lat;
+                            const lng = order.customer?.location?.lng;
+                            const hasGpsCoordinates = typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
+
+                            // Prioritize exact pinned GPS coordinates for Google Maps navigation
+                            const mapUrl = hasGpsCoordinates
+                                ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+                                : (order.customer?.address
+                                    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.customer.address)}`
+                                    : 'https://maps.google.com');
 
                             // Determine status badge
                             const statusLabel =
@@ -311,17 +319,37 @@ const Dashboard = () => {
                                         <div className="dest-icon">📍</div>
                                         <div className="dest-details">
                                             <span className="dest-label">DELIVERY DESTINATION</span>
-                                            <div className="dest-address">{order.customer?.address || 'Pickup at Store'}</div>
-                                            {order.customer?.address && (
+                                            <div className="dest-address">{order.customer?.address || 'Delivery Address Provided'}</div>
+
+                                            {hasGpsCoordinates && (
+                                                <div style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '11px',
+                                                    color: '#10B981',
+                                                    fontWeight: 700,
+                                                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '4px',
+                                                    margin: '4px 0 6px 0',
+                                                    border: '1px solid rgba(16, 185, 129, 0.25)'
+                                                }}>
+                                                    <span>🎯</span>
+                                                    <span>Exact Customer Pinned GPS ({lat.toFixed(5)}, {lng.toFixed(5)})</span>
+                                                </div>
+                                            )}
+
+                                            <div style={{ marginTop: '4px' }}>
                                                 <a
                                                     href={mapUrl}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="btn-map-nav"
                                                 >
-                                                    <span>🗺️ Open Turn-by-Turn Maps</span>
+                                                    <span>{hasGpsCoordinates ? '🗺️ Turn-by-Turn to Pinned Pin' : '🗺️ Open Turn-by-Turn Maps'}</span>
                                                 </a>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -437,7 +465,7 @@ const Dashboard = () => {
 
                 <footer style={{ marginTop: '36px', textAlign: 'center', fontSize: '11px', color: 'var(--text-subtle)' }}>
                     <span>Fine Burger Delivery Operations • Crafted by </span>
-                    <a href="mailto:ammar.akbar2002@gmail.com" style={{ color: 'var(--rider-gold)', textDecoration: 'none', fontWeight: 600 }}>Ammar Akbar</a>
+                    <a href="https://ammar.works" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--rider-gold)', textDecoration: 'none', fontWeight: 600 }}>Ammar Akbar</a>
                 </footer>
             </div>
         </div>

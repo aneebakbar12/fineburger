@@ -210,12 +210,27 @@ const OrderDetailsModal = ({
                                         </a>
                                     </div>
                                     {order.orderType === 'Delivery' && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Address:</span>
-                                            <strong style={{ maxWidth: '65%', textAlign: 'right', color: '#fff', wordBreak: 'break-word' }}>
-                                                {order.customer?.address || 'N/A'}
-                                            </strong>
-                                        </div>
+                                        <>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '6px' }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Address:</span>
+                                                <strong style={{ maxWidth: '65%', textAlign: 'right', color: '#fff', wordBreak: 'break-word' }}>
+                                                    {order.customer?.address || 'N/A'}
+                                                </strong>
+                                            </div>
+                                            {order.customer?.location?.lat && order.customer?.location?.lng && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+                                                    <span style={{ color: '#10B981', fontSize: '11px', fontWeight: 700 }}>🎯 Exact Pinned GPS</span>
+                                                    <a
+                                                        href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer.location.lat},${order.customer.location.lng}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{ color: 'var(--color-accent)', fontSize: '11px', fontWeight: 700, textDecoration: 'underline' }}
+                                                    >
+                                                        Open in Maps ↗
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             )}

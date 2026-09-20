@@ -11,23 +11,32 @@ const DEFAULT_SLIDES = [
     {
         id: 'default-1',
         title: 'Juicy, Sizzling & Unmatched Taste',
-        subtitle: 'Crafted with 100% fresh gourmet beef & premium brioche buns',
+        subtitle: 'Since 1981 — Handcrafted gourmet burgers, crispy zingers & pure Lahore flavor',
         imageUrl: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=1600&q=80',
-        badge: '🔥 Gourmet Perfection'
+        badge: '🔥 SIGNATURE BURGERS',
+        tag1: '100% Fresh Gourmet Beef',
+        tag2: 'Fast Delivery in 30 Mins',
+        ctaText: 'Explore Menu'
     },
     {
         id: 'default-2',
-        title: 'Crispy Golden Fried Chicken',
-        subtitle: 'Marinated in secret herbs and deep-fried to crispy perfection',
-        imageUrl: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=1600&q=80',
-        badge: '🍗 Signature Crunch'
+        title: 'Authentic Arabian Broast & Fried Chicken',
+        subtitle: 'Crispy, golden, double-breaded chicken with garlic dip & crinkle fries',
+        imageUrl: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=1600&q=80',
+        badge: '🍗 CRISPY BROAST',
+        tag1: 'Crispy Double-Breaded',
+        tag2: 'Fresh Garlic Dip & Fries',
+        ctaText: 'Order Broast'
     },
     {
         id: 'default-3',
-        title: 'Cheesy Melt Indulgence',
-        subtitle: 'Double cheese, caramelized onions & house special secret sauce',
-        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1600&q=80',
-        badge: '🧀 Loaded Flavor'
+        title: 'Loaded Stuffed Crust & Crown Pizzas',
+        subtitle: 'Bihari kabab, malai boti & four-season pizzas with 100% pure mozzarella',
+        imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1600&q=80',
+        badge: '🍕 HOT STONE BAKED',
+        tag1: '100% Pure Mozzarella',
+        tag2: 'Stuffed Cheesy Crust',
+        ctaText: 'View Pizzas'
     }
 ];
 
@@ -48,6 +57,9 @@ const sanitizeSlides = (rawSlides) => {
             title: (slide.title && slide.title.trim()) ? slide.title : fallback.title,
             subtitle: (slide.subtitle && slide.subtitle.trim()) ? slide.subtitle : fallback.subtitle,
             badge: (slide.badge && slide.badge.trim()) ? slide.badge : fallback.badge,
+            tag1: (slide.tag1 && slide.tag1.trim()) ? slide.tag1 : fallback.tag1,
+            tag2: (slide.tag2 && slide.tag2.trim()) ? slide.tag2 : fallback.tag2,
+            ctaText: (slide.ctaText && slide.ctaText.trim()) ? slide.ctaText : fallback.ctaText,
             imageUrl: isBrokenUrl ? fallback.imageUrl : slide.imageUrl
         };
     });
@@ -205,19 +217,23 @@ const HeroSlider = ({ slides }) => {
                     {/* Quick Highlights / CTA Row */}
                     <div className="hero-pills" ref={ctaPillsRef}>
                         <button className="hero-cta-btn" onClick={scrollToMenu} type="button">
-                            <span>Explore Menu</span>
+                            <span>{currentSlideData.ctaText || 'Explore Menu'}</span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M5 12h14M12 5l7 7-7 7" />
                             </svg>
                         </button>
-                        <div className="hero-feature-pill">
-                            <span className="pill-dot"></span>
-                            <span>100% Fresh Gourmet Beef</span>
-                        </div>
-                        <div className="hero-feature-pill">
-                            <span className="pill-dot green"></span>
-                            <span>Fast Delivery in 30 Mins</span>
-                        </div>
+                        {currentSlideData.tag1 && (
+                            <div className="hero-feature-pill">
+                                <span className="pill-dot"></span>
+                                <span>{currentSlideData.tag1}</span>
+                            </div>
+                        )}
+                        {currentSlideData.tag2 && (
+                            <div className="hero-feature-pill">
+                                <span className="pill-dot green"></span>
+                                <span>{currentSlideData.tag2}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
