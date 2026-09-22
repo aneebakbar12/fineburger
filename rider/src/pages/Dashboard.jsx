@@ -160,9 +160,19 @@ const Dashboard = () => {
         .filter(o => {
             const isCOD = (o.paymentMethod || 'COD').toUpperCase() === 'COD';
             if (!isCOD) return false;
-            if (!o.deliveredAt && !o.updatedAt) return true;
-            const ts = o.deliveredAt?.seconds || o.updatedAt?.seconds || 0;
-            const date = new Date(ts * 1000);
+            const rawTs = o.deliveredAt || o.updatedAt;
+            if (!rawTs) return true;
+
+            let date;
+            if (rawTs.toDate && typeof rawTs.toDate === 'function') {
+                date = rawTs.toDate();
+            } else if (rawTs.seconds !== undefined && rawTs.seconds !== null) {
+                date = new Date(rawTs.seconds * 1000);
+            } else {
+                date = new Date(rawTs);
+            }
+
+            if (isNaN(date.getTime())) return true;
             return date.toDateString() === new Date().toDateString();
         })
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);

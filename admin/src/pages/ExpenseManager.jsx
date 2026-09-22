@@ -15,17 +15,11 @@ const ExpenseManager = () => {
 
     // Get current date in PKT for default form value (YYYY-MM-DD)
     const getTodayPKT = () => {
-        const d = getPKTDate();
-        // Manual formatting to ensure YYYY-MM-DD matches PKT
-        // d is already shifted to match PKT components if we use getFullYear etc? 
-        // No, getPKTDate returns a Date object where absolute time is correct? 
-        // Wait, getPKTDate returned `new Date(toLocaleString...)` which creates a shifted Date object.
-        // So `d.toISOString().split('T')[0]` will give the correct YYYY-MM-DD for PKT.
-        // wait, `d` is constructed from "toLocaleString" string. 
-        // The browser sees that string and creates a date.
-        // If the string says "2/12/2026, 5:00:00 AM", `new Date()` makes it local time 5AM.
-        // So yes, toISOString() on that shifted date gives correct YYYY-MM-DD.
-        return d.toISOString().split('T')[0];
+        try {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
+        } catch (_) {
+            return new Date().toISOString().split('T')[0];
+        }
     };
 
     const [formData, setFormData] = useState({

@@ -87,9 +87,9 @@ const Orders = ({ user }) => {
                 </div>
             ) : (
                 <div className="orders-list">
-                    {orders.map(order => {
+                    {orders.map((order, idx) => {
                         const orderId = order.id || order.orderId;
-                        const orderRef = order.orderReference || (orderId ? `FB-${orderId.substring(0, 5).toUpperCase()}` : 'FB-ORDER');
+                        const orderRef = order.orderReference || (orderId ? `FB-${orderId.substring(0, 5).toUpperCase()}` : `FB-${idx}`);
                         const orderDate = order.createdAt?.seconds
                             ? new Date(order.createdAt.seconds * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
                             : order.placedAt
@@ -97,7 +97,7 @@ const Orders = ({ user }) => {
                                 : 'Recent Order';
 
                         return (
-                            <div key={orderId || Math.random()} className="order-card">
+                            <div key={orderId || orderRef || idx} className="order-card">
                                 <div className="order-header">
                                     <span className="order-id" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
                                         #{orderRef}

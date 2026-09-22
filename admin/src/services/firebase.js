@@ -69,9 +69,26 @@ export const getTotalRevenue = async (startDate, endDate) => {
             const total = snapshot.data().totalRevenue || 0;
             return total;
         } catch (aggError) {
-            console.warn('Aggregation query fell back to getDocs:', aggError.message);
-            const snapshot = await getDocs(q);
-            return snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+            console.warn('Aggregation query fell back to in-memory filtering:', aggError.message);
+            // Single-field query on status never requires a composite index
+            const fallbackQ = query(collection(db, 'orders'), where('status', '==', 'delivered'));
+            const snapshot = await getDocs(fallbackQ);
+            return snapshot.docs
+                .map(d => d.data())
+                .filter(d => {
+                    if (!startDate || !endDate) return true;
+                    let orderDate;
+                    if (d.createdAt?.toDate) {
+                        orderDate = d.createdAt.toDate();
+                    } else if (d.createdAt?.seconds) {
+                        orderDate = new Date(d.createdAt.seconds * 1000);
+                    } else if (d.createdAt) {
+                        orderDate = new Date(d.createdAt);
+                    }
+                    if (!orderDate || isNaN(orderDate.getTime())) return true;
+                    return orderDate >= startDate && orderDate <= endDate;
+                })
+                .reduce((acc, docData) => acc + (Number(docData.total) || 0), 0);
         }
     } catch (error) {
         console.error('Error calculating total revenue:', error);

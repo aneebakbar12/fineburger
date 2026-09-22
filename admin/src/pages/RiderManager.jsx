@@ -93,10 +93,12 @@ const RiderManager = () => {
     const getRiderStats = (rider) => {
         const riderOrders = orders.filter(o => o.assignedRiderId === rider.id);
         const activeOrders = riderOrders.filter(o => o.status === 'ready' || o.status === 'out_for_delivery').length;
-        // Prefer persistent stat if available, otherwise fall back to orders array count
-        const deliveredOrders = rider.stats?.deliveredOrders !== undefined
-            ? rider.stats.deliveredOrders
-            : riderOrders.filter(o => o.status === 'delivered').length;
+        // Take the maximum of persistent stats and live orders matching this rider to ensure delivery count never gets stuck at 0
+        const ordersDeliveredCount = riderOrders.filter(o => o.status === 'delivered').length;
+        const deliveredOrders = Math.max(
+            Number(rider.stats?.deliveredOrders) || 0,
+            ordersDeliveredCount
+        );
 
         return { activeOrders, deliveredOrders };
     };

@@ -113,9 +113,7 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
         ...category,
         items: menuItems.filter(item =>
             item.categoryId === category.id &&
-            item.available !== false &&
-            item.inStock !== false &&
-            (item.stockLevel === undefined || item.stockLevel > 0)
+            item.available !== false
         )
     }));
 

@@ -177,7 +177,7 @@ function App() {
                 <StaffModeActivator />
                 <div className="app">
                     <Header
-                        cartItemCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
+                        cartItemCount={cartItems.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0)}
                         onCartClick={() => setIsCartOpen(true)}
                         user={user}
                         onLogout={handleLogout}
