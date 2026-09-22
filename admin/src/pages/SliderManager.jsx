@@ -53,10 +53,10 @@ const SliderManager = () => {
         setFormData({
             title: slider.title || '',
             subtitle: slider.subtitle || '',
-            badge: slider.badge || '🔥 SIGNATURE BURGERS',
-            tag1: slider.tag1 || '100% Fresh Gourmet Beef',
-            tag2: slider.tag2 || 'Fast Delivery in 30 Mins',
-            ctaText: slider.ctaText || 'Explore Menu',
+            badge: slider.badge !== undefined && slider.badge !== null ? String(slider.badge) : '',
+            tag1: slider.tag1 !== undefined && slider.tag1 !== null ? String(slider.tag1) : '',
+            tag2: slider.tag2 !== undefined && slider.tag2 !== null ? String(slider.tag2) : '',
+            ctaText: slider.ctaText !== undefined && slider.ctaText !== null ? String(slider.ctaText) : 'Explore Menu',
             imageUrl: slider.imageUrl || '',
             order: slider.order || 1,
             active: slider.active !== false
@@ -74,6 +74,8 @@ const SliderManager = () => {
         setEditingId(null);
         setShowForm(false);
     };
+
+    const cleanStr = (val) => (typeof val === 'string' ? val.trim() : (val != null ? String(val).trim() : ''));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -93,12 +95,12 @@ const SliderManager = () => {
 
         const payload = {
             ...formData,
-            title: formData.title.trim(),
-            subtitle: formData.subtitle.trim(),
-            badge: formData.badge.trim(),
-            tag1: formData.tag1.trim(),
-            tag2: formData.tag2.trim(),
-            ctaText: formData.ctaText.trim(),
+            title: cleanStr(formData.title),
+            subtitle: cleanStr(formData.subtitle),
+            badge: cleanStr(formData.badge),
+            tag1: cleanStr(formData.tag1),
+            tag2: cleanStr(formData.tag2),
+            ctaText: cleanStr(formData.ctaText) || 'Explore Menu',
             imageUrl,
             order: parseInt(formData.order) || 1
         };

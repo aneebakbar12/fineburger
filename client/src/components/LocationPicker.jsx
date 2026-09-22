@@ -7,10 +7,10 @@ import 'leaflet/dist/leaflet.css';
 const DeliveryPinIcon = L.divIcon({
     className: 'custom-delivery-pin',
     html: `
-        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -100%);">
+        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
             <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 180, 0, 0.3); animation: pulsePin 1.8s infinite;"></div>
-            <div style="width: 28px; height: 28px; border-radius: 50% 50% 50% 0; background: #FFB400; transform: rotate(-45deg); border: 2px solid #000; box-shadow: 0 4px 12px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;">
-                <span style="transform: rotate(45deg); font-size: 13px; font-weight: 900; color: #000;">🍔</span>
+            <div style="width: 26px; height: 26px; border-radius: 50% 50% 50% 0; background: #FFB400; transform: rotate(-45deg); border: 2px solid #000; box-shadow: 0 4px 12px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; margin-top: -6px;">
+                <span style="transform: rotate(45deg); font-size: 12px; font-weight: 900; color: #000;">🍔</span>
             </div>
         </div>
     `,
@@ -120,9 +120,9 @@ const LocateControl = ({ setPosition, onLocationSelect, setLoading }) => {
     const handleLocate = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (setLoading) setLoading(true);
 
         if (navigator.geolocation) {
+            if (setLoading) setLoading(true);
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -136,6 +136,9 @@ const LocateControl = ({ setPosition, onLocationSelect, setLoading }) => {
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
+        } else {
+            console.warn('Geolocation is not supported by this browser.');
+            if (setLoading) setLoading(false);
         }
     };
 
@@ -175,28 +178,30 @@ const LocationPicker = ({ onAddressSelect }) => {
     const [detectedAddress, setDetectedAddress] = useState('');
     const [pinnedCoords, setPinnedCoords] = useState(null);
 
+    const handleLocationSelect = async (latlng) => {
+        setLoading(true);
+        setPinnedCoords(latlng);
+        const readableAddress = await reverseGeocodeCoordinates(latlng.lat, latlng.lng);
+        setDetectedAddress(readableAddress);
+        if (onAddressSelect) {
+            onAddressSelect(readableAddress, latlng);
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     setPosition(latlng);
-                    setPinnedCoords(latlng);
+                    handleLocationSelect(latlng);
                 },
                 () => {},
                 { timeout: 5000 }
             );
         }
     }, []);
-
-    const handleLocationSelect = async (latlng) => {
-        setLoading(true);
-        setPinnedCoords(latlng);
-        const readableAddress = await reverseGeocodeCoordinates(latlng.lat, latlng.lng);
-        setDetectedAddress(readableAddress);
-        onAddressSelect(readableAddress, latlng);
-        setLoading(false);
-    };
 
     return (
         <div style={{ width: '100%', marginBottom: '14px' }}>

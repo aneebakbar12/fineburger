@@ -51,23 +51,29 @@ const sanitizeSlides = (rawSlides) => {
             slide.imageUrl.includes('rancherscafe.com') ||
             slide.imageUrl.trim() === '';
 
+        const toCleanString = (val) => (typeof val === 'string' ? val.trim() : (val != null ? String(val).trim() : ''));
+
         // If slide explicitly has badge property (including empty string to hide badge), respect it
         let resolvedBadge = '';
         if (slide.badge !== undefined && slide.badge !== null) {
-            resolvedBadge = typeof slide.badge === 'string' ? slide.badge.trim() : '';
+            resolvedBadge = toCleanString(slide.badge);
         } else if (fallback.badge) {
             resolvedBadge = fallback.badge;
         }
 
+        const titleStr = toCleanString(slide.title);
+        const subtitleStr = toCleanString(slide.subtitle);
+        const ctaStr = toCleanString(slide.ctaText);
+
         return {
             ...slide,
             id: slide.id || `slide-${index}`,
-            title: (slide.title && slide.title.trim()) ? slide.title : fallback.title,
-            subtitle: (slide.subtitle && slide.subtitle.trim()) ? slide.subtitle : fallback.subtitle,
+            title: titleStr || fallback.title,
+            subtitle: subtitleStr || fallback.subtitle,
             badge: resolvedBadge,
-            tag1: slide.tag1 !== undefined ? (slide.tag1 ? slide.tag1.trim() : '') : (fallback.tag1 || ''),
-            tag2: slide.tag2 !== undefined ? (slide.tag2 ? slide.tag2.trim() : '') : (fallback.tag2 || ''),
-            ctaText: (slide.ctaText && slide.ctaText.trim()) ? slide.ctaText : fallback.ctaText,
+            tag1: slide.tag1 !== undefined ? toCleanString(slide.tag1) : (fallback.tag1 || ''),
+            tag2: slide.tag2 !== undefined ? toCleanString(slide.tag2) : (fallback.tag2 || ''),
+            ctaText: ctaStr || fallback.ctaText,
             imageUrl: isBrokenUrl ? fallback.imageUrl : slide.imageUrl
         };
     });
