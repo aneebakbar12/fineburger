@@ -24,7 +24,7 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
     // Filter menu items based on search query and availability
     const filteredItems = searchQuery
         ? menuItems.filter(item =>
-            item.available &&
+            item.available !== false &&
             item.inStock !== false &&
             (item.stockLevel === undefined || item.stockLevel > 0) &&
             (

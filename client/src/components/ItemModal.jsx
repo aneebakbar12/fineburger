@@ -88,7 +88,7 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
         onClose();
     };
 
-    const canAddToCart = storeOpen && item.available !== false && item.inStock !== false;
+    const canAddToCart = storeOpen && item.available !== false && item.inStock !== false && (item.stockLevel === undefined || item.stockLevel > 0);
 
     return (
         <>
