@@ -161,7 +161,7 @@ const Dashboard = () => {
             const isCOD = (o.paymentMethod || 'COD').toUpperCase() === 'COD';
             if (!isCOD) return false;
             const rawTs = o.deliveredAt || o.updatedAt;
-            if (!rawTs) return true;
+            if (!rawTs) return false;
 
             let date;
             if (rawTs.toDate && typeof rawTs.toDate === 'function') {
@@ -172,7 +172,7 @@ const Dashboard = () => {
                 date = new Date(rawTs);
             }
 
-            if (isNaN(date.getTime())) return true;
+            if (isNaN(date.getTime())) return false;
             return date.toDateString() === new Date().toDateString();
         })
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);

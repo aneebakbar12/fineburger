@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import ExpenseManager from './pages/ExpenseManager';
 import FinancialDashboard from './pages/FinancialDashboard';
+import FinancialGate from './components/FinancialGate';
 import { onAuthChange, subscribeToOrders } from './services/firebase';
 import { ToastProvider } from './context/ToastContext';
 import './styles/admin.css';
@@ -256,12 +257,12 @@ function App() {
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/orders" element={<OrderManager />} />
                             <Route path="/riders" element={<RiderManager />} />
-                            <Route path="/reports" element={<Reports />} />
+                            <Route path="/reports" element={<FinancialGate><Reports /></FinancialGate>} />
                             <Route path="/categories" element={<CategoryManager />} />
                             <Route path="/menu-items" element={<MenuItemManager />} />
                             <Route path="/inventory" element={<InventoryManager />} />
-                            <Route path="/expenses" element={<ExpenseManager />} />
-                            <Route path="/financial-dashboard" element={<FinancialDashboard />} />
+                            <Route path="/expenses" element={<FinancialGate><ExpenseManager /></FinancialGate>} />
+                            <Route path="/financial-dashboard" element={<FinancialGate><FinancialDashboard /></FinancialGate>} />
                             <Route path="/sliders" element={<SliderManager />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route path="*" element={<Navigate to="/dashboard" replace />} />

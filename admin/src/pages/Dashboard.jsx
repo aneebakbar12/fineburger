@@ -56,6 +56,12 @@ const Dashboard = () => {
     const [categoryData, setCategoryData] = useState([]);
     const [aiInsights, setAiInsights] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [dateRange, setDateRange] = useState('all'); // 'today', '7days', '30days', 'custom', 'all'
+    const [customDateFrom, setCustomDateFrom] = useState('');
+    const [customDateTo, setCustomDateTo] = useState('');
+    const [rawOrders, setRawOrders] = useState([]);
+    const [rawItems, setRawItems] = useState([]);
+    const [rawCategories, setRawCategories] = useState([]);
     const unsubscribeRef = useRef(null);
 
     useEffect(() => {
@@ -68,9 +74,12 @@ const Dashboard = () => {
                 ]);
                 if (cancelled) return;
 
+                setRawItems(items || []);
+                setRawCategories(categories || []);
+
                 unsubscribeRef.current = subscribeToOrders((orders) => {
                     if (cancelled) return;
-                    processAnalytics(orders || [], items || [], categories || []);
+                    setRawOrders(orders || []);
                     setLoading(false);
                 });
             } catch (err) {
@@ -86,17 +95,62 @@ const Dashboard = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (rawOrders.length > 0 || !loading) {
+            processAnalytics(rawOrders, rawItems, rawCategories);
+        }
+    }, [rawOrders, rawItems, rawCategories, dateRange, customDateFrom, customDateTo]);
+
+    const getDateFilteredOrders = (orders) => {
+        if (dateRange === 'all') return orders;
+
+        const now = new Date();
+        let startDate = null;
+        let endDate = null;
+
+        if (dateRange === 'today') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        } else if (dateRange === '7days') {
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 7);
+        } else if (dateRange === '30days') {
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 30);
+        } else if (dateRange === 'custom') {
+            if (customDateFrom) startDate = new Date(customDateFrom);
+            if (customDateTo) endDate = new Date(customDateTo + 'T23:59:59');
+        }
+
+        return orders.filter(order => {
+            const raw = order.createdAt;
+            let orderDate;
+            if (raw && typeof raw.toDate === 'function') {
+                orderDate = raw.toDate();
+            } else if (raw && raw.seconds !== undefined) {
+                orderDate = new Date(raw.seconds * 1000);
+            } else if (raw) {
+                orderDate = new Date(raw);
+            }
+            if (!orderDate || isNaN(orderDate.getTime())) return false;
+            if (startDate && orderDate < startDate) return false;
+            if (endDate && orderDate > endDate) return false;
+            return true;
+        });
+    };
+
     const processAnalytics = (orders, items, categories) => {
         try {
-            const deliveredOrders = orders.filter(o => o.status === 'delivered');
+            const filtered = getDateFilteredOrders(orders);
+            const deliveredOrders = filtered.filter(o => o.status === 'delivered');
             const totalRevenue = deliveredOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
-            const pendingOrders = orders.filter(o => o.status === 'pending').length;
+            const pendingOrders = filtered.filter(o => o.status === 'pending').length;
             const avgOrderValue = deliveredOrders.length > 0 ? Math.round(totalRevenue / deliveredOrders.length) : 0;
-            const completionRate = orders.length > 0 ? Math.round((deliveredOrders.length / orders.length) * 100) : 0;
+            const completionRate = filtered.length > 0 ? Math.round((deliveredOrders.length / filtered.length) * 100) : 0;
 
             setStats({
                 totalRevenue,
-                totalOrders: orders.length,
+                totalOrders: filtered.length,
                 avgOrderValue,
                 pendingOrders,
                 completionRate
@@ -110,7 +164,7 @@ const Dashboard = () => {
             }).reverse();
 
             const revenueByDay = last7Days.map(date => {
-                const dayOrders = orders.filter(o => {
+                const dayOrders = filtered.filter(o => {
                     const orderDate = parseOrderDateStr(o.createdAt);
                     return orderDate === date && o.status === 'delivered';
                 });
@@ -123,7 +177,7 @@ const Dashboard = () => {
 
             // Category Distribution
             const categoryCounts = {};
-            orders.forEach(order => {
+            filtered.forEach(order => {
                 (order.items || []).forEach(item => {
                     const originalItem = items.find(i => i.id === item.id);
                     const catId = originalItem?.categoryId || item.categoryId;
@@ -153,7 +207,7 @@ const Dashboard = () => {
 
             // 2. Sales Velocity
             const todayStr = new Date().toISOString().split('T')[0];
-            const todaySales = orders.filter(o => {
+            const todaySales = filtered.filter(o => {
                 const orderDate = parseOrderDateStr(o.createdAt);
                 return orderDate === todayStr && o.status === 'delivered';
             }).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -211,6 +265,76 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            {/* Date Range Filter */}
+            <div style={{
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                marginBottom: '20px',
+                padding: '12px 16px',
+                backgroundColor: 'var(--surface-card)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--surface-border)'
+            }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '4px' }}>📅 Period:</span>
+                {[
+                    { value: 'today', label: 'Today' },
+                    { value: '7days', label: 'Last 7 Days' },
+                    { value: '30days', label: 'Last 30 Days' },
+                    { value: 'all', label: 'All Time' },
+                    { value: 'custom', label: 'Custom Range' }
+                ].map(opt => (
+                    <button
+                        key={opt.value}
+                        onClick={() => setDateRange(opt.value)}
+                        style={{
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            border: dateRange === opt.value ? '1px solid var(--color-accent)' : '1px solid var(--surface-border)',
+                            backgroundColor: dateRange === opt.value ? 'rgba(255, 180, 0, 0.15)' : 'var(--surface-elevated)',
+                            color: dateRange === opt.value ? 'var(--color-accent)' : 'var(--text-secondary)',
+                            fontWeight: dateRange === opt.value ? 700 : 500,
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {opt.label}
+                    </button>
+                ))}
+                {dateRange === 'custom' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
+                        <input
+                            type="date"
+                            value={customDateFrom}
+                            onChange={(e) => setCustomDateFrom(e.target.value)}
+                            style={{
+                                padding: '6px 10px',
+                                backgroundColor: 'var(--surface-elevated)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--surface-border)',
+                                borderRadius: '6px',
+                                fontSize: '12px'
+                            }}
+                        />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>to</span>
+                        <input
+                            type="date"
+                            value={customDateTo}
+                            onChange={(e) => setCustomDateTo(e.target.value)}
+                            style={{
+                                padding: '6px 10px',
+                                backgroundColor: 'var(--surface-elevated)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--surface-border)',
+                                borderRadius: '6px',
+                                fontSize: '12px'
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+
             {/* KPI Cards Grid */}
             <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <KPICard
@@ -218,7 +342,7 @@ const Dashboard = () => {
                     value={stats.totalOrders}
                     Icon={OrdersIcon}
                     accentColor="#3b82f6"
-                    badge="All Time"
+                    badge={dateRange === 'all' ? 'All Time' : dateRange === 'today' ? 'Today' : dateRange === '7days' ? '7 Days' : dateRange === '30days' ? '30 Days' : 'Custom'}
                 />
                 <KPICard
                     title="Pending Queue"

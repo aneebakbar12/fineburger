@@ -401,6 +401,8 @@ const OrderManager = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [orderTypeFilter, setOrderTypeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     // Cancel modal state
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
@@ -449,6 +451,22 @@ const OrderManager = () => {
             const tableNum = (order.customer?.tableNumber || '').toString().toLowerCase();
             const id = (order.id || '').toLowerCase();
             return ref.includes(q) || customerName.includes(q) || customerPhone.includes(q) || tableNum.includes(q) || id.includes(q);
+        }
+
+        // Date range filter
+        if (dateFrom || dateTo) {
+            let orderDate;
+            const raw = order.createdAt;
+            if (raw && typeof raw.toDate === 'function') {
+                orderDate = raw.toDate();
+            } else if (raw && raw.seconds !== undefined) {
+                orderDate = new Date(raw.seconds * 1000);
+            } else if (raw) {
+                orderDate = new Date(raw);
+            }
+            if (!orderDate || isNaN(orderDate.getTime())) return false;
+            if (dateFrom && orderDate < new Date(dateFrom)) return false;
+            if (dateTo && orderDate > new Date(dateTo)) return false;
         }
 
         return true;
@@ -580,6 +598,7 @@ const OrderManager = () => {
                 </head>
                 <body>
                     <div class="header">
+                        <img src="${window.location.origin}/logo.webp" alt="Fine Burger" style="width: 140px; height: auto; display: block; margin: 0 auto 8px auto; border-radius: 6px;" onerror="this.style.display='none'" />
                         <h2>FINE BURGER</h2>
                         <p style="font-size: 11px;">Fast Food & Grill • Since 1981</p>
                         <p style="font-size: 11px;">Main G.T. Road, Baghbanpura, Lahore</p>
@@ -774,6 +793,56 @@ const OrderManager = () => {
                         <option value="Dine-in">🍽️ Dine-in</option>
                         <option value="Takeaway">🛍️ Takeaway</option>
                     </select>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input
+                            type="datetime-local"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            style={{
+                                padding: '7px 10px',
+                                backgroundColor: 'var(--surface-elevated)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--surface-border)',
+                                borderRadius: '6px',
+                                fontSize: '12px'
+                            }}
+                            title="Filter from date/time"
+                        />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>to</span>
+                        <input
+                            type="datetime-local"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            style={{
+                                padding: '7px 10px',
+                                backgroundColor: 'var(--surface-elevated)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--surface-border)',
+                                borderRadius: '6px',
+                                fontSize: '12px'
+                            }}
+                            title="Filter to date/time"
+                        />
+                        {(dateFrom || dateTo) && (
+                            <button
+                                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid var(--surface-border)',
+                                    color: 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                }}
+                                title="Clear date filter"
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
 
                     <div className="filter-search-box">
                         <SearchIcon width={16} height={16} stroke="var(--text-muted)" />

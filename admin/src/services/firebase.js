@@ -85,7 +85,7 @@ export const getTotalRevenue = async (startDate, endDate) => {
                     } else if (d.createdAt) {
                         orderDate = new Date(d.createdAt);
                     }
-                    if (!orderDate || isNaN(orderDate.getTime())) return true;
+                    if (!orderDate || isNaN(orderDate.getTime())) return false;
                     return orderDate >= startDate && orderDate <= endDate;
                 })
                 .reduce((acc, docData) => acc + (Number(docData.total) || 0), 0);
@@ -636,6 +636,22 @@ export const deleteSignupCode = async (codeId) => {
     try {
         await deleteDoc(doc(db, 'riderSignupCodes', codeId));
         return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// Delete all unused signup codes at once
+export const clearAllSignupCodes = async () => {
+    try {
+        const q = query(
+            collection(db, 'riderSignupCodes'),
+            where('used', '==', false)
+        );
+        const snapshot = await getDocs(q);
+        const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'riderSignupCodes', d.id)));
+        await Promise.all(deletePromises);
+        return { success: true, count: snapshot.docs.length };
     } catch (error) {
         return { success: false, error: error.message };
     }

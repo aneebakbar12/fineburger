@@ -73,10 +73,9 @@ const Sidebar = ({ onLogout, pendingCount = 0, isAudioMuted = false, onToggleAud
 
             <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <h2 className="sidebar-logo">
-                        <span className="logo-text">FINE</span>
-                        <span className="logo-accent">BURGER</span>
-                    </h2>
+                    <div className="sidebar-logo">
+                        <img src="/logo.webp" alt="Fine Burger" style={{ width: '120px', height: 'auto', borderRadius: '8px' }} />
+                    </div>
                     <p className="sidebar-subtitle">Management Console</p>
                 </div>
 

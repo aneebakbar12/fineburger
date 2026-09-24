@@ -6,7 +6,8 @@ import {
     subscribeToOrders,
     generateRiderSignupCode,
     deleteRider,
-    subscribeToUnusedCodes
+    subscribeToUnusedCodes,
+    clearAllSignupCodes
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -71,6 +72,20 @@ const RiderManager = () => {
         if (code) {
             navigator.clipboard.writeText(code);
             toast.success(`Code ${code} copied to clipboard!`);
+        }
+    };
+
+    const handleClearAllCodes = async () => {
+        if (!window.confirm(`Are you sure you want to delete all ${unusedCodes.length} unused signup codes?`)) return;
+        try {
+            const result = await clearAllSignupCodes();
+            if (result.success) {
+                toast.success(`Cleared ${result.count} unused signup codes.`);
+            } else {
+                toast.error('Failed to clear codes: ' + result.error);
+            }
+        } catch (err) {
+            toast.error('Error clearing codes: ' + err.message);
         }
     };
 
@@ -143,7 +158,25 @@ const RiderManager = () => {
                         <h3 style={{ fontSize: '14px', color: 'var(--color-accent, #FFB400)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             🔑 Active Onboarding Codes ({unusedCodes.length})
                         </h3>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Share one with a new rider during registration</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Share one with a new rider during registration</span>
+                            <button
+                                onClick={handleClearAllCodes}
+                                style={{
+                                    padding: '4px 10px',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    borderRadius: '4px',
+                                    color: '#ef4444',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                🗑️ Clear All
+                            </button>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         {unusedCodes.map(codeItem => (
