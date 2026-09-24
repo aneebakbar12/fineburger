@@ -9,6 +9,7 @@ import RiderManager from './pages/RiderManager';
 import CategoryManager from './pages/CategoryManager';
 import MenuItemManager from './pages/MenuItemManager';
 import InventoryManager from './pages/InventoryManager';
+import DiscountManager from './pages/DiscountManager';
 import SliderManager from './pages/SliderManager';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
@@ -260,6 +261,7 @@ function App() {
                             <Route path="/reports" element={<FinancialGate><Reports /></FinancialGate>} />
                             <Route path="/categories" element={<CategoryManager />} />
                             <Route path="/menu-items" element={<MenuItemManager />} />
+                            <Route path="/discounts" element={<DiscountManager />} />
                             <Route path="/inventory" element={<InventoryManager />} />
                             <Route path="/expenses" element={<FinancialGate><ExpenseManager /></FinancialGate>} />
                             <Route path="/financial-dashboard" element={<FinancialGate><FinancialDashboard /></FinancialGate>} />

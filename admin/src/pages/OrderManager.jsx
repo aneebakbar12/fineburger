@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
     subscribeToOrders,
+    subscribeToInventory,
     updateOrderStatus,
     getServerTimestamp,
     getRiders,
@@ -407,18 +409,54 @@ const OrderManager = () => {
     // Cancel modal state
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
 
+    // Low stock inventory tracking & popup alert
+    const [inventoryItems, setInventoryItems] = useState([]);
+    const [showLowStockModal, setShowLowStockModal] = useState(false);
+    const [dismissedLowStockBanner, setDismissedLowStockBanner] = useState(false);
+    const prevLowStockCountRef = useRef(0);
+    const hasInitializedInvRef = useRef(false);
+
     useEffect(() => {
-        const unsubscribe = subscribeToOrders((newOrders) => {
+        const unsubscribeOrders = subscribeToOrders((newOrders) => {
             setOrders(newOrders);
             setLoading(false);
+        });
+
+        const unsubscribeInventory = subscribeToInventory((items) => {
+            setInventoryItems(items || []);
+            const lowItems = (items || []).filter(i => (Number(i.stockLevel) || 0) <= (Number(i.lowStockThreshold) || 10));
+
+            // Alert popup trigger: first load if not dismissed in session, or when new item goes low
+            if (lowItems.length > 0) {
+                if (!hasInitializedInvRef.current) {
+                    hasInitializedInvRef.current = true;
+                    if (sessionStorage.getItem('fb_dismissed_low_stock') !== 'true') {
+                        setShowLowStockModal(true);
+                    }
+                } else if (lowItems.length > prevLowStockCountRef.current) {
+                    setShowLowStockModal(true);
+                    setDismissedLowStockBanner(false);
+                }
+            }
+            prevLowStockCountRef.current = lowItems.length;
         });
 
         getRiders().then(ridersData => {
             setRiders(ridersData || []);
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeOrders();
+            unsubscribeInventory();
+        };
     }, []);
+
+    const lowStockInventory = inventoryItems.filter(i => (Number(i.stockLevel) || 0) <= (Number(i.lowStockThreshold) || 10));
+
+    const handleDismissLowStockModal = () => {
+        setShowLowStockModal(false);
+        sessionStorage.setItem('fb_dismissed_low_stock', 'true');
+    };
 
     const selectedOrder = orders.find(o => o.id === selectedOrderId) || null;
     const selectedOrderRef = selectedOrder ? getOrderRef(selectedOrder) : null;
@@ -693,6 +731,30 @@ const OrderManager = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    {lowStockInventory.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setShowLowStockModal(true)}
+                            style={{
+                                backgroundColor: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '8px 14px',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 0 12px rgba(239, 68, 68, 0.4)'
+                            }}
+                            title="View Low Stock Items"
+                        >
+                            <span>⚠️</span>
+                            <span>{lowStockInventory.length} Low Stock</span>
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setIsKdsMode(!isKdsMode)}
@@ -720,6 +782,80 @@ const OrderManager = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Low Stock Warning Banner */}
+            {lowStockInventory.length > 0 && !dismissedLowStockBanner && (
+                <div style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '20px' }}>⚠️</span>
+                        <div>
+                            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: '13px' }}>
+                                Kitchen Low Stock Alert ({lowStockInventory.length} items):
+                            </span>
+                            <span style={{ color: 'var(--text-primary)', fontSize: '13px', marginLeft: '6px' }}>
+                                {lowStockInventory.slice(0, 3).map(i => `${i.name} (${i.stockLevel} ${i.unit || 'pcs'} left)`).join(', ')}
+                                {lowStockInventory.length > 3 ? ` and ${lowStockInventory.length - 3} more...` : ''}
+                            </span>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowLowStockModal(true)}
+                            style={{
+                                backgroundColor: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '5px 12px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            View Items
+                        </button>
+                        <Link
+                            to="/inventory"
+                            style={{
+                                color: 'var(--color-accent, #FFB400)',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                padding: '5px 8px'
+                            }}
+                        >
+                            Restock in Inventory ➔
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setDismissedLowStockBanner(true)}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                fontSize: '16px',
+                                cursor: 'pointer',
+                                padding: '2px 6px'
+                            }}
+                            title="Dismiss Banner"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Filter & Search Toolbar */}
             <div className="admin-filter-bar" style={{ marginBottom: '16px' }}>
@@ -1156,6 +1292,146 @@ const OrderManager = () => {
                 onConfirm={confirmCancelOrder}
                 onCancel={() => setCancellingOrderId(null)}
             />
+
+            {/* Low Stock Warning Modal Popup */}
+            {showLowStockModal && lowStockInventory.length > 0 && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        backgroundColor: 'var(--surface-card, #1a1e28)',
+                        border: '1px solid #ef4444',
+                        borderRadius: '12px',
+                        width: '100%',
+                        maxWidth: '520px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                            padding: '16px 20px',
+                            borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '24px' }}>🚨</span>
+                                <div>
+                                    <h3 style={{ margin: 0, color: '#ef4444', fontSize: '16px', fontWeight: 800 }}>
+                                        Kitchen Inventory Low Stock Alert
+                                    </h3>
+                                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        The following ingredients are low or out of stock!
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleDismissLowStockModal}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {lowStockInventory.map((item) => {
+                                    const isOut = (Number(item.stockLevel) || 0) <= 0;
+                                    return (
+                                        <div key={item.id} style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '10px 14px',
+                                            borderRadius: '8px',
+                                            backgroundColor: isOut ? 'rgba(239, 68, 68, 0.12)' : 'var(--surface-elevated, #242936)',
+                                            border: isOut ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--surface-border)'
+                                        }}>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>
+                                                    {item.name}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                    Category: {item.category || 'Supplies'} · Min Threshold: {item.lowStockThreshold || 10} {item.unit || 'pcs'}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 800,
+                                                    backgroundColor: isOut ? '#ef4444' : '#f59e0b',
+                                                    color: isOut ? '#fff' : '#000'
+                                                }}>
+                                                    {isOut ? 'OUT OF STOCK' : `${item.stockLevel} ${item.unit || 'pcs'} left`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: '14px 20px',
+                            borderTop: '1px solid var(--surface-border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            backgroundColor: 'var(--surface-elevated, #242936)'
+                        }}>
+                            <button
+                                type="button"
+                                onClick={handleDismissLowStockModal}
+                                style={{
+                                    background: 'transparent',
+                                    border: '1px solid var(--surface-border)',
+                                    color: 'var(--text-secondary)',
+                                    padding: '8px 14px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                Dismiss for Now
+                            </button>
+                            <Link
+                                to="/inventory"
+                                onClick={handleDismissLowStockModal}
+                                style={{
+                                    backgroundColor: 'var(--color-accent, #FFB400)',
+                                    color: '#000',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    fontSize: '13px',
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <span>Manage Inventory & Restock</span>
+                                <span>➔</span>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

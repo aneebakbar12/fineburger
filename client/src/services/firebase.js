@@ -421,6 +421,34 @@ export const subscribeToStoreSettings = (callback) => {
     });
 };
 
+// Real-time listener for promotional discounts
+export const subscribeToDiscounts = (callback) => {
+    const q = query(collection(db, 'discounts'));
+    return onSnapshot(q, (querySnapshot) => {
+        const discounts = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(discounts);
+    }, (error) => {
+        console.error("Error subscribing to discounts:", error);
+        callback([]);
+    });
+};
+
+export const getDiscounts = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, 'discounts'));
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error fetching discounts:', error);
+        return [];
+    }
+};
+
 // Check if store is currently open
 export const isStoreOpen = (settings) => {
     if (!settings) return true;

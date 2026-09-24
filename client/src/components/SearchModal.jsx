@@ -184,7 +184,21 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
                                                 )}
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '15px' }}>
-                                                        Rs. {item.price}
+                                                        {item.hasDiscount ? (
+                                                            <>
+                                                                <span>Rs. {item.discountedPrice}</span>
+                                                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through', marginLeft: '6px' }}>
+                                                                    Rs. {item.originalPrice || item.price}
+                                                                </span>
+                                                                {item.badge && (
+                                                                    <span style={{ marginLeft: '6px', fontSize: '10px', backgroundColor: '#ef4444', color: '#fff', padding: '2px 5px', borderRadius: '3px', fontWeight: 800 }}>
+                                                                        {item.badge}
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <span>Rs. {item.price}</span>
+                                                        )}
                                                     </span>
                                                     <button
                                                         type="button"

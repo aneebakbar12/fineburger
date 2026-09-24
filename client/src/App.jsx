@@ -13,11 +13,13 @@ import {
     subscribeToMenuItems,
     subscribeToCategories,
     subscribeToStoreSettings,
+    subscribeToDiscounts,
     onAuthChange,
     logoutUser
 } from './services/firebase';
 import { StaffModeProvider } from './contexts/StaffModeContext';
 import StaffModeActivator from './components/StaffModeActivator';
+import { calculateItemDiscount } from './utils/discountUtils';
 import { DEMO_CATEGORIES, DEMO_MENU_ITEMS } from './data/demoMenu';
 import './styles/index.css';
 
@@ -35,6 +37,7 @@ const DEFAULT_STORE_SETTINGS = {
 function App() {
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
+    const [discounts, setDiscounts] = useState([]);
     const [storeSettings, setStoreSettings] = useState(null);
     const [cartItems, setCartItems] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -59,6 +62,25 @@ function App() {
         return menuItems;
     }, [menuItems]);
 
+    // Compute menu items enriched with real-time active promotional discounts
+    const enrichedMenuItems = useMemo(() => {
+        const activeDiscounts = (discounts || []).filter(d => d.active !== false);
+        return effectiveMenuItems.map(item => {
+            const discountInfo = calculateItemDiscount(item, activeDiscounts);
+            return {
+                ...item,
+                ...discountInfo,
+                price: discountInfo.hasDiscount ? discountInfo.discountedPrice : item.price,
+                originalPrice: item.price
+            };
+        });
+    }, [effectiveMenuItems, discounts]);
+
+    // Active global promotion (if any) to display sitewide banner
+    const activeGlobalDiscount = useMemo(() => {
+        return (discounts || []).find(d => d.active !== false && d.type === 'global');
+    }, [discounts]);
+
     const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
 
     useEffect(() => {
@@ -79,6 +101,7 @@ function App() {
         const unsubscribeCategories = subscribeToCategories(handleCategories);
         const unsubscribeItems = subscribeToMenuItems(handleMenuItems);
         const unsubscribeSettings = subscribeToStoreSettings(setStoreSettings);
+        const unsubscribeDiscounts = subscribeToDiscounts(setDiscounts);
 
         const unsubscribeAuth = onAuthChange((currentUser) => {
             setUser(currentUser);
@@ -89,6 +112,7 @@ function App() {
             unsubscribeCategories();
             unsubscribeItems();
             unsubscribeSettings();
+            unsubscribeDiscounts();
             unsubscribeAuth();
         };
     }, []);
@@ -191,11 +215,12 @@ function App() {
                                 element={
                                     <Home
                                         categories={effectiveCategories}
-                                        menuItems={effectiveMenuItems}
+                                        menuItems={enrichedMenuItems}
                                         storeSettings={effectiveSettings}
                                         onAddToCart={addToCart}
                                         isSearchOpen={isSearchOpen}
                                         onSearchClose={() => setIsSearchOpen(false)}
+                                        globalDiscount={activeGlobalDiscount}
                                     />
                                 }
                             />
@@ -204,11 +229,12 @@ function App() {
                                 element={
                                     <Menu
                                         categories={effectiveCategories}
-                                        menuItems={effectiveMenuItems}
+                                        menuItems={enrichedMenuItems}
                                         storeSettings={effectiveSettings}
                                         onAddToCart={addToCart}
                                         isSearchOpen={isSearchOpen}
                                         onSearchClose={() => setIsSearchOpen(false)}
+                                        globalDiscount={activeGlobalDiscount}
                                     />
                                 }
                             />

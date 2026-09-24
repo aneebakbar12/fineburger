@@ -153,6 +153,7 @@ const MenuItemManager = () => {
         setEditingItem(item);
         setFormData({
             ...item,
+            ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
             stockLevel: item.stockLevel !== undefined ? item.stockLevel : 100,
             lowStockThreshold: item.lowStockThreshold !== undefined ? item.lowStockThreshold : 10
         });
@@ -200,6 +201,7 @@ const MenuItemManager = () => {
             categoryId: categories[0]?.id || '',
             imageUrl: '',
             variations: [],
+            ingredients: [],
             available: true,
             inStock: true,
             stockLevel: 100,
@@ -209,6 +211,49 @@ const MenuItemManager = () => {
         setImagePreview('');
         setEditingItem(null);
         setShowForm(false);
+    };
+
+    const addIngredient = () => {
+        if (!inventoryItems || inventoryItems.length === 0) {
+            toast.error('No inventory items found. Please add ingredients in the Inventory tab first.');
+            return;
+        }
+        const first = inventoryItems[0];
+        setFormData(prev => ({
+            ...prev,
+            ingredients: [
+                ...(prev.ingredients || []),
+                {
+                    inventoryItemId: first.id,
+                    name: first.name,
+                    quantity: 1,
+                    unit: first.unit || 'pieces'
+                }
+            ]
+        }));
+    };
+
+    const updateIngredient = (index, field, value) => {
+        const newIngs = [...(formData.ingredients || [])];
+        if (field === 'inventoryItemId') {
+            const matched = inventoryItems.find(inv => inv.id === value);
+            newIngs[index] = {
+                ...newIngs[index],
+                inventoryItemId: value,
+                name: matched?.name || '',
+                unit: matched?.unit || 'pieces'
+            };
+        } else {
+            newIngs[index][field] = value;
+        }
+        setFormData(prev => ({ ...prev, ingredients: newIngs }));
+    };
+
+    const removeIngredient = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            ingredients: (prev.ingredients || []).filter((_, i) => i !== index)
+        }));
     };
 
     const addVariation = () => {
@@ -462,6 +507,98 @@ const MenuItemManager = () => {
                             </button>
                         </div>
 
+                        {/* Recipe / Inventory Ingredients Linking */}
+                        <div className="form-group" style={{
+                            backgroundColor: 'rgba(255, 180, 0, 0.03)',
+                            border: '1px solid rgba(255, 180, 0, 0.2)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: 'var(--spacing-md)',
+                            marginBottom: 'var(--spacing-lg)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <div>
+                                    <label className="form-label" style={{ color: 'var(--color-accent, #FFB400)', fontWeight: 700, margin: 0 }}>
+                                        🥬 Inventory Ingredients (Auto-Deduction)
+                                    </label>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                                        When an order containing this item enters kitchen preparation, linked ingredients are automatically deducted from the inventory.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {(!formData.ingredients || formData.ingredients.length === 0) ? (
+                                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '10px 0' }}>
+                                    No ingredients linked yet. Click below to link buns, patties, cheese, etc. from inventory.
+                                </p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '12px 0' }}>
+                                    {formData.ingredients.map((ing, iIndex) => {
+                                        const selectedInv = inventoryItems.find(inv => inv.id === ing.inventoryItemId);
+                                        return (
+                                            <div key={iIndex} style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'minmax(180px, 2fr) minmax(110px, 1fr) auto',
+                                                gap: '10px',
+                                                alignItems: 'center',
+                                                backgroundColor: 'var(--surface-elevated)',
+                                                padding: '8px 12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--surface-border)'
+                                            }}>
+                                                <div>
+                                                    <select
+                                                        className="form-select"
+                                                        value={ing.inventoryItemId}
+                                                        onChange={(e) => updateIngredient(iIndex, 'inventoryItemId', e.target.value)}
+                                                        style={{ fontSize: '13px' }}
+                                                    >
+                                                        {inventoryItems.map(inv => (
+                                                            <option key={inv.id} value={inv.id}>
+                                                                {inv.name} ({inv.stockLevel} {inv.unit} in stock)
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input"
+                                                        placeholder="Qty"
+                                                        value={ing.quantity}
+                                                        onChange={(e) => updateIngredient(iIndex, 'quantity', e.target.value)}
+                                                        min="0.01"
+                                                        step="any"
+                                                        style={{ width: '85px', fontSize: '13px' }}
+                                                    />
+                                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        {selectedInv?.unit || ing.unit || 'pcs'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-delete"
+                                                    onClick={() => removeIngredient(iIndex)}
+                                                    style={{ padding: '6px 10px', fontSize: '12px' }}
+                                                    title="Remove ingredient"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={addIngredient}
+                                style={{ fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            >
+                                <span>+ Link Ingredient from Inventory</span>
+                            </button>
+                        </div>
+
                         {/* Checkboxes */}
                         <div style={{ display: 'flex', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', color: 'var(--text-primary)', cursor: 'pointer' }}>
@@ -586,6 +723,20 @@ const MenuItemManager = () => {
                                                     {item.description && (
                                                         <div style={{ color: 'var(--text-muted)', fontSize: '12px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                             {item.description}
+                                                        </div>
+                                                    )}
+                                                    {Array.isArray(item.ingredients) && item.ingredients.length > 0 && (
+                                                        <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                            <span style={{
+                                                                fontSize: '11px',
+                                                                backgroundColor: 'rgba(255, 180, 0, 0.12)',
+                                                                color: 'var(--color-accent, #FFB400)',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                🥬 {item.ingredients.length} ingr: {item.ingredients.map(i => `${i.quantity} ${i.name}`).join(', ')}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>

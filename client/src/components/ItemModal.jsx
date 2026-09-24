@@ -37,7 +37,15 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     if (!isOpen || !item) return null;
 
     const computeUnitPrice = () => {
-        let base = Number(item.price) || 0;
+        let base = Number(item.hasDiscount ? item.discountedPrice : item.price) || 0;
+        Object.values(selectedVariations).forEach(val => {
+            base += parseVariationPriceDelta(val);
+        });
+        return base;
+    };
+
+    const computeOriginalUnitPrice = () => {
+        let base = Number(item.originalPrice || item.price) || 0;
         Object.values(selectedVariations).forEach(val => {
             base += parseVariationPriceDelta(val);
         });
@@ -45,6 +53,7 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     };
 
     const currentUnitPrice = computeUnitPrice();
+    const originalUnitPrice = computeOriginalUnitPrice();
     const currentTotalPrice = currentUnitPrice * quantity;
 
     const handleVariationChange = (variationName, option) => {
@@ -77,10 +86,14 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
         const cartItem = {
             ...item,
             price: currentUnitPrice,
-            basePrice: item.price,
+            originalUnitPrice: originalUnitPrice,
+            basePrice: item.hasDiscount ? item.discountedPrice : item.price,
             quantity,
             selectedVariations,
-            totalPrice: currentTotalPrice
+            totalPrice: currentTotalPrice,
+            hasDiscount: Boolean(item.hasDiscount),
+            discountAmountPerUnit: item.hasDiscount ? Math.max(0, originalUnitPrice - currentUnitPrice) : 0,
+            badge: item.badge
         };
 
         // Pass both full item object and explicit quantity/variations for maximum compatibility
@@ -119,8 +132,26 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                         )}
 
                         <div className="modal-price">
-                            Rs. {currentUnitPrice}
-                            {currentUnitPrice > item.price && (
+                            <span>Rs. {currentUnitPrice}</span>
+                            {item.hasDiscount && (
+                                <span style={{ fontSize: '15px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through', marginLeft: '10px' }}>
+                                    Rs. {originalUnitPrice}
+                                </span>
+                            )}
+                            {item.hasDiscount && item.badge && (
+                                <span style={{
+                                    marginLeft: '10px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    backgroundColor: '#ef4444',
+                                    color: '#fff',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px'
+                                }}>
+                                    🔥 {item.badge}
+                                </span>
+                            )}
+                            {!item.hasDiscount && currentUnitPrice > item.price && (
                                 <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', textDecoration: 'line-through', marginLeft: '8px' }}>
                                     Rs. {item.price}
                                 </span>

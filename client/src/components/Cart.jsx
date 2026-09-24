@@ -29,6 +29,22 @@ export const getItemUnitPrice = (item) => {
     return Number(item.price) || 0;
 };
 
+export const getItemOriginalUnitPrice = (item) => {
+    let basePrice = Number(item.originalUnitPrice !== undefined ? item.originalUnitPrice : (item.originalPrice !== undefined ? item.originalPrice : item.price)) || 0;
+    if (item.selectedVariations && typeof item.selectedVariations === 'object') {
+        Object.values(item.selectedVariations).forEach(val => {
+            if (typeof val === 'string') {
+                const match = val.match(/\(\s*\+\s*(?:Rs\.?|PKR)?\s*([0-9]+)\s*\)/i);
+                if (match && match[1]) {
+                    basePrice += Number(match[1]);
+                }
+            }
+        });
+        return basePrice;
+    }
+    return Number(item.originalPrice || item.price) || 0;
+};
+
 const Cart = ({
     isOpen,
     onClose,
@@ -103,14 +119,22 @@ const Cart = ({
         });
     };
 
+    const calculateGrossSubtotal = () => {
+        return activeCartItems.reduce((total, item) => total + (getItemOriginalUnitPrice(item) * item.quantity), 0);
+    };
+
     const calculateSubtotal = () => {
         return activeCartItems.reduce((total, item) => total + (getItemUnitPrice(item) * item.quantity), 0);
     };
 
+    const grossSubtotal = calculateGrossSubtotal();
+    const netSubtotal = calculateSubtotal();
+    const totalDiscountSavings = Math.max(0, grossSubtotal - netSubtotal);
+
     const deliveryFee = orderType === 'Delivery' ? (Number(storeSettings?.deliveryFee) || 120) : 0;
 
     const calculateTotal = () => {
-        return calculateSubtotal() + deliveryFee;
+        return netSubtotal + deliveryFee;
     };
 
     const handleInputChange = (e) => {
@@ -186,12 +210,16 @@ const Cart = ({
         setLoading(true);
 
         const subtotal = calculateSubtotal();
+        const gross = calculateGrossSubtotal();
+        const discountSavings = Math.max(0, gross - subtotal);
         const finalTotal = calculateTotal();
 
         const orderItems = activeCartItems.map(item => ({
             ...item,
             unitPrice: getItemUnitPrice(item),
-            itemTotal: getItemUnitPrice(item) * item.quantity
+            originalUnitPrice: getItemOriginalUnitPrice(item),
+            itemTotal: getItemUnitPrice(item) * item.quantity,
+            hasDiscount: Boolean(item.hasDiscount)
         }));
 
         // Clean customer details object according to fulfillment type
@@ -206,7 +234,8 @@ const Cart = ({
         const orderData = {
             customer: cleanCustomer,
             items: orderItems,
-            subtotal: subtotal,
+            subtotal: gross > subtotal ? gross : subtotal,
+            discount: discountSavings,
             deliveryFee: deliveryFee,
             total: finalTotal,
             paymentMethod: 'COD',
@@ -223,7 +252,8 @@ const Cart = ({
             const confirmed = {
                 orderId: result.orderId,
                 orderReference: ref,
-                subtotal: subtotal,
+                subtotal: gross > subtotal ? gross : subtotal,
+                discount: discountSavings,
                 deliveryFee: deliveryFee,
                 total: finalTotal,
                 items: [...orderItems],
@@ -416,6 +446,13 @@ ${trackUrl}`
                                     <strong style={{ color: 'var(--color-white)', maxWidth: '65%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {confirmedOrder.customer.address}
                                     </strong>
+                                </div>
+                            )}
+
+                            {confirmedOrder.discount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: '#10b981', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                    <span>Promotional Discount:</span>
+                                    <span>-Rs. {confirmedOrder.discount}</span>
                                 </div>
                             )}
 
@@ -740,8 +777,14 @@ ${trackUrl}`
                             <div style={{ marginTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-md)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                     <span>Subtotal:</span>
-                                    <span style={{ color: 'var(--color-text-primary)' }}>Rs. {calculateSubtotal()}</span>
+                                    <span style={{ color: 'var(--color-text-primary)' }}>Rs. {grossSubtotal}</span>
                                 </div>
+                                {totalDiscountSavings > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: '#10b981', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                        <span>Discount Savings:</span>
+                                        <span>-Rs. {totalDiscountSavings}</span>
+                                    </div>
+                                )}
                                 {orderType === 'Delivery' && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                         <span>Delivery Fee:</span>
@@ -752,6 +795,11 @@ ${trackUrl}`
                                     <span className="cart-total-label">Grand Total:</span>
                                     <span className="cart-total-amount">Rs. {calculateTotal()}</span>
                                 </div>
+                                {totalDiscountSavings > 0 && (
+                                    <div style={{ color: '#10b981', fontSize: '12px', textAlign: 'right', marginTop: '2px', fontWeight: 600 }}>
+                                        🎉 Total Savings: Rs. {totalDiscountSavings}
+                                    </div>
+                                )}
                                 <div style={{ color: 'var(--color-text-muted)', fontSize: '12px', textAlign: 'right', marginTop: '4px' }}>
                                     Payment: Cash on Delivery (COD)
                                 </div>
@@ -826,7 +874,19 @@ ${trackUrl}`
                                                         </button>
                                                     </div>
 
-                                                    <span className="cart-item-price">Rs. {lineTotal}</span>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <span className="cart-item-price">Rs. {lineTotal}</span>
+                                                        {item.hasDiscount && (
+                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through' }}>
+                                                                Rs. {getItemOriginalUnitPrice(item) * item.quantity}
+                                                            </div>
+                                                        )}
+                                                        {item.badge && (
+                                                            <span style={{ fontSize: '10px', backgroundColor: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontWeight: 700, marginLeft: '4px' }}>
+                                                                {item.badge}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -849,9 +909,33 @@ ${trackUrl}`
 
                 {!isCheckout && !authChoice && activeCartItems.length > 0 && (
                     <div className="cart-footer">
+                        {totalDiscountSavings > 0 && (
+                            <div style={{
+                                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                marginBottom: '10px',
+                                color: '#10b981',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'flex',
+                                justifyContent: 'space-between'
+                            }}>
+                                <span>Promotional Discount:</span>
+                                <span>-Rs. {totalDiscountSavings} Saved!</span>
+                            </div>
+                        )}
                         <div className="cart-total">
                             <span className="cart-total-label">Subtotal:</span>
-                            <span className="cart-total-amount">Rs. {calculateSubtotal()}</span>
+                            <div style={{ textAlign: 'right' }}>
+                                <span className="cart-total-amount">Rs. {calculateSubtotal()}</span>
+                                {totalDiscountSavings > 0 && (
+                                    <span style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through' }}>
+                                        Rs. {grossSubtotal}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <button className="cart-checkout-btn" onClick={handleProceedToCheckout}>
                             Proceed to Checkout ➔

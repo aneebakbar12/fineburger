@@ -68,7 +68,7 @@ const ReviewCard = ({ review }) => (
     </div>
 );
 
-const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose, showHeroSlider = true }) => {
+const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose, showHeroSlider = true, globalDiscount = null }) => {
     const { isStaffMode } = useStaffMode();
     const [sliders, setSliders] = useState([]);
     const [activeCategory, setActiveCategory] = useState(null);
@@ -129,6 +129,32 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
                             <path d="M12 6v6l4 2" />
                         </svg>
                         <span>We're currently closed. Check footer for opening hours.</span>
+                    </div>
+                )}
+
+                {globalDiscount && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(255, 180, 0, 0.2) 100%)',
+                        border: '1px solid var(--color-accent, #FFB400)',
+                        borderRadius: 'var(--radius-md, 8px)',
+                        padding: '12px 20px',
+                        marginBottom: 'var(--spacing-lg, 20px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '12px',
+                        boxShadow: '0 4px 20px rgba(255, 180, 0, 0.15)',
+                        textAlign: 'center'
+                    }}>
+                        <span style={{ fontSize: '24px' }}>🎉</span>
+                        <div>
+                            <span style={{ color: 'var(--color-accent, #FFB400)', fontWeight: 800, fontSize: '15px' }}>
+                                {globalDiscount.title || 'Special Promotion'}:
+                            </span>
+                            <span style={{ color: '#fff', fontWeight: 600, fontSize: '14px', marginLeft: '6px' }}>
+                                Flat {globalDiscount.value}{globalDiscount.discountType === 'percentage' ? '%' : ' Rs.'} OFF across the entire menu! Prices already discounted below.
+                            </span>
+                        </div>
                     </div>
                 )}
 
