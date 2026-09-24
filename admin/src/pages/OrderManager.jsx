@@ -665,8 +665,19 @@ const OrderManager = () => {
                         `).join('')}
                     </div>
 
-                    ${order.deliveryFee ? `
+                    ${order.subtotal && order.discount ? `
                         <div class="item" style="font-size: 12px; border-top: 1px dotted #888; padding-top: 4px; margin-top: 4px;">
+                            <span>Subtotal</span>
+                            <span>Rs. ${order.subtotal}</span>
+                        </div>
+                        <div class="item" style="font-size: 12px; font-weight: bold;">
+                            <span>Promo Discount</span>
+                            <span>-Rs. ${order.discount}</span>
+                        </div>
+                    ` : ''}
+
+                    ${order.deliveryFee ? `
+                        <div class="item" style="font-size: 12px; ${!(order.subtotal && order.discount) ? 'border-top: 1px dotted #888; padding-top: 4px; margin-top: 4px;' : ''}">
                             <span>Delivery Fee</span>
                             <span>Rs. ${order.deliveryFee}</span>
                         </div>
