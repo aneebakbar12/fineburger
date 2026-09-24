@@ -449,6 +449,21 @@ export const getDiscounts = async () => {
     }
 };
 
+// Real-time listener for inventory (to auto-mark menu items Sold Out when ingredients hit 0)
+export const subscribeToInventory = (callback) => {
+    const q = query(collection(db, 'inventory'));
+    return onSnapshot(q, (querySnapshot) => {
+        const items = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(items);
+    }, (error) => {
+        console.error('Error subscribing to inventory:', error);
+        callback([]);
+    });
+};
+
 // Check if store is currently open
 export const isStoreOpen = (settings) => {
     if (!settings) return true;

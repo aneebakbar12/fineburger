@@ -416,6 +416,37 @@ const OrderManager = () => {
     const prevLowStockCountRef = useRef(0);
     const hasInitializedInvRef = useRef(false);
 
+    // Audio chime for low stock alert
+    const playLowStockChime = () => {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+
+            const now = ctx.currentTime;
+            // Descending urgent alert tone (587Hz -> 440Hz -> 349Hz)
+            [587, 440, 349].forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+                gain.gain.setValueAtTime(0.25, now + idx * 0.15);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.15 + 0.22);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + idx * 0.15);
+                osc.stop(now + idx * 0.15 + 0.22);
+            });
+
+            if (navigator.vibrate) {
+                navigator.vibrate([300, 100, 300]);
+            }
+        } catch (e) {
+            console.warn('Low stock audio alert:', e);
+        }
+    };
+
     useEffect(() => {
         const unsubscribeOrders = subscribeToOrders((newOrders) => {
             setOrders(newOrders);
@@ -426,16 +457,19 @@ const OrderManager = () => {
             setInventoryItems(items || []);
             const lowItems = (items || []).filter(i => (Number(i.stockLevel) || 0) <= (Number(i.lowStockThreshold) || 10));
 
-            // Alert popup trigger: first load if not dismissed in session, or when new item goes low
+            // Alert popup & chime trigger: first load if not dismissed in session, or when new item goes low
             if (lowItems.length > 0) {
                 if (!hasInitializedInvRef.current) {
                     hasInitializedInvRef.current = true;
                     if (sessionStorage.getItem('fb_dismissed_low_stock') !== 'true') {
                         setShowLowStockModal(true);
+                        playLowStockChime();
                     }
                 } else if (lowItems.length > prevLowStockCountRef.current) {
                     setShowLowStockModal(true);
                     setDismissedLowStockBanner(false);
+                    playLowStockChime();
+                    toast.warning(`⚠️ Low Stock Alert: ${lowItems.length} kitchen ingredients running low!`);
                 }
             }
             prevLowStockCountRef.current = lowItems.length;

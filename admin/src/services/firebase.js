@@ -577,6 +577,100 @@ export const deleteInventoryItem = async (id) => {
 };
 
 // ==========================================
+// KITCHEN WASTE & SPOILAGE LOGS
+// ==========================================
+export const recordWasteLog = async (wasteData) => {
+    try {
+        const { inventoryItemId, quantity, reason, notes } = wasteData;
+        const qtyNum = parseFloat(quantity) || 0;
+        if (!inventoryItemId || qtyNum <= 0) {
+            return { success: false, error: 'Invalid item or quantity' };
+        }
+
+        // 1. Fetch current inventory item details
+        const invRef = doc(db, 'inventory', inventoryItemId);
+        const invSnap = await getDoc(invRef);
+        if (!invSnap.exists()) {
+            return { success: false, error: 'Inventory item not found' };
+        }
+
+        const invData = invSnap.data();
+        const currentStock = Number(invData.stockLevel) || 0;
+        const unitCost = Number(invData.purchasePrice) || 0;
+        const totalLoss = Math.round(unitCost * qtyNum);
+        const newStock = Math.max(0, currentStock - qtyNum);
+
+        // 2. Deduct from inventory
+        await updateDoc(invRef, {
+            stockLevel: newStock,
+            updatedAt: serverTimestamp()
+        });
+
+        // 3. Write record into wasteLogs collection
+        const logRef = await addDoc(collection(db, 'wasteLogs'), {
+            inventoryItemId,
+            itemName: invData.name || 'Unknown Item',
+            category: invData.category || 'Ingredients',
+            unit: invData.unit || 'pieces',
+            quantity: qtyNum,
+            unitCost,
+            totalLoss,
+            reason: reason || 'Spoilage',
+            notes: notes ? notes.trim() : '',
+            createdAt: serverTimestamp()
+        });
+
+        return { success: true, id: logRef.id, newStock, totalLoss };
+    } catch (error) {
+        console.error('Error recording waste log:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const getWasteLogs = async (limitCount = 50) => {
+    try {
+        const q = query(collection(db, 'wasteLogs'), orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.slice(0, limitCount).map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error fetching waste logs:', error);
+        try {
+            const fallbackSnapshot = await getDocs(collection(db, 'wasteLogs'));
+            return fallbackSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (_) {
+            return [];
+        }
+    }
+};
+
+export const subscribeToWasteLogs = (callback) => {
+    const q = query(collection(db, 'wasteLogs'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(logs);
+    }, (error) => {
+        console.error('Error subscribing to waste logs, using fallback:', error);
+        const fallbackQ = collection(db, 'wasteLogs');
+        return onSnapshot(fallbackQ, (snapshot) => {
+            const logs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            callback(logs);
+        });
+    });
+};
+
+// ==========================================
 // DISCOUNT MANAGEMENT
 // ==========================================
 export const getDiscounts = async () => {

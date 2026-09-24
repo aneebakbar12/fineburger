@@ -14,6 +14,7 @@ import {
     subscribeToCategories,
     subscribeToStoreSettings,
     subscribeToDiscounts,
+    subscribeToInventory,
     onAuthChange,
     logoutUser
 } from './services/firebase';
@@ -38,6 +39,7 @@ function App() {
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
     const [discounts, setDiscounts] = useState([]);
+    const [inventoryItems, setInventoryItems] = useState([]);
     const [storeSettings, setStoreSettings] = useState(null);
     const [cartItems, setCartItems] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -63,18 +65,30 @@ function App() {
     }, [menuItems]);
 
     // Compute menu items enriched with real-time active promotional discounts
+    // AND automatically enforce "Sold Out" if any linked inventory ingredient is depleted (stockLevel <= 0)
     const enrichedMenuItems = useMemo(() => {
         const activeDiscounts = (discounts || []).filter(d => d.active !== false);
         return effectiveMenuItems.map(item => {
             const discountInfo = calculateItemDiscount(item, activeDiscounts);
+
+            // Auto "Sold Out" check: if any linked recipe ingredient in inventory is <= 0
+            const isIngredientDepleted = Array.isArray(item.ingredients) && item.ingredients.length > 0 && item.ingredients.some(ing => {
+                const matchedInv = inventoryItems.find(i => i.id === ing.inventoryItemId);
+                return matchedInv && (Number(matchedInv.stockLevel) <= 0);
+            });
+
+            const inStockEffective = item.inStock !== false && !isIngredientDepleted;
+
             return {
                 ...item,
                 ...discountInfo,
+                inStock: inStockEffective,
+                ingredientOutOfStock: isIngredientDepleted,
                 price: discountInfo.hasDiscount ? discountInfo.discountedPrice : item.price,
                 originalPrice: item.price
             };
         });
-    }, [effectiveMenuItems, discounts]);
+    }, [effectiveMenuItems, discounts, inventoryItems]);
 
     // Active global promotion (if any) to display sitewide banner
     const activeGlobalDiscount = useMemo(() => {
@@ -102,6 +116,7 @@ function App() {
         const unsubscribeItems = subscribeToMenuItems(handleMenuItems);
         const unsubscribeSettings = subscribeToStoreSettings(setStoreSettings);
         const unsubscribeDiscounts = subscribeToDiscounts(setDiscounts);
+        const unsubscribeInventory = subscribeToInventory(setInventoryItems);
 
         const unsubscribeAuth = onAuthChange((currentUser) => {
             setUser(currentUser);
@@ -113,6 +128,7 @@ function App() {
             unsubscribeItems();
             unsubscribeSettings();
             unsubscribeDiscounts();
+            unsubscribeInventory();
             unsubscribeAuth();
         };
     }, []);
@@ -281,6 +297,7 @@ function App() {
                         onClearCart={clearCart}
                         user={user}
                         storeSettings={effectiveSettings}
+                        discounts={discounts}
                     />
                 </div>
             </Router>

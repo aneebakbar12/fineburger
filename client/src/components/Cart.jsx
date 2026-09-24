@@ -10,6 +10,7 @@ import {
 import LocationPicker from './LocationPicker';
 import AuthModal from './AuthModal';
 import { useStaffMode } from '../contexts/StaffModeContext';
+import { validateCouponCode } from '../utils/discountUtils';
 import '../styles/Cart.css';
 
 // Parse price increments from variation strings, e.g. "Large 13 inch (+Rs. 450)"
@@ -54,7 +55,8 @@ const Cart = ({
     onRemoveItem,
     user,
     onClearCart,
-    storeSettings
+    storeSettings,
+    discounts = []
 }) => {
     const navigate = useNavigate();
     const { isStaffMode } = useStaffMode();
@@ -76,6 +78,12 @@ const Cart = ({
     const [showMap, setShowMap] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission());
+
+    // Promo code voucher state
+    const [couponCodeInput, setCouponCodeInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponError, setCouponError] = useState('');
+    const [couponSuccess, setCouponSuccess] = useState('');
 
     // Auto-fill user details ONLY for personal customer orders (never in staff POS mode)
     useEffect(() => {
@@ -123,18 +131,51 @@ const Cart = ({
         return activeCartItems.reduce((total, item) => total + (getItemOriginalUnitPrice(item) * item.quantity), 0);
     };
 
-    const calculateSubtotal = () => {
+    const calculateMenuSubtotal = () => {
         return activeCartItems.reduce((total, item) => total + (getItemUnitPrice(item) * item.quantity), 0);
     };
 
     const grossSubtotal = calculateGrossSubtotal();
-    const netSubtotal = calculateSubtotal();
-    const totalDiscountSavings = Math.max(0, grossSubtotal - netSubtotal);
+    const menuDiscountedSubtotal = calculateMenuSubtotal();
+
+    // Dynamically calculate coupon discount based on current cart subtotal
+    const couponDiscountAmount = appliedCoupon ? (() => {
+        const valRes = validateCouponCode(appliedCoupon.code, menuDiscountedSubtotal, discounts);
+        return valRes.isValid ? valRes.discountAmount : 0;
+    })() : 0;
+
+    const netSubtotal = Math.max(0, menuDiscountedSubtotal - couponDiscountAmount);
+    const totalDiscountSavings = Math.max(0, grossSubtotal - menuDiscountedSubtotal) + couponDiscountAmount;
 
     const deliveryFee = orderType === 'Delivery' ? (Number(storeSettings?.deliveryFee) || 120) : 0;
 
     const calculateTotal = () => {
         return netSubtotal + deliveryFee;
+    };
+
+    const handleApplyCoupon = (e) => {
+        if (e) e.preventDefault();
+        setCouponError('');
+        setCouponSuccess('');
+        const res = validateCouponCode(couponCodeInput, menuDiscountedSubtotal, discounts);
+        if (res.isValid) {
+            setAppliedCoupon({
+                code: res.coupon.code,
+                discountAmount: res.discountAmount,
+                title: res.coupon.title
+            });
+            setCouponSuccess(res.message);
+        } else {
+            setAppliedCoupon(null);
+            setCouponError(res.message);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCodeInput('');
+        setCouponError('');
+        setCouponSuccess('');
     };
 
     const handleInputChange = (e) => {
@@ -209,9 +250,6 @@ const Cart = ({
 
         setLoading(true);
 
-        const subtotal = calculateSubtotal();
-        const gross = calculateGrossSubtotal();
-        const discountSavings = Math.max(0, gross - subtotal);
         const finalTotal = calculateTotal();
 
         const orderItems = activeCartItems.map(item => ({
@@ -234,8 +272,9 @@ const Cart = ({
         const orderData = {
             customer: cleanCustomer,
             items: orderItems,
-            subtotal: gross > subtotal ? gross : subtotal,
-            discount: discountSavings,
+            subtotal: grossSubtotal > netSubtotal ? grossSubtotal : netSubtotal,
+            discount: totalDiscountSavings,
+            couponCode: appliedCoupon ? appliedCoupon.code : null,
             deliveryFee: deliveryFee,
             total: finalTotal,
             paymentMethod: 'COD',
@@ -252,8 +291,9 @@ const Cart = ({
             const confirmed = {
                 orderId: result.orderId,
                 orderReference: ref,
-                subtotal: gross > subtotal ? gross : subtotal,
-                discount: discountSavings,
+                subtotal: grossSubtotal > netSubtotal ? grossSubtotal : netSubtotal,
+                discount: totalDiscountSavings,
+                couponCode: appliedCoupon ? appliedCoupon.code : null,
                 deliveryFee: deliveryFee,
                 total: finalTotal,
                 items: [...orderItems],
@@ -551,6 +591,115 @@ ${trackUrl}`
         }
     };
 
+    const renderPromoBox = () => (
+        <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            padding: '10px 12px',
+            marginBottom: '12px'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-accent, #FFB400)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🎟️</span>
+                    <span>Have a Promo Voucher?</span>
+                </span>
+                {appliedCoupon && (
+                    <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
+                        ✓ Applied
+                    </span>
+                )}
+            </div>
+
+            {appliedCoupon ? (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '6px',
+                    padding: '6px 10px'
+                }}>
+                    <div>
+                        <span style={{ fontWeight: 800, color: '#10b981', fontSize: '13px', letterSpacing: '0.5px' }}>
+                            {appliedCoupon.code}
+                        </span>
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px', marginLeft: '6px' }}>
+                            (-Rs. {couponDiscountAmount})
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            fontWeight: 700,
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            padding: '2px 4px'
+                        }}
+                    >
+                        Remove ✕
+                    </button>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                        type="text"
+                        placeholder="e.g. WELCOME10"
+                        value={couponCodeInput}
+                        onChange={(e) => {
+                            setCouponCodeInput(e.target.value.toUpperCase());
+                            setCouponError('');
+                        }}
+                        style={{
+                            flex: 1,
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--color-medium-gray, rgba(255,255,255,0.15))',
+                            backgroundColor: 'rgba(0,0,0,0.3)',
+                            color: '#fff',
+                            fontSize: '12px',
+                            textTransform: 'uppercase',
+                            fontWeight: 600,
+                            letterSpacing: '0.5px'
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        style={{
+                            backgroundColor: 'var(--color-accent, #FFB400)',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 12px',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Apply
+                    </button>
+                </div>
+            )}
+
+            {couponError && (
+                <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '5px' }}>
+                    {couponError}
+                </div>
+            )}
+            {couponSuccess && !couponError && (
+                <div style={{ color: '#10b981', fontSize: '11px', marginTop: '5px', fontWeight: 600 }}>
+                    {couponSuccess}
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <>
             <div className="cart-backdrop" onClick={onClose}></div>
@@ -773,6 +922,9 @@ ${trackUrl}`
                                 </div>
                             )}
 
+                            {/* Promo Coupon Input in Checkout */}
+                            {renderPromoBox()}
+
                             {/* Price Summary */}
                             <div style={{ marginTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-md)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
@@ -909,6 +1061,8 @@ ${trackUrl}`
 
                 {!isCheckout && !authChoice && activeCartItems.length > 0 && (
                     <div className="cart-footer">
+                        {renderPromoBox()}
+
                         {totalDiscountSavings > 0 && (
                             <div style={{
                                 backgroundColor: 'rgba(16, 185, 129, 0.12)',
@@ -929,7 +1083,7 @@ ${trackUrl}`
                         <div className="cart-total">
                             <span className="cart-total-label">Subtotal:</span>
                             <div style={{ textAlign: 'right' }}>
-                                <span className="cart-total-amount">Rs. {calculateSubtotal()}</span>
+                                <span className="cart-total-amount">Rs. {netSubtotal}</span>
                                 {totalDiscountSavings > 0 && (
                                     <span style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through' }}>
                                         Rs. {grossSubtotal}
