@@ -80,9 +80,14 @@ const Signup = () => {
 
     return (
         <div className="login-container">
-            <h1>Rider Signup</h1>
+            <div className="brand-section">
+                <span className="brand-logo">🛵</span>
+                <h1 className="brand-title">FINE BURGER</h1>
+                <p className="brand-subtitle">New Rider Registration</p>
+            </div>
+
             {error && <p className="error">{error}</p>}
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="login-form">
                 <input
                     className="input-large"
                     type="text"
@@ -91,7 +96,7 @@ const Signup = () => {
                     onChange={(e) => setSignupCode(e.target.value.toUpperCase())}
                     required
                     maxLength="6"
-                    style={{ textTransform: 'uppercase', letterSpacing: '2px' }}
+                    style={{ textTransform: 'uppercase', letterSpacing: '2px', textAlign: 'center', fontWeight: 'bold' }}
                 />
                 <input
                     className="input-large"
@@ -112,7 +117,7 @@ const Signup = () => {
                 <input
                     className="input-large"
                     type="email"
-                    placeholder="Email"
+                    placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -120,18 +125,18 @@ const Signup = () => {
                 <input
                     className="input-large"
                     type="password"
-                    placeholder="Password (min 6 characters, numbers allowed)"
+                    placeholder="Create Password (min 6 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength="6"
                 />
                 <button className="btn-primary" type="submit" disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Sign Up'}
+                    {loading ? 'Creating Account...' : 'Complete Registration'}
                 </button>
             </form>
-            <p style={{ marginTop: '20px' }}>
-                Already have an account? <Link to="/login" style={{ color: 'var(--color-secondary, #FFB400)' }}>Login</Link>
+            <p style={{ marginTop: '20px', color: '#888' }}>
+                Already registered? <Link to="/login" style={{ color: 'var(--rider-gold, #FFB400)', fontWeight: 'bold' }}>Login Here</Link>
             </p>
         </div>
     );

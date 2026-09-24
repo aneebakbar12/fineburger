@@ -984,13 +984,55 @@ const OrderManager = () => {
                                         )}
 
                                         {order.status === 'ready' && (
-                                            <button
-                                                className="btn-kds-mini deliver"
-                                                onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                                style={{ width: '100%', padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                            >
-                                                {order.orderType === 'Dine-in' ? '✓ Paid & Done' : order.orderType === 'Takeaway' ? '✓ Hand Over / Paid' : '✓ Mark Delivered'}
-                                            </button>
+                                            order.orderType === 'Delivery' ? (
+                                                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                    <select
+                                                        value={order.assignedRiderId || ''}
+                                                        onChange={(e) => {
+                                                            const riderId = e.target.value;
+                                                            if (!riderId) return;
+                                                            const rider = riders.find(r => r.id === riderId);
+                                                            if (rider) {
+                                                                handleAssignRider(order.id, rider.id, rider.name);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '7px 8px',
+                                                            backgroundColor: 'var(--surface-elevated)',
+                                                            border: '1px solid var(--surface-border)',
+                                                            borderRadius: '4px',
+                                                            color: '#fff',
+                                                            fontSize: '11px',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <option value="">🛵 Assign Rider to Dispatch...</option>
+                                                        {riders.map(r => (
+                                                            <option key={r.id} value={r.id}>
+                                                                {r.name} {r.isOnline ? '🟢' : '⚪'}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        className="btn-kds-mini deliver"
+                                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                        style={{ padding: '7px 10px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' }}
+                                                        title="Direct deliver without courier"
+                                                    >
+                                                        ✓ Done
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    className="btn-kds-mini deliver"
+                                                    onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Hand Over / Paid'}
+                                                </button>
+                                            )
                                         )}
 
                                         {order.status === 'out_for_delivery' && (

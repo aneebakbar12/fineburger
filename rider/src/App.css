@@ -505,3 +505,109 @@
   max-width: 400px;
   margin: 0 auto;
 }
+
+/* ============================================================
+   RIDER AUTH / LOGIN & SIGNUP PAGES
+   ============================================================ */
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 16px;
+  background-color: var(--bg-app, #0c0e14);
+  color: var(--text-main, #f8fafc);
+}
+
+.brand-section {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.brand-logo {
+  font-size: 54px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.brand-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--rider-gold, #FFB400);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.brand-subtitle {
+  color: var(--text-muted, #94a3b8);
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.input-large {
+  width: 100%;
+  padding: 15px 16px;
+  font-size: 16px;
+  background-color: var(--bg-card, #14171f);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 10px);
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-large:focus {
+  border-color: var(--rider-gold, #FFB400);
+  box-shadow: 0 0 0 3px rgba(255, 180, 0, 0.15);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 800;
+  background-color: var(--rider-gold, #FFB400);
+  color: #000000;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 180, 0, 0.3);
+  margin-top: 6px;
+  transition: all 0.2s ease;
+  min-height: 52px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--rider-gold-hover, #FFC933);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-msg,
+.error {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm, 6px);
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 13px;
+  max-width: 360px;
+  width: 100%;
+}
+
