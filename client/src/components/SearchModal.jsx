@@ -183,23 +183,27 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
                                                     </p>
                                                 )}
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '15px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                                         {item.hasDiscount ? (
                                                             <>
-                                                                <span>Rs. {item.discountedPrice}</span>
-                                                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through', marginLeft: '6px' }}>
+                                                                <span style={{ color: 'var(--color-accent)', fontWeight: 900, fontSize: '16px' }}>
+                                                                    Rs. {item.discountedPrice}
+                                                                </span>
+                                                                <span className="price-strike-cut" style={{ fontSize: '12px' }}>
                                                                     Rs. {item.originalPrice || item.price}
                                                                 </span>
                                                                 {item.badge && (
-                                                                    <span style={{ marginLeft: '6px', fontSize: '10px', backgroundColor: '#ef4444', color: '#fff', padding: '2px 5px', borderRadius: '3px', fontWeight: 800 }}>
+                                                                    <span style={{ fontSize: '10px', backgroundColor: '#ef4444', color: '#fff', padding: '2px 5px', borderRadius: '3px', fontWeight: 800 }}>
                                                                         {item.badge}
                                                                     </span>
                                                                 )}
                                                             </>
                                                         ) : (
-                                                            <span>Rs. {item.price}</span>
+                                                            <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '15px' }}>
+                                                                Rs. {item.price}
+                                                            </span>
                                                         )}
-                                                    </span>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={(e) => handleDirectAddToCart(e, item)}

@@ -70,17 +70,17 @@ const MenuItem = ({ item, onClick }) => {
                     <p className="menu-item-short-desc">{item.description}</p>
                 )}
                 <div className="menu-item-footer">
-                    <span className="menu-item-price">
-                        {hasVariations ? <span className="price-from">From </span> : null}
+                    <div className="menu-item-price-wrapper">
+                        {hasVariations && <span className="price-from">From</span>}
                         {hasDiscount ? (
-                            <>
-                                <span>Rs. {discountedPrice}</span>
-                                <span className="price-original">Rs. {originalPrice || price}</span>
-                            </>
+                            <div className="price-discount-container">
+                                <span className="price-current-deal">Rs. {discountedPrice}</span>
+                                <span className="price-strike-cut">Rs. {originalPrice || price}</span>
+                            </div>
                         ) : (
-                            <span>Rs. {price}</span>
+                            <span className="price-regular">Rs. {price}</span>
                         )}
-                    </span>
+                    </div>
                     <span
                         className={`menu-item-btn ${!isAvailable ? 'disabled' : ''}`}
                         aria-hidden="true"

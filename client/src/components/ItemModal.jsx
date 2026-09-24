@@ -131,23 +131,17 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                             <p className="modal-description">{item.description}</p>
                         )}
 
-                        <div className="modal-price">
-                            <span>Rs. {currentUnitPrice}</span>
+                        <div className="modal-price" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-accent, #FFB400)', textShadow: '0 0 16px rgba(255, 180, 0, 0.45)' }}>
+                                Rs. {currentUnitPrice}
+                            </span>
                             {item.hasDiscount && (
-                                <span style={{ fontSize: '15px', color: 'rgba(255,255,255,0.45)', textDecoration: 'line-through', marginLeft: '10px' }}>
+                                <span className="price-strike-cut" style={{ fontSize: '15px' }}>
                                     Rs. {originalUnitPrice}
                                 </span>
                             )}
                             {item.hasDiscount && item.badge && (
-                                <span style={{
-                                    marginLeft: '10px',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    backgroundColor: '#ef4444',
-                                    color: '#fff',
-                                    padding: '3px 8px',
-                                    borderRadius: '4px'
-                                }}>
+                                <span className="discount-badge" style={{ animation: 'promoBadgePulse 2.5s infinite ease-in-out' }}>
                                     🔥 {item.badge}
                                 </span>
                             )}
