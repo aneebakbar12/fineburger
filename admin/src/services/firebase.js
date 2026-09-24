@@ -410,26 +410,100 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             }
         }
 
+        // Deduct inventory ingredients when order enters cooking/preparing stage
+        if (['preparing', 'ready', 'delivered'].includes(status)) {
+            const orderSnap = await getDoc(doc(db, 'orders', id));
+            if (orderSnap.exists()) {
+                const orderData = orderSnap.data();
+                if (!orderData.ingredientsDeducted && Array.isArray(orderData.items)) {
+                    const deductions = {}; // inventoryItemId -> totalQtyToDeduct
+                    for (const orderItem of orderData.items) {
+                        const itemQty = Number(orderItem.quantity) || 1;
+                        if (!orderItem.id) continue;
+                        const menuItemRef = doc(db, 'items', orderItem.id);
+                        const menuItemSnap = await getDoc(menuItemRef);
+                        if (menuItemSnap.exists()) {
+                            const menuItemData = menuItemSnap.data();
+                            if (Array.isArray(menuItemData.ingredients)) {
+                                for (const ing of menuItemData.ingredients) {
+                                    if (ing.inventoryItemId && Number(ing.quantity) > 0) {
+                                        const totalIngQty = (Number(ing.quantity) || 0) * itemQty;
+                                        deductions[ing.inventoryItemId] = (deductions[ing.inventoryItemId] || 0) + totalIngQty;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Apply deductions to inventory collection
+                    for (const [invId, qtyToDeduct] of Object.entries(deductions)) {
+                        if (qtyToDeduct > 0) {
+                            const invRef = doc(db, 'inventory', invId);
+                            const invSnap = await getDoc(invRef);
+                            if (invSnap.exists()) {
+                                const currentStock = Number(invSnap.data().stockLevel) || 0;
+                                const newStock = Math.max(0, currentStock - qtyToDeduct);
+                                await updateDoc(invRef, {
+                                    stockLevel: newStock,
+                                    updatedAt: serverTimestamp()
+                                });
+                            }
+                        }
+                    }
+
+                    // Record on order document so we know ingredients were deducted
+                    await updateDoc(doc(db, 'orders', id), {
+                        ingredientsDeducted: true,
+                        deductedIngredients: deductions
+                    });
+                }
+            }
+        }
+
         // Restore inventory when an order is CANCELLED
-        // (stock was already deducted when the order was placed)
         if (status === 'cancelled') {
             const orderSnap = await getDoc(doc(db, 'orders', id));
             if (orderSnap.exists()) {
                 const orderData = orderSnap.data();
 
-                for (const item of orderData.items) {
-                    const menuItemRef = doc(db, 'items', item.id);
-                    const menuItemSnap = await getDoc(menuItemRef);
+                // Restore menu items stock
+                if (Array.isArray(orderData.items)) {
+                    for (const item of orderData.items) {
+                        if (!item.id) continue;
+                        const menuItemRef = doc(db, 'items', item.id);
+                        const menuItemSnap = await getDoc(menuItemRef);
 
-                    if (menuItemSnap.exists()) {
-                        const currentStock = menuItemSnap.data().stockLevel ?? 0;
-                        const restored = currentStock + (item.quantity || 1);
-                        await updateDoc(menuItemRef, {
-                            stockLevel: restored,
-                            // Re-enable the item if it was marked out-of-stock by this order
-                            ...(menuItemSnap.data().inStock === false ? { inStock: true } : {})
-                        });
+                        if (menuItemSnap.exists()) {
+                            const currentStock = menuItemSnap.data().stockLevel ?? 0;
+                            const restored = currentStock + (item.quantity || 1);
+                            await updateDoc(menuItemRef, {
+                                stockLevel: restored,
+                                // Re-enable the item if it was marked out-of-stock by this order
+                                ...(menuItemSnap.data().inStock === false ? { inStock: true } : {})
+                            });
+                        }
                     }
+                }
+
+                // Restore deducted inventory ingredients
+                if (orderData.ingredientsDeducted && orderData.deductedIngredients) {
+                    for (const [invId, qtyToRestore] of Object.entries(orderData.deductedIngredients)) {
+                        if (qtyToRestore > 0) {
+                            const invRef = doc(db, 'inventory', invId);
+                            const invSnap = await getDoc(invRef);
+                            if (invSnap.exists()) {
+                                const currentStock = Number(invSnap.data().stockLevel) || 0;
+                                await updateDoc(invRef, {
+                                    stockLevel: currentStock + qtyToRestore,
+                                    updatedAt: serverTimestamp()
+                                });
+                            }
+                        }
+                    }
+                    await updateDoc(doc(db, 'orders', id), {
+                        ingredientsDeducted: false,
+                        deductedIngredients: null
+                    });
                 }
             }
         }
@@ -453,6 +527,19 @@ export const getInventoryItems = async () => {
         console.error('Error fetching inventory items:', error);
         return [];
     }
+};
+
+export const subscribeToInventory = (callback) => {
+    const q = query(collection(db, 'inventory'));
+    return onSnapshot(q, (querySnapshot) => {
+        const items = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(items);
+    }, (error) => {
+        console.error('Error subscribing to inventory:', error);
+    });
 };
 
 export const addInventoryItem = async (itemData) => {
@@ -483,6 +570,70 @@ export const updateInventoryItem = async (id, itemData) => {
 export const deleteInventoryItem = async (id) => {
     try {
         await deleteDoc(doc(db, 'inventory', id));
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// ==========================================
+// DISCOUNT MANAGEMENT
+// ==========================================
+export const getDiscounts = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, 'discounts'));
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error fetching discounts:', error);
+        return [];
+    }
+};
+
+export const subscribeToDiscounts = (callback) => {
+    const q = query(collection(db, 'discounts'));
+    return onSnapshot(q, (snapshot) => {
+        const discounts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(discounts);
+    }, (error) => {
+        console.error('Error subscribing to discounts:', error);
+    });
+};
+
+export const addDiscount = async (discountData) => {
+    try {
+        const docRef = await addDoc(collection(db, 'discounts'), {
+            ...discountData,
+            active: discountData.active !== undefined ? discountData.active : true,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const updateDiscount = async (id, discountData) => {
+    try {
+        await updateDoc(doc(db, 'discounts', id), {
+            ...discountData,
+            updatedAt: serverTimestamp()
+        });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteDiscount = async (id) => {
+    try {
+        await deleteDoc(doc(db, 'discounts', id));
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };

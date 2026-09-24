@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     getMenuItems,
     getCategories,
+    getInventoryItems,
     addMenuItem,
     updateMenuItem,
     deleteMenuItem,
@@ -21,6 +22,7 @@ const MenuItemManager = () => {
     const toast = useToast();
     const [items, setItems] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [inventoryItems, setInventoryItems] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
@@ -36,6 +38,7 @@ const MenuItemManager = () => {
         categoryId: '',
         imageUrl: '',
         variations: [],
+        ingredients: [],
         available: true,
         inStock: true,
         stockLevel: 100,
@@ -51,12 +54,14 @@ const MenuItemManager = () => {
 
     const fetchData = async () => {
         try {
-            const [itemsData, categoriesData] = await Promise.all([
+            const [itemsData, categoriesData, inventoryData] = await Promise.all([
                 getMenuItems(),
-                getCategories()
+                getCategories(),
+                getInventoryItems()
             ]);
             setItems(itemsData || []);
             setCategories(categoriesData || []);
+            setInventoryItems(inventoryData || []);
         } catch (err) {
             toast.error('Failed to load menu data: ' + err.message);
         }
@@ -102,11 +107,24 @@ const MenuItemManager = () => {
                 }
             }
 
+            const cleanIngredients = (formData.ingredients || [])
+                .filter(ing => ing.inventoryItemId && Number(ing.quantity) > 0)
+                .map(ing => {
+                    const matched = inventoryItems.find(inv => inv.id === ing.inventoryItemId);
+                    return {
+                        inventoryItemId: ing.inventoryItemId,
+                        name: matched?.name || ing.name || 'Ingredient',
+                        quantity: parseFloat(ing.quantity) || 1,
+                        unit: matched?.unit || ing.unit || 'pieces'
+                    };
+                });
+
             const itemData = {
                 ...formData,
                 price: parseFloat(formData.price),
                 stockLevel: parseInt(formData.stockLevel) || 0,
                 lowStockThreshold: parseInt(formData.lowStockThreshold) || 10,
+                ingredients: cleanIngredients,
                 imageUrl
             };
 
