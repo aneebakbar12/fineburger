@@ -280,6 +280,18 @@
         font-size: 16px;
     }
 
+    .price-current-deal {
+        font-size: 17px;
+    }
+
+    .price-strike-cut {
+        font-size: 11px;
+    }
+
+    .price-regular {
+        font-size: 16px;
+    }
+
     .menu-item-price {
         font-size: 16px;
     }
@@ -287,5 +299,25 @@
     .menu-item-btn {
         padding: 6px 10px;
         font-size: 11px;
+    }
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+    .discount-badge {
+        animation: none !important;
+    }
+
+    .price-current-deal {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .price-strike-cut::after {
+        animation: none !important;
+    }
+
+    .menu-item:hover .price-current-deal {
+        transform: none !important;
     }
 }
