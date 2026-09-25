@@ -165,21 +165,14 @@ export const subscribeToOrders = (callback, riderId = null) => {
 
 // Subscribe to rider's assigned and past orders separately
 export const subscribeToRiderOrders = (riderId, onAssignedOrders, onPastOrders) => {
-    console.log('🔍 Subscribing to orders for rider:', riderId);
-
-    // Query WITHOUT orderBy to avoid composite index requirement
     const q = query(
         collection(db, 'orders'),
         where('assignedRiderId', '==', riderId)
     );
 
     return onSnapshot(q, (querySnapshot) => {
-        console.log('📦 Received orders snapshot, count:', querySnapshot.docs.length);
-
         const allOrders = querySnapshot.docs.map(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            console.log('📋 Order:', doc.id, 'Status:', data.status, 'Type:', data.orderType);
-            return data;
+            return { id: doc.id, ...doc.data() };
         });
 
         // Sort in memory by createdAt (descending)
@@ -199,7 +192,7 @@ export const subscribeToRiderOrders = (riderId, onAssignedOrders, onPastOrders) 
         onAssignedOrders(assigned);
         onPastOrders(past);
     }, (error) => {
-        console.error("❌ Error subscribing to rider orders:", error);
+        console.error("Error subscribing to rider orders:", error);
     });
 };
 

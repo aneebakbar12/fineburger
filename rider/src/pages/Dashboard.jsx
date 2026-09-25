@@ -28,7 +28,7 @@ const Dashboard = () => {
     const [processingOrders, setProcessingOrders] = useState(new Set());
     const [activeTab, setActiveTab] = useState('assigned'); // 'assigned' or 'past'
     const [riderProfile, setRiderProfile] = useState(null);
-    const [isOnline, setIsOnline] = useState(true);
+    const [isOnline, setIsOnline] = useState(false);
     const [isDaylightMode, setIsDaylightMode] = useState(() => {
         return localStorage.getItem('fb_rider_daylight') === 'true';
     });
@@ -156,25 +156,23 @@ const Dashboard = () => {
     };
 
     // Shift cash collected reconciliation
-    const todayCashCollected = pastOrders
-        .filter(o => {
-            const isCOD = (o.paymentMethod || 'COD').toUpperCase() === 'COD';
-            if (!isCOD) return false;
-            const rawTs = o.deliveredAt || o.updatedAt;
-            if (!rawTs) return false;
+    const todayOrders = pastOrders.filter(o => {
+        const rawTs = o.deliveredAt || o.updatedAt;
+        if (!rawTs) return false;
+        let date;
+        if (rawTs.toDate && typeof rawTs.toDate === 'function') {
+            date = rawTs.toDate();
+        } else if (rawTs.seconds !== undefined && rawTs.seconds !== null) {
+            date = new Date(rawTs.seconds * 1000);
+        } else {
+            date = new Date(rawTs);
+        }
+        if (isNaN(date.getTime())) return false;
+        return date.toDateString() === new Date().toDateString();
+    });
 
-            let date;
-            if (rawTs.toDate && typeof rawTs.toDate === 'function') {
-                date = rawTs.toDate();
-            } else if (rawTs.seconds !== undefined && rawTs.seconds !== null) {
-                date = new Date(rawTs.seconds * 1000);
-            } else {
-                date = new Date(rawTs);
-            }
-
-            if (isNaN(date.getTime())) return false;
-            return date.toDateString() === new Date().toDateString();
-        })
+    const todayCashCollected = todayOrders
+        .filter(o => (o.paymentMethod || 'COD').toUpperCase() === 'COD')
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
     const orders = activeTab === 'assigned' ? assignedOrders : pastOrders;
@@ -244,7 +242,7 @@ const Dashboard = () => {
                         </div>
                         <div className="metric-box">
                             <div className="metric-label">Delivered Today</div>
-                            <div className="metric-value">{pastOrders.length}</div>
+                            <div className="metric-value">{todayOrders.length}</div>
                         </div>
                         <div className="metric-box">
                             <div className="metric-label">Cash to Handover</div>

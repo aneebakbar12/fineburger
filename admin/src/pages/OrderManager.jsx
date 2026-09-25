@@ -615,135 +615,121 @@ const OrderManager = () => {
                     <title>Bill #${orderRef}</title>
                     <meta charset="utf-8" />
                     <style>
-                        @page { margin: 0; size: auto; }
+                        @page { size: 80mm auto; margin: 0; }
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
                         body {
                             font-family: 'Courier New', Courier, monospace;
-                            padding: 12px;
-                            max-width: 300px;
-                            margin: 0 auto;
-                            color: #000000;
-                            font-size: 13px;
-                            line-height: 1.35;
-                        }
-                        .header {
-                            text-align: center;
-                            margin-bottom: 12px;
-                            border-bottom: 1px dashed #000000;
-                            padding-bottom: 8px;
-                        }
-                        .bill-title {
-                            font-size: 14px;
-                            font-weight: 800;
-                            margin: 6px 0;
-                            padding: 4px 0;
-                            border-top: 1px dashed #000000;
-                            border-bottom: 1px dashed #000000;
-                        }
-                        .item {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 4px;
-                        }
-                        .total {
-                            border-top: 1px dashed #000000;
-                            margin-top: 8px;
-                            padding-top: 6px;
-                            font-weight: 800;
-                            display: flex;
-                            justify-content: space-between;
-                            font-size: 15px;
-                        }
-                        .customer {
-                            margin-bottom: 12px;
-                            border-bottom: 1px dashed #000000;
-                            padding-bottom: 8px;
+                            width: 80mm;
+                            padding: 3mm 2mm;
+                            color: #000;
                             font-size: 12px;
+                            line-height: 1.3;
                         }
-                        h2 { margin: 0 0 2px 0; font-size: 18px; font-weight: 900; }
-                        p { margin: 2px 0; }
-                        .footer-note {
+                        .header { text-align: center; padding-bottom: 6px; border-bottom: 1px dashed #000; }
+                        .header img { width: 36mm; height: auto; display: block; margin: 0 auto 4px; }
+                        .header h2 { font-size: 16px; font-weight: 900; margin: 2px 0; letter-spacing: 1px; }
+                        .header .tagline { font-size: 10px; margin: 1px 0; }
+                        .bill-ref {
                             text-align: center;
-                            margin-top: 14px;
-                            font-size: 11px;
+                            font-size: 13px;
+                            font-weight: 800;
+                            padding: 4px 0;
+                            margin: 4px 0;
+                            border-top: 1px dashed #000;
+                            border-bottom: 1px dashed #000;
                         }
+                        .timestamp { text-align: center; font-size: 10px; color: #333; margin-bottom: 6px; }
+                        .customer { padding: 4px 0 6px; border-bottom: 1px dashed #000; font-size: 11px; }
+                        .customer p { margin: 1px 0; }
+                        .items { padding: 6px 0; }
+                        .item-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
+                        .item-var { font-size: 10px; color: #444; padding-left: 6px; margin-bottom: 4px; }
+                        .sep { border-top: 1px dashed #000; margin: 4px 0; }
+                        .subtotal-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 14px;
+                            font-weight: 900;
+                            border-top: 1px dashed #000;
+                            padding-top: 5px;
+                            margin-top: 4px;
+                        }
+                        .payment { text-align: right; font-size: 10px; margin-top: 3px; }
+                        .footer { text-align: center; margin-top: 8px; font-size: 10px; border-top: 1px dashed #000; padding-top: 6px; }
+                        .footer p { margin: 1px 0; }
+                        @media print { .no-print { display: none !important; } }
                     </style>
                 </head>
                 <body>
                     <div class="header">
-                        <img src="${window.location.origin}/logo.webp" alt="Fine Burger" style="width: 140px; height: auto; display: block; margin: 0 auto 8px auto; border-radius: 6px;" onerror="this.style.display='none'" />
+                        <img src="${window.location.origin}/logo.webp" alt="Fine Burger" onerror="this.style.display='none'" />
                         <h2>FINE BURGER</h2>
-                        <p style="font-size: 11px;">Fast Food & Grill • Since 1981</p>
-                        <p style="font-size: 11px;">Main G.T. Road, Baghbanpura, Lahore</p>
-                        <p style="font-size: 11px;">Phone: 0321-4854410</p>
-                        <div class="bill-title">
-                            CUSTOMER BILL • #${orderRef}
-                        </div>
-                        <p style="font-size: 10px; color: #333;">${new Date().toLocaleString()}</p>
+                        <p class="tagline">Fast Food & Grill</p>
+                        <p class="tagline">Main G.T. Road, Baghbanpura, Lahore</p>
+                        <p class="tagline">Tel: 0321-4854410</p>
                     </div>
+
+                    <div class="bill-ref">BILL #${orderRef}</div>
+                    <div class="timestamp">${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
 
                     ${customerSection}
 
                     <div class="items">
                         ${(order.items || []).map(item => `
-                            <div style="margin-bottom: 6px;">
-                                <div class="item">
-                                    <span>${item.quantity}x ${item.name}</span>
-                                    <span>Rs. ${(item.unitPrice || item.price) * item.quantity}</span>
-                                </div>
-                                ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
-                                    <div style="font-size: 11px; color: #444; padding-left: 8px;">
-                                        ${Object.values(item.selectedVariations).join(', ')}
-                                    </div>
-                                ` : ''}
+                            <div class="item-row">
+                                <span>${item.quantity}x ${item.name}</span>
+                                <span>Rs.${(item.unitPrice || item.price) * item.quantity}</span>
                             </div>
+                            ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
+                                <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
+                            ` : ''}
                         `).join('')}
                     </div>
 
                     ${order.subtotal && order.discount ? `
-                        <div class="item" style="font-size: 12px; border-top: 1px dotted #888; padding-top: 4px; margin-top: 4px;">
+                        <div class="sep"></div>
+                        <div class="subtotal-row">
                             <span>Subtotal</span>
-                            <span>Rs. ${order.subtotal}</span>
+                            <span>Rs.${order.subtotal}</span>
                         </div>
-                        <div class="item" style="font-size: 12px; font-weight: bold;">
+                        <div class="subtotal-row" style="font-weight:bold;">
                             <span>Promo Discount</span>
-                            <span>-Rs. ${order.discount}</span>
+                            <span>-Rs.${order.discount}</span>
                         </div>
                     ` : ''}
 
                     ${order.deliveryFee ? `
-                        <div class="item" style="font-size: 12px; ${!(order.subtotal && order.discount) ? 'border-top: 1px dotted #888; padding-top: 4px; margin-top: 4px;' : ''}">
+                        ${!(order.subtotal && order.discount) ? '<div class="sep"></div>' : ''}
+                        <div class="subtotal-row">
                             <span>Delivery Fee</span>
-                            <span>Rs. ${order.deliveryFee}</span>
+                            <span>Rs.${order.deliveryFee}</span>
                         </div>
                     ` : ''}
 
-                    <div class="total">
-                        <span>BILL TOTAL</span>
-                        <span>Rs. ${order.total}</span>
+                    <div class="total-row">
+                        <span>TOTAL</span>
+                        <span>Rs.${order.total}</span>
                     </div>
-                    <p style="text-align: right; font-size: 11px; margin-top: 4px;">Payment: Cash on Delivery</p>
+                    <p class="payment">Payment: Cash on Delivery</p>
 
-                    <div class="footer-note">
-                        <p>*** Fresh Burgers • Hot Pizza ***</p>
+                    <div class="footer">
                         <p>Thank you for choosing Fine Burger!</p>
+                        <p>Fresh Burgers • Hot Pizza • Daily</p>
                     </div>
 
-                    <div style="text-align: center; margin-top: 16px;" class="no-print">
-                        <button onclick="window.print()" style="padding: 8px 18px; font-weight: bold; cursor: pointer; font-size: 13px;">
+                    <div style="text-align:center; margin-top:12px;" class="no-print">
+                        <button onclick="window.print()" style="padding:8px 18px; font-weight:bold; cursor:pointer; font-size:13px;">
                             Print Bill
                         </button>
                     </div>
-
-                    <style>
-                        @media print { .no-print { display: none; } }
-                    </style>
 
                     <script>
                         window.onload = function() {
                             setTimeout(function() {
                                 window.focus();
                                 window.print();
-                            }, 200);
+                            }, 250);
                         };
                     </script>
                 </body>

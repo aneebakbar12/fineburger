@@ -53,12 +53,8 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                 <div className="container">
                     <div className="header-content">
                         {/* Logo */}
-                        <Link to="/" className="logo" onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-                            <img src="/logo.webp" alt="Fine Burger" style={{ height: '40px', width: 'auto', borderRadius: '6px' }} />
-                            <span>
-                                <span className="logo-fine">Fine</span>
-                                <span className="logo-burger">Burger</span>
-                            </span>
+                        <Link to="/" className="logo" onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                            <img src="/logo.webp" alt="Fine Burger & Fast Food" style={{ height: '52px', width: 'auto', borderRadius: '8px' }} />
                         </Link>
 
                         {/* Desktop Navigation */}

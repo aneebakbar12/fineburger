@@ -107,23 +107,23 @@ service cloud.firestore {
     // Inventory & Raw Materials: Publicly readable so customer app can auto-detect depleted ingredients, editable by admins
     match /inventory/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // Financial Expenses: STRICTLY admin-only
     match /expenses/{document=**} {
-      allow read, write: if isAuthenticated() || isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // Discounts & Promotional Campaigns: Publicly readable so customers see promotions, editable by admins
     match /discounts/{discountId} {
       allow read: if true;
-      allow write: if isAuthenticated() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // Kitchen Spoilage / Wastage Logs: Staff and admin only
     match /wasteLogs/{document=**} {
-      allow read, write: if isAuthenticated() || isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // Default catch-all: deny everything else
