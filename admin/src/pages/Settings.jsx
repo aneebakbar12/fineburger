@@ -51,7 +51,8 @@ const Settings = () => {
         forceOpen: true,
         storeInfo: {
             name: 'Fine Burger & Fast Food (Since 1981)',
-            phone: '0321-4854410',
+            phone: '042-36840007',
+            whatsapp: '0325-1842184',
             email: 'info@fineburger.com',
             address: 'Main G.T. Road, Baghbanpura, Lahore'
         },

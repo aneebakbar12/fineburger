@@ -3,10 +3,9 @@ import '../styles/About.css';
 
 const About = ({ storeSettings }) => {
     const storeInfo = storeSettings?.storeInfo || {};
-    const storePhone = storeInfo.phone || storeSettings?.phone || '+92 321 4854410';
+    const storePhone = storeInfo.phone || storeSettings?.phone || '042-36840007';
     const storeAddress = storeInfo.address || storeSettings?.address || 'Main G.T. Road, Baghbanpura, Lahore, Punjab, Pakistan';
-    const cleanPhoneDigits = storePhone.replace(/[^0-9]/g, '');
-    const waNumber = cleanPhoneDigits.startsWith('0') ? '92' + cleanPhoneDigits.slice(1) : (cleanPhoneDigits.startsWith('92') ? cleanPhoneDigits : '92' + cleanPhoneDigits);
+    const waNumber = '923251842184';
 
     return (
         <div className="about-page">
@@ -117,8 +116,8 @@ const About = ({ storeSettings }) => {
                         </div>
                         <div className="visit-detail-col">
                             <div className="visit-detail-label">📞 CONTACT</div>
-                            <div>{storePhone}</div>
-                            <div>Direct call or WhatsApp order</div>
+                            <div>Tel: {storePhone}</div>
+                            <div>WhatsApp: 0325-1842184</div>
                         </div>
                         <div className="visit-detail-col">
                             <div className="visit-detail-label">🕒 OPERATING HOURS</div>

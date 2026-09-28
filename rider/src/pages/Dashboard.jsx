@@ -155,7 +155,7 @@ const Dashboard = () => {
         }
     };
 
-    // Shift cash collected reconciliation
+    // Shift cash collected reconciliation (only unsettled COD orders delivered today)
     const todayOrders = pastOrders.filter(o => {
         const rawTs = o.deliveredAt || o.updatedAt;
         if (!rawTs) return false;
@@ -172,7 +172,7 @@ const Dashboard = () => {
     });
 
     const todayCashCollected = todayOrders
-        .filter(o => (o.paymentMethod || 'COD').toUpperCase() === 'COD')
+        .filter(o => (o.paymentMethod || 'COD').toUpperCase() === 'COD' && o.cashSettled !== true)
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
     const orders = activeTab === 'assigned' ? assignedOrders : pastOrders;
@@ -462,7 +462,12 @@ const Dashboard = () => {
                                         <div className="delivered-badge-row">
                                             <span>✓ Successfully Delivered</span>
                                             <span>•</span>
-                                            <span>Cash Collected: Rs. {order.total}</span>
+                                            <span>Cash: Rs. {order.total}</span>
+                                            {order.cashSettled ? (
+                                                <span style={{ color: '#10b981', fontWeight: 'bold' }}>• Settle Paid to Cashier ✓</span>
+                                            ) : (
+                                                <span style={{ color: '#f59e0b' }}>• Handover Pending</span>
+                                            )}
                                         </div>
                                     )}
                                 </div>

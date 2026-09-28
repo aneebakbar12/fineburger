@@ -795,6 +795,67 @@ export const resetRiderPassword = async (email) => {
     }
 };
 
+// Direct password change/reset using Cloud Function
+export const setRiderPasswordDirect = async (riderId, customPassword = '') => {
+    try {
+        const resetPassword = httpsCallable(functions, 'resetRiderPassword');
+        const result = await resetPassword({ riderId, customPassword });
+        return {
+            success: true,
+            newPassword: result.data.newPassword,
+            riderEmail: result.data.riderEmail,
+            riderName: result.data.riderName
+        };
+    } catch (error) {
+        console.error('Cloud Function error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Settle / collect cash from rider orders
+export const settleRiderOrdersCash = async (riderId, orderIds = []) => {
+    try {
+        if (!riderId) return { success: false, error: 'Rider ID required' };
+
+        let targetOrderIds = orderIds;
+
+        // If orderIds not provided, find all unsettled delivered COD orders for this rider
+        if (!targetOrderIds || targetOrderIds.length === 0) {
+            const q = query(
+                collection(db, 'orders'),
+                where('assignedRiderId', '==', riderId),
+                where('status', '==', 'delivered')
+            );
+            const snap = await getDocs(q);
+            targetOrderIds = snap.docs
+                .filter(d => {
+                    const data = d.data();
+                    const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
+                    return isCOD && data.cashSettled !== true;
+                })
+                .map(d => d.id);
+        }
+
+        if (targetOrderIds.length === 0) {
+            return { success: true, count: 0, message: 'No unsettled cash orders found.' };
+        }
+
+        const batchPromises = targetOrderIds.map(oId =>
+            updateDoc(doc(db, 'orders', oId), {
+                cashSettled: true,
+                cashSettledAt: serverTimestamp(),
+                cashSettledBy: auth.currentUser?.uid || 'admin'
+            })
+        );
+
+        await Promise.all(batchPromises);
+        return { success: true, count: targetOrderIds.length };
+    } catch (error) {
+        console.error('Error settling rider cash:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Direct password reset using Cloud Function (requires Firebase Blaze plan)
 export const resetRiderPasswordDirect = async (riderId) => {
     try {

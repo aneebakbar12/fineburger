@@ -132,9 +132,7 @@ const OrderTracking = ({ storeSettings }) => {
         : (activeStepIndex / (STATUS_STEPS.length - 1)) * 100;
 
     const getWhatsAppUrl = () => {
-        const phone = storeSettings?.storeInfo?.phone || storeSettings?.phone || '0321 4854410';
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
-        const waRecipient = cleanPhone.startsWith('0') ? '92' + cleanPhone.slice(1) : (cleanPhone.startsWith('92') ? cleanPhone : '92' + cleanPhone);
+        const waRecipient = '923251842184';
         const ref = order?.orderReference || orderId?.substring(0, 6).toUpperCase() || 'N/A';
         const statusStr = order?.status ? ` [Status: ${order.status.toUpperCase()}]` : '';
         const text = encodeURIComponent(

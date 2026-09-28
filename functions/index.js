@@ -199,7 +199,7 @@ exports.resetRiderPassword = functions.https.onCall(async (data, context) => {
     try {
         await verifyIsAdmin(context);
 
-        const { riderId } = data;
+        const { riderId, customPassword } = data;
         if (!riderId) {
             throw new functions.https.HttpsError(
                 'invalid-argument',
@@ -217,7 +217,10 @@ exports.resetRiderPassword = functions.https.onCall(async (data, context) => {
         }
 
         const riderData = riderDoc.data();
-        const newPassword = generatePassword(8);
+
+        let newPassword = customPassword && typeof customPassword === 'string' && customPassword.trim().length >= 6
+            ? customPassword.trim()
+            : generatePassword(8);
 
         // Update the password in Firebase Authentication
         await admin.auth().updateUser(riderId, {
@@ -231,7 +234,7 @@ exports.resetRiderPassword = functions.https.onCall(async (data, context) => {
             passwordResetBy: context.auth.uid
         });
 
-        console.log(`Password reset for rider ${riderId} (${riderData.email})`);
+        console.log(`Password set for rider ${riderId} (${riderData.email})`);
 
         return {
             success: true,

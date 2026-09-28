@@ -667,7 +667,7 @@ const OrderManager = () => {
                         <h2>FINE BURGER</h2>
                         <p class="tagline">Fast Food & Grill</p>
                         <p class="tagline">Main G.T. Road, Baghbanpura, Lahore</p>
-                        <p class="tagline">Tel: 0321-4854410</p>
+                        <p class="tagline">Tel: 042-36840007 • WA: 0325-1842184</p>
                     </div>
 
                     <div class="bill-ref">BILL #${orderRef}</div>

@@ -4,12 +4,12 @@ import '../styles/Footer.css';
 
 const Footer = ({ storeSettings }) => {
     const storeInfo = storeSettings?.storeInfo || {};
-    const storePhone = storeInfo.phone || storeSettings?.phone || '+92 321 4854410';
+    const storePhone = storeInfo.phone || storeSettings?.phone || '042-36840007';
     const storeAddress = storeInfo.address || storeSettings?.address || 'Main G.T. Road, Baghbanpura, Lahore, Punjab, Pakistan';
     const storeEmail = storeInfo.email || storeSettings?.email || 'info@fineburger.com';
 
-    const cleanPhoneDigits = storePhone.replace(/[^0-9]/g, '');
-    const waNumber = cleanPhoneDigits.startsWith('0') ? '92' + cleanPhoneDigits.slice(1) : (cleanPhoneDigits.startsWith('92') ? cleanPhoneDigits : '92' + cleanPhoneDigits);
+    // WhatsApp orders & inquiries
+    const waNumber = '923251842184';
 
     return (
         <footer className="footer">
