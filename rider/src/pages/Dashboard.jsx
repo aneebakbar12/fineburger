@@ -92,6 +92,9 @@ const Dashboard = () => {
                 if (result.profile.isOnline !== undefined) {
                     setIsOnline(result.profile.isOnline);
                 }
+            } else {
+                logoutRider();
+                navigate('/login');
             }
         });
 

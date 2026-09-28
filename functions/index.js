@@ -18,7 +18,7 @@ async function verifyIsAdmin(context) {
     }
 
     const callerUid = context.auth.uid;
-    const callerEmail = context.auth.token.email;
+    const callerEmail = (context.auth.token.email || '').toLowerCase().trim();
 
     // Hardcoded primary admin fallback or check in admins collection
     if (callerEmail === 'aneeb458@gmail.com') {
@@ -26,14 +26,25 @@ async function verifyIsAdmin(context) {
     }
 
     const adminDoc = await db.collection('admins').doc(callerUid).get();
-    if (!adminDoc.exists) {
-        throw new functions.https.HttpsError(
-            'permission-denied',
-            'Caller is not an authorized administrator.'
-        );
+    if (adminDoc.exists) {
+        return true;
     }
 
-    return true;
+    // Fallback: check by email in admins collection
+    const adminsSnap = await db.collection('admins').get();
+    const matched = adminsSnap.docs.find(d => {
+        const emailInDoc = (d.data()?.email || '').toLowerCase().trim();
+        return emailInDoc === callerEmail;
+    });
+
+    if (matched) {
+        return true;
+    }
+
+    throw new functions.https.HttpsError(
+        'permission-denied',
+        'Caller is not an authorized administrator.'
+    );
 }
 
 /**

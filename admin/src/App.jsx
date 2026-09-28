@@ -16,7 +16,7 @@ import Reports from './pages/Reports';
 import ExpenseManager from './pages/ExpenseManager';
 import FinancialDashboard from './pages/FinancialDashboard';
 import FinancialGate from './components/FinancialGate';
-import { onAuthChange, subscribeToOrders } from './services/firebase';
+import { onAuthChange, subscribeToOrders, checkIsAdmin, logoutAdmin } from './services/firebase';
 import { ToastProvider } from './context/ToastContext';
 import './styles/admin.css';
 
@@ -156,11 +156,20 @@ function App() {
     // ── Order subscription ────────────────────────────────────────────────────
     useEffect(() => {
         let unsubscribeOrders;
-        const unsubscribeAuth = onAuthChange((currentUser) => {
-            setUser(currentUser);
-            setLoading(false);
-
+        const unsubscribeAuth = onAuthChange(async (currentUser) => {
             if (currentUser) {
+                // Verify admin status
+                const isAuthorized = await checkIsAdmin(currentUser);
+                if (!isAuthorized) {
+                    await logoutAdmin();
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+
+                setUser(currentUser);
+                setLoading(false);
+
                 requestNotificationPermission();
 
                 unsubscribeOrders = subscribeToOrders((newOrders) => {
@@ -197,6 +206,8 @@ function App() {
                     prevOrdersRef.current = newOrders;
                 });
             } else {
+                setUser(null);
+                setLoading(false);
                 if (unsubscribeOrders) unsubscribeOrders();
             }
         });

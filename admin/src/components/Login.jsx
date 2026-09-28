@@ -4,6 +4,8 @@ import '../styles/admin.css';
 
 const formatAdminLoginError = (code, rawMessage) => {
     switch (code) {
+        case 'auth/unauthorized-admin':
+            return 'Access denied. This account does not have administrator privileges.';
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
         case 'auth/user-not-found':

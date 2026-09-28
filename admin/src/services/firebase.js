@@ -5,6 +5,7 @@ import {
     collection,
     getDocs,
     getDoc,
+    setDoc,
     addDoc,
     updateDoc,
     deleteDoc,
@@ -110,11 +111,61 @@ export const getFinancialSummary = async (startDate, endDate) => {
     }
 };
 
-// Authentication
+// Authentication & Admin Privilege Verification
+export const checkIsAdmin = async (user) => {
+    if (!user) return false;
+    const cleanEmail = (user.email || '').toLowerCase().trim();
+    if (cleanEmail === 'aneeb458@gmail.com') return true;
+
+    try {
+        // 1. Direct document check by User UID (standard structure)
+        const docSnap = await getDoc(doc(db, 'admins', user.uid));
+        if (docSnap.exists()) {
+            return true;
+        }
+
+        // 2. Fallback check by email (handles cases where doc ID might not match UID or email had whitespace)
+        const adminsSnap = await getDocs(collection(db, 'admins'));
+        const matched = adminsSnap.docs.find(d => {
+            const emailInDoc = (d.data()?.email || '').toLowerCase().trim();
+            return emailInDoc === cleanEmail;
+        });
+
+        if (matched) {
+            // Auto-heal: ensure doc with user.uid exists so Firestore security rules match
+            try {
+                await setDoc(doc(db, 'admins', user.uid), {
+                    email: cleanEmail,
+                    role: matched.data()?.role || 'owner',
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+            } catch (_) {}
+            return true;
+        }
+    } catch (err) {
+        console.error('Error verifying admin authorization:', err);
+    }
+    return false;
+};
+
 export const loginAdmin = async (email, password) => {
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        return { success: true, user: userCredential.user };
+        const cleanEmail = (email || '').trim();
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        const user = userCredential.user;
+
+        // Verify that this user actually has admin rights
+        const isAuthorized = await checkIsAdmin(user);
+        if (!isAuthorized) {
+            await signOut(auth);
+            return {
+                success: false,
+                error: 'Access denied. This account does not have administrator privileges.',
+                code: 'auth/unauthorized-admin'
+            };
+        }
+
+        return { success: true, user };
     } catch (error) {
         return { success: false, error: error.message, code: error.code };
     }
