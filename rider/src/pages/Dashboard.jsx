@@ -155,9 +155,9 @@ const Dashboard = () => {
         }
     };
 
-    // Shift cash collected reconciliation (only unsettled COD orders delivered today)
-    const todayOrders = pastOrders.filter(o => {
-        const rawTs = o.deliveredAt || o.updatedAt;
+    // Shift reconciliation: Accounts for late-night delivery shifts (5:00 PM – 3:00 AM)
+    // Orders delivered within the last 16 hours or during the active calendar shift are retained across midnight
+    const isCurrentShift = (rawTs) => {
         if (!rawTs) return false;
         let date;
         if (rawTs.toDate && typeof rawTs.toDate === 'function') {
@@ -168,8 +168,16 @@ const Dashboard = () => {
             date = new Date(rawTs);
         }
         if (isNaN(date.getTime())) return false;
-        return date.toDateString() === new Date().toDateString();
-    });
+
+        const now = new Date();
+        const sameCalendarDay = date.toDateString() === now.toDateString();
+        const hoursAgo = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+        // Keep orders from same day OR within last 14 hours for late-night post-midnight shift continuity
+        return sameCalendarDay || (hoursAgo >= 0 && hoursAgo <= 14);
+    };
+
+    const todayOrders = pastOrders.filter(o => isCurrentShift(o.deliveredAt || o.updatedAt));
 
     const todayCashCollected = todayOrders
         .filter(o => (o.paymentMethod || 'COD').toUpperCase() === 'COD' && o.cashSettled !== true)

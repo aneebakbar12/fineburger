@@ -711,7 +711,7 @@ const OrderManager = () => {
                         <span>TOTAL</span>
                         <span>Rs.${order.total}</span>
                     </div>
-                    <p class="payment">Payment: Cash on Delivery</p>
+                    <p class="payment">Payment: ${order.orderType === 'Delivery' ? 'Cash on Delivery (COD)' : 'Cash / Counter'}</p>
 
                     <div class="footer">
                         <p>Thank you for choosing Fine Burger!</p>
@@ -738,11 +738,6 @@ const OrderManager = () => {
 
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-            try {
-                printWindow.print();
-            } catch (_) {}
-        }, 300);
     };
 
     const formatDate = (timestamp) => {

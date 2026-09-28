@@ -59,19 +59,42 @@ function FinancialGate({ children }) {
         }, 1800);
     };
 
+    const handleLock = () => {
+        sessionStorage.removeItem(SS_KEY);
+        setUnlocked(false);
+        setPassword('');
+        setError('');
+        setShowChangeForm(false);
+    };
+
     if (unlocked) {
         return (
             <div>
                 {children}
-                {/* Change Password floating button */}
+                {/* Floating buttons: Lock and Change Password */}
                 <div style={styles.changeToggleWrap}>
                     {!showChangeForm && (
-                        <button
-                            onClick={() => { setShowChangeForm(true); setChangeError(''); setChangeSuccess(''); }}
-                            style={styles.changeToggleBtn}
-                        >
-                            🔑 Change Password
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                                onClick={handleLock}
+                                style={{
+                                    ...styles.changeToggleBtn,
+                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                    borderColor: 'rgba(239, 68, 68, 0.4)',
+                                    color: '#ef4444',
+                                    fontWeight: 700
+                                }}
+                                title="Lock financial access"
+                            >
+                                🔒 Lock Financials
+                            </button>
+                            <button
+                                onClick={() => { setShowChangeForm(true); setChangeError(''); setChangeSuccess(''); }}
+                                style={styles.changeToggleBtn}
+                            >
+                                🔑 Change Password
+                            </button>
+                        </div>
                     )}
                     {showChangeForm && (
                         <div style={styles.changeCard}>

@@ -1,10 +1,14 @@
 import React from 'react';
+import { useStaffMode } from '../contexts/StaffModeContext';
 import '../styles/FloatingWhatsApp.css';
 
 const FloatingWhatsApp = () => {
+    const { isStaffMode } = useStaffMode();
     const waNumber = '923251842184';
     const message = encodeURIComponent("Hi Fine Burger! I'd like to place an order.");
     const waUrl = `https://wa.me/${waNumber}?text=${message}`;
+
+    if (isStaffMode) return null;
 
     return (
         <a

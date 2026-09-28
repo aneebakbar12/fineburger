@@ -65,8 +65,8 @@ body:has(.search-modal.open) .floating-whatsapp-btn {
 
 @media (max-width: 768px) {
     .floating-whatsapp-btn {
-        bottom: 18px;
-        right: 18px;
+        bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+        right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px));
         width: 54px;
         height: 54px;
     }
