@@ -25,14 +25,29 @@
 
 .auth-close {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 12px;
+    right: 12px;
     background: none;
     border: none;
     color: #888;
     font-size: 24px;
     cursor: pointer;
     line-height: 1;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    touch-action: manipulation;
+    transition: background 0.2s, color 0.2s;
+}
+
+.auth-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
 .auth-modal h2 {
@@ -72,12 +87,14 @@
 
 .auth-modal input {
     width: 100%;
-    padding: 12px;
+    min-height: 48px;
+    padding: 12px 14px;
     background-color: #2a2a2a;
     border: 1px solid #444;
     border-radius: 8px;
     color: white;
     font-size: 16px;
+    touch-action: manipulation;
 }
 
 .auth-modal input:focus {
@@ -87,9 +104,9 @@
 
 .auth-submit {
     width: 100%;
+    min-height: 48px;
     padding: 14px;
     background-color: var(--color-accent);
-    /* Assuming variable exists or use gold/orange */
     color: black;
     border: none;
     border-radius: 8px;
@@ -97,6 +114,7 @@
     font-weight: bold;
     cursor: pointer;
     transition: opacity 0.2s;
+    touch-action: manipulation;
 }
 
 .auth-submit:hover {

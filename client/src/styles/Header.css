@@ -555,10 +555,10 @@
 
     .cart-button,
     .mobile-menu-toggle {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        min-height: 48px;
     }
 
     /* On phone screens, hide the desktop login text to prevent header crowding */
@@ -571,10 +571,10 @@
     }
 
     .user-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        min-height: 48px;
         padding: 0;
         justify-content: center;
     }

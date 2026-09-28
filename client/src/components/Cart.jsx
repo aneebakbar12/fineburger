@@ -814,15 +814,17 @@ ${trackUrl}`
                                             onClick={() => handleOrderTypeChange(type)}
                                             style={{
                                                 flex: 1,
-                                                padding: '10px 6px',
-                                                borderRadius: '6px',
-                                                border: orderType === type ? '1px solid var(--color-accent)' : '1px solid var(--color-medium-gray)',
+                                                minHeight: '48px',
+                                                padding: '12px 6px',
+                                                borderRadius: '8px',
+                                                border: orderType === type ? '2px solid var(--color-accent)' : '1px solid var(--color-medium-gray)',
                                                 backgroundColor: orderType === type ? 'var(--color-accent)' : 'var(--color-surface)',
                                                 color: orderType === type ? '#000' : 'var(--color-text-primary)',
-                                                fontWeight: orderType === type ? 700 : 500,
+                                                fontWeight: orderType === type ? 800 : 600,
                                                 cursor: 'pointer',
-                                                fontSize: '13px',
-                                                transition: 'all 0.15s ease'
+                                                fontSize: '14px',
+                                                transition: 'all 0.15s ease',
+                                                touchAction: 'manipulation'
                                             }}
                                         >
                                             {type === 'Delivery' ? '🛵 Delivery' : type === 'Takeaway' ? '🛍️ Takeaway' : '🍽️ Dine-in'}

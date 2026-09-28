@@ -48,12 +48,16 @@
     border: none;
     color: #888;
     cursor: pointer;
-    padding: 8px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .search-close:hover {
@@ -61,9 +65,13 @@
     color: #fff;
 }
 
+.search-close:active {
+    transform: scale(0.92);
+}
+
 .search-input-container {
     position: relative;
-    padding: 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid #333;
 }
 
@@ -79,13 +87,14 @@
 .search-input {
     width: 100%;
     padding: 14px 48px 14px 48px;
-    font-size: 16px;
+    font-size: 16px; /* Prevents auto-zoom on iOS Safari */
     border: 2px solid #333;
     border-radius: 12px;
     background-color: #222;
     color: #fff;
     outline: none;
     transition: all 0.3s ease;
+    min-height: 48px;
 }
 
 .search-input:focus {
@@ -95,21 +104,24 @@
 
 .search-clear {
     position: absolute;
-    right: 32px;
+    right: 28px;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
     border: none;
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #888;
+    color: #fff;
     font-size: 18px;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .search-clear:hover {

@@ -208,18 +208,20 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
                                                         type="button"
                                                         onClick={(e) => handleDirectAddToCart(e, item)}
                                                         style={{
-                                                            padding: '6px 14px',
+                                                            minHeight: '44px',
+                                                            padding: '10px 16px',
                                                             backgroundColor: isAdded ? '#4ade80' : 'var(--color-accent)',
                                                             color: '#000',
                                                             border: 'none',
                                                             borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '12px',
+                                                            fontSize: '13px',
                                                             fontWeight: 700,
                                                             cursor: 'pointer',
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            gap: '4px',
-                                                            transition: 'all 0.2s'
+                                                            gap: '6px',
+                                                            transition: 'all 0.2s',
+                                                            touchAction: 'manipulation'
                                                         }}
                                                     >
                                                         {isAdded ? (

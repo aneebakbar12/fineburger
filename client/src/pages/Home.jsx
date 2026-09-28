@@ -137,14 +137,17 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
                         background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(255, 180, 0, 0.2) 100%)',
                         border: '1px solid var(--color-accent, #FFB400)',
                         borderRadius: 'var(--radius-md, 8px)',
-                        padding: '12px 20px',
+                        padding: '12px 16px',
                         marginBottom: 'var(--spacing-lg, 20px)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '12px',
+                        flexWrap: 'wrap',
+                        gap: '10px',
                         boxShadow: '0 4px 20px rgba(255, 180, 0, 0.15)',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        width: '100%',
+                        boxSizing: 'border-box'
                     }}>
                         <span style={{ fontSize: '24px' }}>🎉</span>
                         <div>
