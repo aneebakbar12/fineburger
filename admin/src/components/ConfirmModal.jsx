@@ -19,8 +19,14 @@ const ConfirmModal = ({
         };
         if (isOpen) {
             window.addEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
         }
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = '';
+        };
     }, [isOpen, onCancel]);
 
     if (!isOpen) return null;
@@ -37,7 +43,7 @@ const ConfirmModal = ({
                     <button
                         className="btn btn-secondary"
                         onClick={onCancel}
-                        style={{ padding: '8px 18px', fontSize: '0.9rem' }}
+                        style={{ padding: '12px 20px', minHeight: '48px', fontSize: '0.95rem', touchAction: 'manipulation' }}
                     >
                         {cancelText}
                     </button>
@@ -47,11 +53,13 @@ const ConfirmModal = ({
                             onConfirm();
                         }}
                         style={{
-                            padding: '8px 18px',
-                            fontSize: '0.9rem',
+                            padding: '12px 20px',
+                            minHeight: '48px',
+                            fontSize: '0.95rem',
                             backgroundColor: isDanger ? '#ef4444' : 'var(--color-accent)',
                             color: isDanger ? '#ffffff' : '#000000',
-                            fontWeight: 700
+                            fontWeight: 700,
+                            touchAction: 'manipulation'
                         }}
                     >
                         {confirmText}

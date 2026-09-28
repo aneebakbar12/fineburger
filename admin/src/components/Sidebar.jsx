@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { logoutAdmin } from '../services/firebase';
 import {
@@ -31,6 +31,38 @@ const Sidebar = ({ onLogout, pendingCount = 0, isAudioMuted = false, onToggleAud
     const closeMobileMenu = () => {
         setIsMobileMenuOpen(false);
     };
+
+    // Lock body scroll when mobile sidebar is open
+    useEffect(() => {
+        if (isMobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMobileMenuOpen]);
+
+    // Handle Escape key and window resize
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isMobileMenuOpen) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+        const handleResize = () => {
+            if (window.innerWidth > 768 && isMobileMenuOpen) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [isMobileMenuOpen]);
 
     const menuItems = [
         { path: '/dashboard', Icon: DashboardIcon, label: 'Dashboard' },
@@ -75,8 +107,18 @@ const Sidebar = ({ onLogout, pendingCount = 0, isAudioMuted = false, onToggleAud
 
             <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <div className="sidebar-logo">
-                        <img src="/logo.webp" alt="Fine Burger" style={{ width: '120px', height: 'auto', borderRadius: '8px' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div className="sidebar-logo">
+                            <img src="/logo.webp" alt="Fine Burger" style={{ width: '110px', height: 'auto', borderRadius: '8px' }} />
+                        </div>
+                        <button
+                            type="button"
+                            className="sidebar-mobile-close"
+                            onClick={closeMobileMenu}
+                            aria-label="Close menu"
+                        >
+                            ✕
+                        </button>
                     </div>
                     <p className="sidebar-subtitle">Management Console</p>
                 </div>

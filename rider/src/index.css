@@ -14,16 +14,26 @@
 
 html, body {
   width: 100%;
+  max-width: 100%;
   min-height: 100%;
   background-color: #0c0e14;
   color: #f8fafc;
   overflow-x: hidden;
+  position: relative;
 }
 
-button {
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+button, a {
+  touch-action: manipulation;
+}
+
+input, select, textarea {
   font-family: inherit;
-}
-
-a {
-  color: inherit;
+  font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+  touch-action: manipulation;
 }
