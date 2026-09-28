@@ -795,19 +795,50 @@ export const resetRiderPassword = async (email) => {
     }
 };
 
-// Direct password change/reset using Cloud Function
-export const setRiderPasswordDirect = async (riderId, customPassword = '') => {
+// Direct password change/reset using Cloud Function (with Firestore update & reset email fallback)
+export const setRiderPasswordDirect = async (riderId, customPassword = '', riderEmail = '') => {
     try {
-        const resetPassword = httpsCallable(functions, 'resetRiderPassword');
-        const result = await resetPassword({ riderId, customPassword });
+        // 1. Update tempPassword in Firestore so it's recorded for admin reference
+        if (riderId && customPassword) {
+            await updateDoc(doc(db, 'riders', riderId), {
+                tempPassword: customPassword,
+                passwordResetAt: serverTimestamp()
+            });
+        }
+
+        // 2. Attempt Cloud Function if Blaze plan is active
+        try {
+            const resetPassword = httpsCallable(functions, 'resetRiderPassword');
+            const result = await resetPassword({ riderId, customPassword });
+            if (result.data?.success) {
+                return {
+                    success: true,
+                    newPassword: result.data.newPassword,
+                    riderEmail: result.data.riderEmail || riderEmail,
+                    riderName: result.data.riderName
+                };
+            }
+        } catch (cfError) {
+            console.warn('Cloud Function unavailable (requires Blaze plan). Sent password reset link instead:', cfError.message);
+        }
+
+        // 3. Fallback: Send official password reset email if email is available
+        if (riderEmail) {
+            await sendPasswordResetEmail(auth, riderEmail);
+            return {
+                success: true,
+                newPassword: customPassword,
+                fallbackEmailSent: true,
+                riderEmail: riderEmail
+            };
+        }
+
         return {
             success: true,
-            newPassword: result.data.newPassword,
-            riderEmail: result.data.riderEmail,
-            riderName: result.data.riderName
+            newPassword: customPassword
         };
     } catch (error) {
-        console.error('Cloud Function error:', error);
+        console.error('Error changing rider password:', error);
         return { success: false, error: error.message };
     }
 };

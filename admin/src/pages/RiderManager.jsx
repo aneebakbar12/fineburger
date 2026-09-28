@@ -71,9 +71,13 @@ const RiderManager = () => {
 
         setPasswordModal(prev => ({ ...prev, saving: true }));
         try {
-            const result = await setRiderPasswordDirect(passwordModal.rider.id, pwd);
+            const result = await setRiderPasswordDirect(passwordModal.rider.id, pwd, passwordModal.rider.email);
             if (result.success) {
-                toast.success(`Password updated for ${passwordModal.rider.name}! New password: ${result.newPassword}`);
+                if (result.fallbackEmailSent) {
+                    toast.success(`Password saved in profile & reset link sent to ${passwordModal.rider.email}!`);
+                } else {
+                    toast.success(`Password updated for ${passwordModal.rider.name}! New password: ${result.newPassword}`);
+                }
                 setPasswordModal(null);
             } else {
                 toast.error('Failed to change password: ' + result.error);
