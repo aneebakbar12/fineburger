@@ -228,11 +228,10 @@
 
 @keyframes strikeShimmer {
     0%, 100% {
-        opacity: 0.85;
+        opacity: 0.75;
     }
     50% {
         opacity: 1;
-        box-shadow: 0 0 10px rgba(239, 68, 68, 1);
     }
 }
 

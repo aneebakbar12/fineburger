@@ -27,7 +27,7 @@
     text-decoration: none;
     transition: transform var(--transition-base);
     flex-shrink: 0;
-    min-height: 48px;
+    min-height: 56px;
     touch-action: manipulation;
 }
 
@@ -36,29 +36,21 @@
 }
 
 .logo img {
-    height: 46px;
+    height: 60px;
     width: auto;
     border-radius: 8px;
     object-fit: contain;
 }
 
 /* Navigation - Desktop */
-.nav {
+.desktop-nav {
     display: flex;
     align-items: center;
     gap: var(--spacing-xl);
 }
 
-.mobile-nav-header,
-.mobile-nav-footer,
-.nav-link-icon {
+.mobile-nav-drawer {
     display: none;
-}
-
-.nav-links-list {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xl);
 }
 
 .nav-link {
@@ -313,7 +305,7 @@
     }
 
     .logo img {
-        height: 40px !important;
+        height: 50px !important;
     }
 
     .header-actions {
@@ -351,8 +343,13 @@
         touch-action: none;
     }
 
-    /* Slide-in Mobile Drawer */
-    .nav {
+    .desktop-nav {
+        display: none;
+    }
+
+    /* Slide-in Mobile Drawer (rendered outside header to avoid backdrop-filter containing block issues) */
+    .mobile-nav-drawer {
+        display: flex;
         position: fixed;
         top: 0;
         right: 0;
@@ -364,19 +361,22 @@
         border-left: 1px solid var(--color-border);
         box-shadow: -10px 0 35px rgba(0, 0, 0, 0.85);
         z-index: calc(var(--z-fixed) + 10);
-        display: flex;
         flex-direction: column;
         justify-content: flex-start;
         padding: 0;
         transform: translateX(105%);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
         overflow-y: auto;
         overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
     }
 
-    .nav.nav-open {
+    .mobile-nav-drawer.open {
         transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
     }
 
     /* Mobile Drawer Header */
@@ -550,7 +550,7 @@
     }
 
     .logo img {
-        height: 38px !important;
+        height: 44px !important;
     }
 
     .cart-button,

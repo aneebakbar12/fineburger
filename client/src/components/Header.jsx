@@ -47,6 +47,17 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
         };
     }, [isMenuOpen]);
 
+    // Handle window resize from mobile to desktop
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth > 768 && isMenuOpen) {
+                setIsMenuOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [isMenuOpen]);
+
     // Handle Escape key to close navigation
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -78,115 +89,16 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                     <div className="header-content">
                         {/* Logo */}
                         <Link to="/" className="logo" onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-                            <img src="/logo.webp" alt="Fine Burger & Fast Food" style={{ height: '52px', width: 'auto', borderRadius: '8px' }} />
+                            <img src="/logo.webp" alt="Fine Burger & Fast Food" className="header-logo-img" style={{ height: '60px', width: 'auto', borderRadius: '8px' }} />
                         </Link>
 
-                        {/* Navigation Drawer */}
-                        <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`} aria-label="Main Navigation">
-                            <div className="mobile-nav-header">
-                                <div className="mobile-nav-brand">
-                                    <img src="/logo.webp" alt="Fine Burger" style={{ height: '38px', width: 'auto', borderRadius: '6px' }} />
-                                    <span>Fine Burger</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="mobile-nav-close"
-                                    onClick={closeNav}
-                                    aria-label="Close navigation menu"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="nav-links-list">
-                                {!isStaffMode && (
-                                    <Link to="/" className="nav-link" onClick={closeNav}>
-                                        <span className="nav-link-icon">🏠</span>
-                                        <span>Home</span>
-                                    </Link>
-                                )}
-                                <Link to="/menu" className="nav-link" onClick={closeNav}>
-                                    <span className="nav-link-icon">🍔</span>
-                                    <span>Menu</span>
-                                </Link>
-                                {!isStaffMode && (
-                                    <Link to="/track-order" className="nav-link" onClick={closeNav}>
-                                        <span className="nav-link-icon">🛵</span>
-                                        <span>Track Order</span>
-                                    </Link>
-                                )}
-                                {!isStaffMode && (
-                                    <Link to="/about" className="nav-link" onClick={closeNav}>
-                                        <span className="nav-link-icon">ℹ️</span>
-                                        <span>About Us</span>
-                                    </Link>
-                                )}
-                            </div>
-
-                            {/* Mobile Drawer Account & Quick Actions */}
-                            <div className="mobile-nav-footer">
-                                {user ? (
-                                    <>
-                                        <Link to="/orders" className="mobile-nav-user-item" onClick={closeNav}>
-                                            <span>📦</span>
-                                            <span>My Orders ({user.displayName ? user.displayName.split(' ')[0] : 'Profile'})</span>
-                                        </Link>
-                                        <button
-                                            type="button"
-                                            className="mobile-nav-logout-btn"
-                                            onClick={() => {
-                                                onLogout();
-                                                closeNav();
-                                            }}
-                                        >
-                                            <span>🚪</span>
-                                            <span>Logout</span>
-                                        </button>
-                                    </>
-                                ) : isStaffMode ? (
-                                    <button
-                                        type="button"
-                                        className="mobile-nav-staff-btn"
-                                        onClick={() => {
-                                            if (window.confirm('Exit Staff Mode?')) {
-                                                const event = new CustomEvent('exitStaffMode');
-                                                window.dispatchEvent(event);
-                                                closeNav();
-                                            }
-                                        }}
-                                    >
-                                        <span>🔒</span>
-                                        <span>Exit Staff Mode</span>
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="mobile-nav-login-btn"
-                                        onClick={() => {
-                                            closeNav();
-                                            setIsAuthModalOpen(true);
-                                        }}
-                                    >
-                                        <span>👤</span>
-                                        <span>Login / Register</span>
-                                    </button>
-                                )}
-
-                                <div className="mobile-nav-contact">
-                                    <span>Order Line: </span>
-                                    <a href="tel:+923214854410" className="mobile-nav-phone">+92 321 4854410</a>
-                                </div>
-                            </div>
+                        {/* Desktop Navigation */}
+                        <nav className="desktop-nav" aria-label="Main Navigation">
+                            {!isStaffMode && <Link to="/" className="nav-link">Home</Link>}
+                            <Link to="/menu" className="nav-link">Menu</Link>
+                            {!isStaffMode && <Link to="/track-order" className="nav-link">Track Order</Link>}
+                            {!isStaffMode && <Link to="/about" className="nav-link">About Us</Link>}
                         </nav>
-
-                        {/* Mobile Nav Backdrop */}
-                        {isMenuOpen && (
-                            <div
-                                className="nav-backdrop"
-                                onClick={closeNav}
-                                aria-hidden="true"
-                            />
-                        )}
 
                         {/* Right side actions */}
                         <div className="header-actions">
@@ -308,6 +220,117 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                     </div>
                 </div>
             </header>
+
+            {/* Mobile Navigation Drawer rendered outside backdrop-filtered header */}
+            <aside
+                className={`mobile-nav-drawer ${isMenuOpen ? 'open' : ''}`}
+                aria-label="Mobile Navigation"
+                aria-hidden={!isMenuOpen}
+            >
+                <div className="mobile-nav-header">
+                    <div className="mobile-nav-brand">
+                        <img src="/logo.webp" alt="Fine Burger" style={{ height: '46px', width: 'auto', borderRadius: '6px' }} />
+                        <span>Fine Burger</span>
+                    </div>
+                    <button
+                        type="button"
+                        className="mobile-nav-close"
+                        onClick={closeNav}
+                        aria-label="Close navigation menu"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div className="nav-links-list">
+                    {!isStaffMode && (
+                        <Link to="/" className="nav-link" onClick={closeNav}>
+                            <span className="nav-link-icon">🏠</span>
+                            <span>Home</span>
+                        </Link>
+                    )}
+                    <Link to="/menu" className="nav-link" onClick={closeNav}>
+                        <span className="nav-link-icon">🍔</span>
+                        <span>Menu</span>
+                    </Link>
+                    {!isStaffMode && (
+                        <Link to="/track-order" className="nav-link" onClick={closeNav}>
+                            <span className="nav-link-icon">🛵</span>
+                            <span>Track Order</span>
+                        </Link>
+                    )}
+                    {!isStaffMode && (
+                        <Link to="/about" className="nav-link" onClick={closeNav}>
+                            <span className="nav-link-icon">ℹ️</span>
+                            <span>About Us</span>
+                        </Link>
+                    )}
+                </div>
+
+                {/* Mobile Drawer Account & Quick Actions */}
+                <div className="mobile-nav-footer">
+                    {user ? (
+                        <>
+                            <Link to="/orders" className="mobile-nav-user-item" onClick={closeNav}>
+                                <span>📦</span>
+                                <span>My Orders ({user.displayName ? user.displayName.split(' ')[0] : 'Profile'})</span>
+                            </Link>
+                            <button
+                                type="button"
+                                className="mobile-nav-logout-btn"
+                                onClick={() => {
+                                    onLogout();
+                                    closeNav();
+                                }}
+                            >
+                                <span>🚪</span>
+                                <span>Logout</span>
+                            </button>
+                        </>
+                    ) : isStaffMode ? (
+                        <button
+                            type="button"
+                            className="mobile-nav-staff-btn"
+                            onClick={() => {
+                                if (window.confirm('Exit Staff Mode?')) {
+                                    const event = new CustomEvent('exitStaffMode');
+                                    window.dispatchEvent(event);
+                                    closeNav();
+                                }
+                            }}
+                        >
+                            <span>🔒</span>
+                            <span>Exit Staff Mode</span>
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="mobile-nav-login-btn"
+                            onClick={() => {
+                                closeNav();
+                                setIsAuthModalOpen(true);
+                            }}
+                        >
+                            <span>👤</span>
+                            <span>Login / Register</span>
+                        </button>
+                    )}
+
+                    <div className="mobile-nav-contact">
+                        <span>Order Line: </span>
+                        <a href="tel:+923214854410" className="mobile-nav-phone">+92 321 4854410</a>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Mobile Nav Backdrop */}
+            {isMenuOpen && (
+                <div
+                    className="nav-backdrop"
+                    onClick={closeNav}
+                    aria-hidden="true"
+                />
+            )}
 
             <AuthModal
                 isOpen={isAuthModalOpen}

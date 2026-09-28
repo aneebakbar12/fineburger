@@ -51,11 +51,19 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
         } else {
             // Direct add to cart
             if (onAddToCart) {
+                const itemPrice = Number(item.price) || 0;
+                const origPrice = Number(item.originalPrice || item.price) || 0;
                 onAddToCart({
                     ...item,
+                    price: itemPrice,
+                    originalUnitPrice: origPrice,
+                    basePrice: item.hasDiscount ? item.discountedPrice : itemPrice,
                     quantity: 1,
                     selectedVariations: {},
-                    totalPrice: item.price
+                    totalPrice: itemPrice,
+                    hasDiscount: Boolean(item.hasDiscount),
+                    discountAmountPerUnit: item.hasDiscount ? Math.max(0, origPrice - itemPrice) : 0,
+                    badge: item.badge
                 }, 1, {});
             }
             // Flash "Added!" indicator

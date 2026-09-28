@@ -525,6 +525,7 @@
 
     .cart-body {
         padding: 14px 16px;
+        padding-bottom: max(28px, env(safe-area-inset-bottom, 28px));
     }
 
     .cart-footer {

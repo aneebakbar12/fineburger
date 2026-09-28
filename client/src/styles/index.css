@@ -198,10 +198,11 @@ select {
 }
 
 /* Prevent floating widgets from blocking buttons when drawer or bottom sheet is open */
-body:has(.cart-sidebar.open) .elfsight-app-b5694684-1a79-4fbe-8534-6907ea4a52f4,
-body:has(.modal) .elfsight-app-b5694684-1a79-4fbe-8534-6907ea4a52f4,
-body:has(.nav.nav-open) .elfsight-app-b5694684-1a79-4fbe-8534-6907ea4a52f4,
-body:has(.search-modal.open) .elfsight-app-b5694684-1a79-4fbe-8534-6907ea4a52f4 {
+body:has(.cart-sidebar.open) .floating-whatsapp-btn,
+body:has(.modal) .floating-whatsapp-btn,
+body:has(.nav.nav-open) .floating-whatsapp-btn,
+body:has(.mobile-nav-drawer.open) .floating-whatsapp-btn,
+body:has(.search-modal.open) .floating-whatsapp-btn {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden !important;

@@ -4,6 +4,7 @@ import ScrollToTop from './components/ScrollToTop';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Cart from './components/Cart';
+import FloatingWhatsApp from './components/FloatingWhatsApp';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import About from './pages/About';
@@ -300,6 +301,8 @@ function App() {
                         storeSettings={effectiveSettings}
                         discounts={discounts}
                     />
+
+                    <FloatingWhatsApp />
                 </div>
             </Router>
         </StaffModeProvider>

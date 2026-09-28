@@ -97,6 +97,14 @@ const Cart = ({
         };
     }, [isOpen]);
 
+    // Reset checkout/auth state when cart closes so next open starts at item list
+    useEffect(() => {
+        if (!isOpen) {
+            setIsCheckout(false);
+            setAuthChoice(false);
+        }
+    }, [isOpen]);
+
     // Close on Escape key
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -402,14 +410,12 @@ const Cart = ({
         }
 
         const trackUrl = `${window.location.origin}/track-order/${confirmedOrder.orderId}`;
-        const storePhoneRaw = storeSettings?.storePhone || '0321 4854410';
-        const cleanStoreDigits = storePhoneRaw.replace(/[^0-9]/g, '');
-        const waRecipient = cleanStoreDigits.startsWith('0') ? '92' + cleanStoreDigits.slice(1) : (cleanStoreDigits.startsWith('92') ? cleanStoreDigits : '92' + cleanStoreDigits);
+        const waRecipient = '923251842184';
 
         const msg = encodeURIComponent(
 `🍔 *FINE BURGER & FAST FOOD*
 📍 _Main G.T. Road, Baghbanpura, Lahore_
-📞 _+92 321 4854410_
+📞 _Tel: 042-36840007 • WA: 0325-1842184_
 
 \`\`\`
 ==============================
@@ -445,6 +451,7 @@ ${trackUrl}`
             <>
                 <div className="cart-backdrop" onClick={handleDismissSuccess}></div>
                 <div className={`cart-sidebar ${isOpen ? 'open' : ''}`}>
+                    <div className="bottom-sheet-handle" aria-hidden="true"></div>
                     <div className="cart-header">
                         <h2 className="cart-title">Order Receipt</h2>
                         <button className="cart-close" onClick={handleDismissSuccess} aria-label="Close">
