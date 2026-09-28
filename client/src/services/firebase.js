@@ -406,9 +406,9 @@ export const subscribeToStoreSettings = (callback) => {
     const q = query(collection(db, 'settings'));
     return onSnapshot(q, (querySnapshot) => {
         if (!querySnapshot.empty) {
-            // Find store_config if it exists, otherwise fall back to first doc
+            // Find canonical store_config, ignoring placeholder 'app' document
             const targetDoc = querySnapshot.docs.find(d => d.id === 'store_config')
-                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name)
+                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name && d.id !== 'app')
                 || querySnapshot.docs[0];
 
             callback({

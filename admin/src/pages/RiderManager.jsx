@@ -74,7 +74,7 @@ const RiderManager = () => {
             const result = await setRiderPasswordDirect(passwordModal.rider.id, pwd, passwordModal.rider.email);
             if (result.success) {
                 if (result.fallbackEmailSent) {
-                    toast.success(`Password saved in profile & reset link sent to ${passwordModal.rider.email}!`);
+                    toast.info(`Password saved in profile. Reset link sent to ${passwordModal.rider.email} — courier must click the link to activate the password.`);
                 } else {
                     toast.success(`Password updated for ${passwordModal.rider.name}! New password: ${result.newPassword}`);
                 }

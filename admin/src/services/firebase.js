@@ -273,17 +273,25 @@ export const uploadImage = async (file, path = 'menu-images') => {
     }
 };
 
-// Settings
+// Settings (prioritize canonical store_config document)
 export const getSettings = async () => {
     try {
+        const storeConfigSnap = await getDoc(doc(db, 'settings', 'store_config'));
+        if (storeConfigSnap.exists()) {
+            return {
+                id: storeConfigSnap.id,
+                ...storeConfigSnap.data()
+            };
+        }
+
         const querySnapshot = await getDocs(collection(db, 'settings'));
         if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs.find(d => d.id === 'store_config')
-                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name)
+            const targetDoc = querySnapshot.docs.find(d => d.id === 'store_config')
+                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name && d.id !== 'app')
                 || querySnapshot.docs[0];
             return {
-                id: doc.id,
-                ...doc.data()
+                id: targetDoc.id,
+                ...targetDoc.data()
             };
         }
         return null;

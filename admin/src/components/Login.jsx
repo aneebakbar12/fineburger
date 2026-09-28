@@ -110,12 +110,14 @@ const Login = ({ onLoginSuccess }) => {
                 <div style={{
                     marginTop: 'var(--spacing-lg)',
                     padding: 'var(--spacing-md)',
-                    backgroundColor: 'rgba(255, 180, 0, 0.1)',
+                    backgroundColor: 'rgba(255, 180, 0, 0.08)',
+                    border: '1px solid rgba(255, 180, 0, 0.2)',
                     borderRadius: 'var(--radius-md)',
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--color-text-secondary)'
+                    fontSize: '13px',
+                    color: 'var(--color-text-secondary)',
+                    lineHeight: '1.5'
                 }}>
-                    <strong>Note:</strong> You need to create an admin account in Firebase Authentication first.
+                    <strong style={{ color: 'var(--color-accent)' }}>Admin Access:</strong> Authorized restaurant managers and owners log in with their assigned credentials. To add an owner account, create the user in Firebase Authentication and assign their UID to the Firestore <code>admins</code> collection.
                 </div>
             </div>
         </div>

@@ -323,12 +323,37 @@ const Settings = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '40px' }}>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px 28px', fontSize: '15px' }}>
                         {loading ? 'Saving Settings...' : 'Save Settings'}
                     </button>
                 </div>
             </form>
+
+            {/* Administrator Management Guide */}
+            <div className="admin-card" style={{ padding: '24px', marginBottom: '40px', backgroundColor: 'var(--surface-card)', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-lg)' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🛡️</span>
+                    <span>Admin & Owner Accounts Provisioning</span>
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                    To add a new admin login for restaurant owners or managers, follow these two quick steps in your Firebase Console:
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                    <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: 'var(--surface-elevated)', border: '1px solid var(--surface-border)' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-accent)', marginBottom: '4px' }}>STEP 1: Create Login User</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            In Firebase Console → <strong>Authentication</strong> → <strong>Users</strong> → Click <em>Add user</em>. Enter owner email and set a strong password. Copy the generated <strong>User UID</strong>.
+                        </div>
+                    </div>
+                    <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: 'var(--surface-elevated)', border: '1px solid var(--surface-border)' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#10b981', marginBottom: '4px' }}>STEP 2: Grant Admin Rights</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            In Firestore Database → open the <strong>admins</strong> collection → click <em>Add document</em> → paste the <strong>User UID</strong> as the Document ID.
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
