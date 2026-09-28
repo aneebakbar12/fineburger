@@ -85,6 +85,29 @@ const Cart = ({
     const [couponError, setCouponError] = useState('');
     const [couponSuccess, setCouponSuccess] = useState('');
 
+    // Lock body scroll when cart is open (essential for mobile bottom sheet)
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
+    // Close on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                handleClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, isCheckout, authChoice]);
+
     // Auto-fill user details ONLY for personal customer orders (never in staff POS mode)
     useEffect(() => {
         if (user && isCheckout && !isStaffMode) {
@@ -595,17 +618,17 @@ ${trackUrl}`
         <div style={{
             backgroundColor: 'rgba(255, 255, 255, 0.04)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '8px',
-            padding: '10px 12px',
-            marginBottom: '12px'
+            borderRadius: '12px',
+            padding: '12px 14px',
+            marginBottom: '14px'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-accent, #FFB400)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-accent, #FFB400)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>🎟️</span>
                     <span>Have a Promo Voucher?</span>
                 </span>
                 {appliedCoupon && (
-                    <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
+                    <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
                         ✓ Applied
                     </span>
                 )}
@@ -618,14 +641,15 @@ ${trackUrl}`
                     justifyContent: 'space-between',
                     backgroundColor: 'rgba(16, 185, 129, 0.12)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
-                    borderRadius: '6px',
-                    padding: '6px 10px'
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    minHeight: '48px'
                 }}>
                     <div>
-                        <span style={{ fontWeight: 800, color: '#10b981', fontSize: '13px', letterSpacing: '0.5px' }}>
+                        <span style={{ fontWeight: 800, color: '#10b981', fontSize: '14px', letterSpacing: '0.5px' }}>
                             {appliedCoupon.code}
                         </span>
-                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px', marginLeft: '6px' }}>
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginLeft: '6px' }}>
                             (-Rs. {couponDiscountAmount})
                         </span>
                     </div>
@@ -633,20 +657,24 @@ ${trackUrl}`
                         type="button"
                         onClick={handleRemoveCoupon}
                         style={{
-                            background: 'none',
-                            border: 'none',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '6px',
                             color: '#ef4444',
                             fontWeight: 700,
-                            fontSize: '11px',
+                            fontSize: '12px',
                             cursor: 'pointer',
-                            padding: '2px 4px'
+                            padding: '8px 12px',
+                            minHeight: '40px',
+                            touchAction: 'manipulation'
                         }}
+                        aria-label="Remove promo code"
                     >
                         Remove ✕
                     </button>
                 </div>
             ) : (
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                     <input
                         type="text"
                         placeholder="e.g. WELCOME10"
@@ -657,16 +685,18 @@ ${trackUrl}`
                         }}
                         style={{
                             flex: 1,
-                            padding: '6px 10px',
-                            borderRadius: '4px',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
                             border: '1px solid var(--color-medium-gray, rgba(255,255,255,0.15))',
                             backgroundColor: 'rgba(0,0,0,0.3)',
                             color: '#fff',
-                            fontSize: '12px',
+                            fontSize: '16px',
                             textTransform: 'uppercase',
                             fontWeight: 600,
-                            letterSpacing: '0.5px'
+                            letterSpacing: '0.5px',
+                            minHeight: '48px'
                         }}
+                        aria-label="Promo code input"
                     />
                     <button
                         type="button"
@@ -675,11 +705,14 @@ ${trackUrl}`
                             backgroundColor: 'var(--color-accent, #FFB400)',
                             color: '#000',
                             border: 'none',
-                            borderRadius: '4px',
-                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            padding: '10px 18px',
                             fontWeight: 700,
-                            fontSize: '12px',
-                            cursor: 'pointer'
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            minHeight: '48px',
+                            minWidth: '80px',
+                            touchAction: 'manipulation'
                         }}
                     >
                         Apply
@@ -688,12 +721,12 @@ ${trackUrl}`
             )}
 
             {couponError && (
-                <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '5px' }}>
+                <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px', fontWeight: 500 }}>
                     {couponError}
                 </div>
             )}
             {couponSuccess && !couponError && (
-                <div style={{ color: '#10b981', fontSize: '11px', marginTop: '5px', fontWeight: 600 }}>
+                <div style={{ color: '#10b981', fontSize: '12px', marginTop: '6px', fontWeight: 600 }}>
                     {couponSuccess}
                 </div>
             )}
@@ -704,15 +737,17 @@ ${trackUrl}`
         <>
             <div className="cart-backdrop" onClick={onClose}></div>
             <div className={`cart-sidebar ${isOpen ? 'open' : ''}`}>
+                <div className="bottom-sheet-handle" aria-hidden="true"></div>
                 <div className="cart-header">
-                    <button
-                        className="cart-close"
-                        onClick={handleClose}
-                        style={{ marginRight: 'auto', marginLeft: 0 }}
-                        aria-label="Back"
-                    >
-                        {(isCheckout || authChoice) ? '← Back' : ''}
-                    </button>
+                    {(isCheckout || authChoice) && (
+                        <button
+                            className="cart-back-btn"
+                            onClick={handleClose}
+                            aria-label="Go back"
+                        >
+                            ← Back
+                        </button>
+                    )}
                     <h2 className="cart-title">
                         {authChoice ? 'Sign In' : (isCheckout ? (isStaffMode ? '⚡ Quick POS Order' : 'Checkout') : 'Your Order')}
                     </h2>
@@ -729,13 +764,11 @@ ${trackUrl}`
                             STAFF POS
                         </span>
                     )}
-                    {(!isCheckout && !authChoice) && (
-                        <button className="cart-close" onClick={onClose} aria-label="Close cart">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                        </button>
-                    )}
+                    <button className="cart-close" onClick={onClose} aria-label="Close cart">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div className="cart-body">

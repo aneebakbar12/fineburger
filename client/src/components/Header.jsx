@@ -35,6 +35,30 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
 
     const closeNav = () => setIsMenuOpen(false);
 
+    // Lock body scroll when mobile menu is open
+    useEffect(() => {
+        if (isMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMenuOpen]);
+
+    // Handle Escape key to close navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setIsMenuOpen(false);
+                setIsUserMenuOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     useEffect(() => {
         const handleOutsideClick = (e) => {
             if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -57,12 +81,102 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                             <img src="/logo.webp" alt="Fine Burger & Fast Food" style={{ height: '52px', width: 'auto', borderRadius: '8px' }} />
                         </Link>
 
-                        {/* Desktop Navigation */}
-                        <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-                            {!isStaffMode && <Link to="/" className="nav-link" onClick={closeNav}>Home</Link>}
-                            <Link to="/menu" className="nav-link" onClick={closeNav}>Menu</Link>
-                            {!isStaffMode && <Link to="/track-order" className="nav-link" onClick={closeNav}>Track Order</Link>}
-                            {!isStaffMode && <Link to="/about" className="nav-link" onClick={closeNav}>About Us</Link>}
+                        {/* Navigation Drawer */}
+                        <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`} aria-label="Main Navigation">
+                            <div className="mobile-nav-header">
+                                <div className="mobile-nav-brand">
+                                    <img src="/logo.webp" alt="Fine Burger" style={{ height: '38px', width: 'auto', borderRadius: '6px' }} />
+                                    <span>Fine Burger</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="mobile-nav-close"
+                                    onClick={closeNav}
+                                    aria-label="Close navigation menu"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div className="nav-links-list">
+                                {!isStaffMode && (
+                                    <Link to="/" className="nav-link" onClick={closeNav}>
+                                        <span className="nav-link-icon">🏠</span>
+                                        <span>Home</span>
+                                    </Link>
+                                )}
+                                <Link to="/menu" className="nav-link" onClick={closeNav}>
+                                    <span className="nav-link-icon">🍔</span>
+                                    <span>Menu</span>
+                                </Link>
+                                {!isStaffMode && (
+                                    <Link to="/track-order" className="nav-link" onClick={closeNav}>
+                                        <span className="nav-link-icon">🛵</span>
+                                        <span>Track Order</span>
+                                    </Link>
+                                )}
+                                {!isStaffMode && (
+                                    <Link to="/about" className="nav-link" onClick={closeNav}>
+                                        <span className="nav-link-icon">ℹ️</span>
+                                        <span>About Us</span>
+                                    </Link>
+                                )}
+                            </div>
+
+                            {/* Mobile Drawer Account & Quick Actions */}
+                            <div className="mobile-nav-footer">
+                                {user ? (
+                                    <>
+                                        <Link to="/orders" className="mobile-nav-user-item" onClick={closeNav}>
+                                            <span>📦</span>
+                                            <span>My Orders ({user.displayName ? user.displayName.split(' ')[0] : 'Profile'})</span>
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            className="mobile-nav-logout-btn"
+                                            onClick={() => {
+                                                onLogout();
+                                                closeNav();
+                                            }}
+                                        >
+                                            <span>🚪</span>
+                                            <span>Logout</span>
+                                        </button>
+                                    </>
+                                ) : isStaffMode ? (
+                                    <button
+                                        type="button"
+                                        className="mobile-nav-staff-btn"
+                                        onClick={() => {
+                                            if (window.confirm('Exit Staff Mode?')) {
+                                                const event = new CustomEvent('exitStaffMode');
+                                                window.dispatchEvent(event);
+                                                closeNav();
+                                            }
+                                        }}
+                                    >
+                                        <span>🔒</span>
+                                        <span>Exit Staff Mode</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="mobile-nav-login-btn"
+                                        onClick={() => {
+                                            closeNav();
+                                            setIsAuthModalOpen(true);
+                                        }}
+                                    >
+                                        <span>👤</span>
+                                        <span>Login / Register</span>
+                                    </button>
+                                )}
+
+                                <div className="mobile-nav-contact">
+                                    <span>Order Line: </span>
+                                    <a href="tel:+923214854410" className="mobile-nav-phone">+92 321 4854410</a>
+                                </div>
+                            </div>
                         </nav>
 
                         {/* Mobile Nav Backdrop */}
@@ -178,9 +292,11 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
 
                             {/* Mobile menu toggle */}
                             <button
+                                type="button"
                                 className="mobile-menu-toggle"
                                 onClick={toggleMenu}
-                                aria-label="Toggle menu"
+                                aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                                aria-expanded={isMenuOpen}
                             >
                                 <span className={`hamburger ${isMenuOpen ? 'open' : ''}`}>
                                     <span></span>
