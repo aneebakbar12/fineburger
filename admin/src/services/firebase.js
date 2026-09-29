@@ -640,13 +640,78 @@ export const deleteInventoryItem = async (id) => {
 // ==========================================
 export const recordWasteLog = async (wasteData) => {
     try {
-        const { inventoryItemId, quantity, reason, notes } = wasteData;
+        const { itemType = 'inventory', inventoryItemId, menuItemId, quantity, reason, notes } = wasteData;
         const qtyNum = parseFloat(quantity) || 0;
-        if (!inventoryItemId || qtyNum <= 0) {
-            return { success: false, error: 'Invalid item or quantity' };
+        if (qtyNum <= 0) {
+            return { success: false, error: 'Please enter a valid quantity greater than 0' };
         }
 
-        // 1. Fetch current inventory item details
+        if (itemType === 'menu') {
+            if (!menuItemId) {
+                return { success: false, error: 'Please select a menu item' };
+            }
+
+            const menuRef = doc(db, 'items', menuItemId);
+            const menuSnap = await getDoc(menuRef);
+            if (!menuSnap.exists()) {
+                return { success: false, error: 'Menu item not found' };
+            }
+
+            const menuData = menuSnap.data();
+            const unitCost = Number(menuData.costPrice || menuData.price) || 0;
+            const totalLoss = Math.round(unitCost * qtyNum);
+
+            // 1. Deduct menu item stock if tracked
+            if (menuData.stockLevel !== undefined && menuData.stockLevel !== null) {
+                const currentStock = Number(menuData.stockLevel) || 0;
+                const newStock = Math.max(0, currentStock - qtyNum);
+                await updateDoc(menuRef, {
+                    stockLevel: newStock,
+                    ...(newStock === 0 ? { inStock: false } : {}),
+                    updatedAt: serverTimestamp()
+                });
+            }
+
+            // 2. Deduct linked raw recipe ingredients from inventory if configured
+            if (Array.isArray(menuData.ingredients) && menuData.ingredients.length > 0) {
+                for (const ing of menuData.ingredients) {
+                    if (!ing.inventoryItemId) continue;
+                    const ingRef = doc(db, 'inventory', ing.inventoryItemId);
+                    const ingSnap = await getDoc(ingRef);
+                    if (ingSnap.exists()) {
+                        const curInvStock = Number(ingSnap.data().stockLevel) || 0;
+                        const deductQty = (Number(ing.quantity) || 1) * qtyNum;
+                        await updateDoc(ingRef, {
+                            stockLevel: Math.max(0, curInvStock - deductQty),
+                            updatedAt: serverTimestamp()
+                        });
+                    }
+                }
+            }
+
+            // 3. Write record into wasteLogs collection
+            const logRef = await addDoc(collection(db, 'wasteLogs'), {
+                itemType: 'menu',
+                menuItemId,
+                itemName: menuData.name || 'Prepared Food Item',
+                category: menuData.category || 'Menu Food',
+                unit: 'portions',
+                quantity: qtyNum,
+                unitCost,
+                totalLoss,
+                reason: reason || 'Burnt / Overcooked',
+                notes: notes ? notes.trim() : '',
+                createdAt: serverTimestamp()
+            });
+
+            return { success: true, id: logRef.id, totalLoss };
+        }
+
+        // Default: Raw Inventory Item
+        if (!inventoryItemId) {
+            return { success: false, error: 'Please select an inventory item' };
+        }
+
         const invRef = doc(db, 'inventory', inventoryItemId);
         const invSnap = await getDoc(invRef);
         if (!invSnap.exists()) {
@@ -659,16 +724,17 @@ export const recordWasteLog = async (wasteData) => {
         const totalLoss = Math.round(unitCost * qtyNum);
         const newStock = Math.max(0, currentStock - qtyNum);
 
-        // 2. Deduct from inventory
+        // Deduct from inventory
         await updateDoc(invRef, {
             stockLevel: newStock,
             updatedAt: serverTimestamp()
         });
 
-        // 3. Write record into wasteLogs collection
+        // Write record into wasteLogs collection
         const logRef = await addDoc(collection(db, 'wasteLogs'), {
+            itemType: 'inventory',
             inventoryItemId,
-            itemName: invData.name || 'Unknown Item',
+            itemName: invData.name || 'Raw Ingredient',
             category: invData.category || 'Ingredients',
             unit: invData.unit || 'pieces',
             quantity: qtyNum,

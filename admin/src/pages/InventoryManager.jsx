@@ -31,7 +31,9 @@ const InventoryManager = () => {
     });
 
     const [wasteForm, setWasteForm] = useState({
+        itemType: 'inventory', // 'inventory' or 'menu'
         inventoryItemId: '',
+        menuItemId: '',
         quantity: 1,
         reason: 'Burnt / Overcooked',
         notes: ''
@@ -60,6 +62,9 @@ const InventoryManager = () => {
         setInventoryItems(inventory || []);
         if (inventory && inventory.length > 0 && !wasteForm.inventoryItemId) {
             setWasteForm(prev => ({ ...prev, inventoryItemId: inventory[0].id }));
+        }
+        if (menu && menu.length > 0 && !wasteForm.menuItemId) {
+            setWasteForm(prev => ({ ...prev, menuItemId: menu[0].id }));
         }
     };
 
@@ -128,7 +133,11 @@ const InventoryManager = () => {
 
     const handleRecordWaste = async (e) => {
         e.preventDefault();
-        if (!wasteForm.inventoryItemId) {
+        if (wasteForm.itemType === 'menu' && !wasteForm.menuItemId) {
+            toast.error('Please select a menu food item');
+            return;
+        }
+        if (wasteForm.itemType === 'inventory' && !wasteForm.inventoryItemId) {
             toast.error('Please select an inventory item');
             return;
         }
@@ -147,10 +156,12 @@ const InventoryManager = () => {
         setIsSubmittingWaste(false);
 
         if (res.success) {
-            toast.success(`Waste logged: ${qty} units. Stock deducted & loss recorded: Rs. ${res.totalLoss}`);
+            toast.success(`Waste logged: ${qty} ${wasteForm.itemType === 'menu' ? 'portions' : 'units'}. Stock updated & loss recorded: Rs. ${res.totalLoss}`);
             setShowWasteModal(false);
             setWasteForm({
+                itemType: 'inventory',
                 inventoryItemId: inventoryItems[0]?.id || '',
+                menuItemId: menuItems[0]?.id || '',
                 quantity: 1,
                 reason: 'Burnt / Overcooked',
                 notes: ''
@@ -184,9 +195,15 @@ const InventoryManager = () => {
     };
 
     const selectedWasteInvItem = inventoryItems.find(i => i.id === wasteForm.inventoryItemId);
-    const estimatedLoss = selectedWasteInvItem
-        ? Math.round((Number(selectedWasteInvItem.purchasePrice) || 0) * (Number(wasteForm.quantity) || 0))
-        : 0;
+    const selectedWasteMenuItem = menuItems.find(m => m.id === wasteForm.menuItemId);
+
+    const estimatedLoss = wasteForm.itemType === 'menu'
+        ? (selectedWasteMenuItem
+            ? Math.round((Number(selectedWasteMenuItem.costPrice || selectedWasteMenuItem.price) || 0) * (Number(wasteForm.quantity) || 0))
+            : 0)
+        : (selectedWasteInvItem
+            ? Math.round((Number(selectedWasteInvItem.purchasePrice) || 0) * (Number(wasteForm.quantity) || 0))
+            : 0);
 
     const totalLossSum = wasteLogs.reduce((sum, w) => sum + (Number(w.totalLoss) || 0), 0);
 
@@ -573,32 +590,91 @@ const InventoryManager = () => {
                         boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
                     }}>
                         <h2 style={{ color: '#ef4444', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 800 }}>
-                            🗑️ Record Kitchen Spoilage / Wastage
+                            🗑️ Record Kitchen Spoilage / Wastage & Returns
                         </h2>
                         <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            Deducts from inventory immediately and logs financial loss.
+                            Log spoiled cooking, raw waste, or customer food returns to update stock and track financial loss.
                         </p>
 
                         <form onSubmit={handleRecordWaste}>
-                            <div className="form-group" style={{ marginBottom: '14px' }}>
-                                <label className="form-label">Ingredient / Item *</label>
-                                <select
-                                    className="form-input"
-                                    value={wasteForm.inventoryItemId}
-                                    onChange={(e) => setWasteForm({ ...wasteForm, inventoryItemId: e.target.value })}
-                                    required
+                            {/* Spoilage Category Tabs */}
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setWasteForm(prev => ({ ...prev, itemType: 'inventory' }))}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 8px',
+                                        borderRadius: '8px',
+                                        border: wasteForm.itemType === 'inventory' ? '2px solid var(--color-accent, #FFB400)' : '1px solid var(--surface-border)',
+                                        backgroundColor: wasteForm.itemType === 'inventory' ? 'rgba(255, 180, 0, 0.15)' : 'var(--surface-elevated)',
+                                        color: wasteForm.itemType === 'inventory' ? '#FFB400' : 'var(--text-secondary)',
+                                        fontWeight: wasteForm.itemType === 'inventory' ? 800 : 500,
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
                                 >
-                                    {inventoryItems.map(inv => (
-                                        <option key={inv.id} value={inv.id}>
-                                            {inv.name} ({inv.stockLevel} {inv.unit} in stock · Rs. {inv.purchasePrice || 0}/unit)
-                                        </option>
-                                    ))}
-                                </select>
+                                    🧀 Raw Ingredient
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setWasteForm(prev => ({ ...prev, itemType: 'menu' }))}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 8px',
+                                        borderRadius: '8px',
+                                        border: wasteForm.itemType === 'menu' ? '2px solid #ef4444' : '1px solid var(--surface-border)',
+                                        backgroundColor: wasteForm.itemType === 'menu' ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface-elevated)',
+                                        color: wasteForm.itemType === 'menu' ? '#ef4444' : 'var(--text-secondary)',
+                                        fontWeight: wasteForm.itemType === 'menu' ? 800 : 500,
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    🍔 Prepared Food / Return
+                                </button>
                             </div>
+
+                            {/* Item Selector */}
+                            {wasteForm.itemType === 'inventory' ? (
+                                <div className="form-group" style={{ marginBottom: '14px' }}>
+                                    <label className="form-label">Ingredient / Raw Stock *</label>
+                                    <select
+                                        className="form-input"
+                                        value={wasteForm.inventoryItemId}
+                                        onChange={(e) => setWasteForm({ ...wasteForm, inventoryItemId: e.target.value })}
+                                        required
+                                    >
+                                        {inventoryItems.map(inv => (
+                                            <option key={inv.id} value={inv.id}>
+                                                {inv.name} ({inv.stockLevel} {inv.unit} in stock · Rs. {inv.purchasePrice || 0}/unit)
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="form-group" style={{ marginBottom: '14px' }}>
+                                    <label className="form-label">Menu Item (Burger, Pizza, Roll, etc.) *</label>
+                                    <select
+                                        className="form-input"
+                                        value={wasteForm.menuItemId}
+                                        onChange={(e) => setWasteForm({ ...wasteForm, menuItemId: e.target.value })}
+                                        required
+                                    >
+                                        {menuItems.map(menu => (
+                                            <option key={menu.id} value={menu.id}>
+                                                {menu.name} ({menu.category || 'Menu'} · Rs. {menu.price || 0})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Quantity Wasted *</label>
+                                    <label className="form-label">Quantity Wasted / Returned *</label>
                                     <input
                                         type="number"
                                         className="form-input"
@@ -614,7 +690,7 @@ const InventoryManager = () => {
                                     <input
                                         type="text"
                                         className="form-input"
-                                        value={selectedWasteInvItem?.unit || 'pieces'}
+                                        value={wasteForm.itemType === 'menu' ? 'portions / items' : (selectedWasteInvItem?.unit || 'pieces')}
                                         disabled
                                         style={{ opacity: 0.7 }}
                                     />
@@ -622,7 +698,7 @@ const InventoryManager = () => {
                             </div>
 
                             <div className="form-group" style={{ marginBottom: '14px' }}>
-                                <label className="form-label">Reason for Spoilage *</label>
+                                <label className="form-label">Reason for Spoilage / Return *</label>
                                 <select
                                     className="form-input"
                                     value={wasteForm.reason}
@@ -631,8 +707,10 @@ const InventoryManager = () => {
                                 >
                                     <option value="Burnt / Overcooked">🍳 Burnt / Overcooked</option>
                                     <option value="Dropped / Spilled">💥 Dropped / Spilled</option>
+                                    <option value="Preparation Mistake">⚠️ Kitchen Preparation Mistake</option>
+                                    <option value="Customer Return / Complaint">🔄 Customer Return / Complaint</option>
+                                    <option value="Wrong Item Prepared">📦 Wrong Item Prepared</option>
                                     <option value="Expired / Stale">⏰ Expired / Stale</option>
-                                    <option value="Preparation Mistake">⚠️ Preparation Mistake</option>
                                     <option value="Quality / Taste Rejection">👎 Quality / Taste Rejection</option>
                                     <option value="Other">📝 Other</option>
                                 </select>
@@ -643,7 +721,7 @@ const InventoryManager = () => {
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. Griddle flareup, dropped by prep staff"
+                                    placeholder="e.g. Patty burnt on grill, customer returned cold fries"
                                     value={wasteForm.notes}
                                     onChange={(e) => setWasteForm({ ...wasteForm, notes: e.target.value })}
                                 />

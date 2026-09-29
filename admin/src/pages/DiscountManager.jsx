@@ -648,18 +648,46 @@ const DiscountManager = () => {
                                         <td style={{ textAlign: 'right' }}>
                                             <div style={{ display: 'inline-flex', gap: '8px' }}>
                                                 <button
-                                                    className="btn-action edit"
+                                                    className="btn-icon-small btn-edit"
                                                     onClick={() => handleEdit(discount)}
                                                     title="Edit discount"
+                                                    aria-label="Edit discount"
+                                                    style={{
+                                                        width: '36px',
+                                                        height: '36px',
+                                                        borderRadius: '8px',
+                                                        backgroundColor: 'rgba(255, 180, 0, 0.18)',
+                                                        color: '#FFB400',
+                                                        border: '1px solid rgba(255, 180, 0, 0.4)',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
                                                 >
-                                                    <EditIcon width={16} height={16} />
+                                                    <EditIcon width={18} height={18} stroke="#FFB400" />
                                                 </button>
                                                 <button
-                                                    className="btn-action delete"
+                                                    className="btn-icon-small btn-delete"
                                                     onClick={() => setDiscountToDelete(discount)}
                                                     title="Delete discount"
+                                                    aria-label="Delete discount"
+                                                    style={{
+                                                        width: '36px',
+                                                        height: '36px',
+                                                        borderRadius: '8px',
+                                                        backgroundColor: 'rgba(239, 68, 68, 0.18)',
+                                                        color: '#ef4444',
+                                                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
                                                 >
-                                                    <TrashIcon width={16} height={16} />
+                                                    <TrashIcon width={18} height={18} stroke="#ef4444" />
                                                 </button>
                                             </div>
                                         </td>
