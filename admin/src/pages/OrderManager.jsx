@@ -929,7 +929,6 @@ const OrderManager = () => {
                             <span>TOTAL ITEMS: ${(order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}</span>
                             <span>Rs.${order.total}</span>
                         </div>
-                        <p style="margin-top: 4px; font-size: 10px; font-weight: normal;">⚡ Live Station (Puri Paratha / Kitchen) Pickup Token</p>
                     </div>
 
                     <div style="text-align:center; margin-top:10px;" class="no-print">
