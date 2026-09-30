@@ -364,6 +364,60 @@ export const updateSettings = async (id, settingsData) => {
     }
 };
 
+// ==========================================
+// FINANCIAL ACCESS PASSWORD (FIRESTORE SYNC)
+// ==========================================
+const DEFAULT_FINANCIAL_PASSWORD = 'fineburger2024';
+
+export const getFinancialPassword = async () => {
+    try {
+        const securitySnap = await getDoc(doc(db, 'settings', 'security'));
+        if (securitySnap.exists() && securitySnap.data()?.financialPassword) {
+            return securitySnap.data().financialPassword;
+        }
+
+        // Check fallback in store_config
+        const configSnap = await getDoc(doc(db, 'settings', 'store_config'));
+        if (configSnap.exists() && configSnap.data()?.financialPassword) {
+            return configSnap.data().financialPassword;
+        }
+
+        return DEFAULT_FINANCIAL_PASSWORD;
+    } catch (error) {
+        console.error('Error reading financial password from Firestore:', error);
+        return DEFAULT_FINANCIAL_PASSWORD;
+    }
+};
+
+export const updateFinancialPassword = async (newPassword) => {
+    try {
+        if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+            return { success: false, error: 'Password must be at least 4 characters.' };
+        }
+
+        const cleanPw = newPassword.trim();
+
+        // Save to settings/security
+        await setDoc(doc(db, 'settings', 'security'), {
+            financialPassword: cleanPw,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // Keep in store_config as well for consistency
+        try {
+            await setDoc(doc(db, 'settings', 'store_config'), {
+                financialPassword: cleanPw,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (_) {}
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating financial password in Firestore:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 export const addSettings = async (settingsData) => {
     try {
         const docRef = await addDoc(collection(db, 'settings'), {
@@ -459,12 +513,33 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
         if (status === 'delivered') {
             const orderSnap = await getDoc(doc(db, 'orders', id));
             if (orderSnap.exists()) {
-                const riderId = orderSnap.data().assignedRiderId;
+                const oData = orderSnap.data();
+                const riderId = oData.assignedRiderId;
                 if (riderId) {
                     await updateDoc(doc(db, 'riders', riderId), {
                         'stats.deliveredOrders': increment(1),
                         'stats.lastDeliveredAt': serverTimestamp()
                     });
+                }
+
+                // If counter Dine-in or Takeaway cash order, credit active cashier shift drawer
+                const targetShiftId = additionalData.shiftId || oData.shiftId;
+                const isCounter = oData.orderType === 'Dine-in' || oData.orderType === 'Takeaway';
+                const isCash = !oData.paymentMethod || oData.paymentMethod === 'Cash' || oData.paymentMethod === 'COD' || oData.paymentMethod === 'Cash on Delivery';
+                if (targetShiftId && isCounter && isCash && !oData.shiftRecorded) {
+                    try {
+                        const shiftRef = doc(db, 'shifts', targetShiftId);
+                        await updateDoc(shiftRef, {
+                            counterCashSales: increment(Number(oData.total) || 0),
+                            ordersCount: increment(1)
+                        });
+                        await updateDoc(doc(db, 'orders', id), {
+                            shiftRecorded: true,
+                            shiftId: targetShiftId
+                        });
+                    } catch (sErr) {
+                        console.warn('Could not increment shift counter sales:', sErr);
+                    }
                 }
             }
         }
@@ -1143,6 +1218,401 @@ export const deleteRider = async (riderId) => {
         return { success: false, error: error.message };
     }
 };
+
+// ==========================================
+// CASHIER ACCOUNTS & MULTI-SHIFT MANAGEMENT
+// ==========================================
+
+// Get all registered cashiers
+export const getCashiers = async () => {
+    try {
+        const querySnapshot = await getDocs(collection(db, 'cashiers'));
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    } catch (error) {
+        console.error('Error fetching cashiers:', error);
+        return [];
+    }
+};
+
+// Subscribe to cashiers in real time
+export const subscribeToCashiers = (callback) => {
+    const q = query(collection(db, 'cashiers'));
+    return onSnapshot(q, (querySnapshot) => {
+        const cashiers = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        callback(cashiers);
+    }, (error) => {
+        console.error("Error subscribing to cashiers:", error);
+    });
+};
+
+// Create a new Cashier with 4-digit PIN
+export const addCashier = async (cashierData) => {
+    try {
+        const cleanPin = String(cashierData.pin || '').trim();
+        if (!cleanPin || cleanPin.length < 3) {
+            return { success: false, error: 'PIN must be at least 3-4 digits long.' };
+        }
+
+        // Check for duplicate PINs among active cashiers
+        const allCashiers = await getCashiers();
+        const existingPin = allCashiers.find(c => String(c.pin).trim() === cleanPin && c.active !== false);
+        if (existingPin) {
+            return { success: false, error: `PIN is already assigned to "${existingPin.name}". Please choose a different PIN.` };
+        }
+
+        const docRef = await addDoc(collection(db, 'cashiers'), {
+            name: (cashierData.name || '').trim(),
+            pin: cleanPin,
+            shiftTitle: (cashierData.shiftTitle || 'General Shift').trim(),
+            phone: (cashierData.phone || '').trim(),
+            active: cashierData.active !== false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        console.error('Error adding cashier:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Update an existing Cashier
+export const updateCashier = async (id, cashierData) => {
+    try {
+        if (cashierData.pin) {
+            const cleanPin = String(cashierData.pin).trim();
+            const allCashiers = await getCashiers();
+            const existingPin = allCashiers.find(c => c.id !== id && String(c.pin).trim() === cleanPin && c.active !== false);
+            if (existingPin) {
+                return { success: false, error: `PIN is already in use by "${existingPin.name}".` };
+            }
+        }
+
+        await updateDoc(doc(db, 'cashiers', id), {
+            ...cashierData,
+            updatedAt: serverTimestamp()
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating cashier:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Delete a Cashier
+export const deleteCashier = async (id) => {
+    try {
+        await deleteDoc(doc(db, 'cashiers', id));
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting cashier:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Verify cashier by PIN and fetch their profile
+export const verifyCashierByPin = async (pin) => {
+    try {
+        const cleanPin = String(pin || '').trim();
+        if (!cleanPin) return { success: false, error: 'Please enter a PIN.' };
+
+        const allCashiers = await getCashiers();
+        const matched = allCashiers.find(c => String(c.pin).trim() === cleanPin && c.active !== false);
+
+        if (!matched) {
+            return { success: false, error: 'Incorrect PIN. No active cashier account found.' };
+        }
+
+        return { success: true, cashier: matched };
+    } catch (error) {
+        console.error('Error verifying cashier PIN:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// ==========================================
+// SHIFT MANAGEMENT & DRAWER ACCOUNTING
+// ==========================================
+
+// Open a new shift for a cashier with starting float (peti)
+export const openCashierShift = async ({ cashierId, cashierName, openingFloat = 0, notes = '' }) => {
+    try {
+        if (!cashierId) return { success: false, error: 'Cashier ID required' };
+
+        // 1. Check if an open shift already exists for this cashier
+        const q = query(
+            collection(db, 'shifts'),
+            where('cashierId', '==', cashierId),
+            where('status', '==', 'open')
+        );
+        const existingSnap = await getDocs(q);
+        if (!existingSnap.empty) {
+            const existingShift = { id: existingSnap.docs[0].id, ...existingSnap.docs[0].data() };
+            return { success: true, shift: existingShift, alreadyOpen: true };
+        }
+
+        const floatNum = Math.max(0, Number(openingFloat) || 0);
+
+        // 2. Create the shift document
+        const shiftDoc = await addDoc(collection(db, 'shifts'), {
+            cashierId,
+            cashierName,
+            status: 'open',
+            openedAt: serverTimestamp(),
+            closedAt: null,
+            settledAt: null,
+            settledBy: null,
+            openingFloat: floatNum,
+            counterCashSales: 0,
+            riderCashCollected: 0,
+            ordersCount: 0,
+            notes: (notes || '').trim()
+        });
+
+        const newShift = {
+            id: shiftDoc.id,
+            cashierId,
+            cashierName,
+            status: 'open',
+            openingFloat: floatNum,
+            counterCashSales: 0,
+            riderCashCollected: 0,
+            ordersCount: 0,
+            notes: (notes || '').trim()
+        };
+
+        return { success: true, shift: newShift };
+    } catch (error) {
+        console.error('Error opening cashier shift:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Get active open shift for a cashier
+export const getActiveShiftForCashier = async (cashierId) => {
+    try {
+        if (!cashierId) return null;
+        const q = query(
+            collection(db, 'shifts'),
+            where('cashierId', '==', cashierId),
+            where('status', '==', 'open')
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            return { id: snap.docs[0].id, ...snap.docs[0].data() };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching active shift:', error);
+        return null;
+    }
+};
+
+// Subscribe to active shift for a cashier
+export const subscribeToActiveShift = (cashierId, callback) => {
+    if (!cashierId) {
+        callback(null);
+        return () => {};
+    }
+    const q = query(
+        collection(db, 'shifts'),
+        where('cashierId', '==', cashierId),
+        where('status', '==', 'open')
+    );
+    return onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+            callback({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error("Error subscribing to active shift:", error);
+        callback(null);
+    });
+};
+
+// Subscribe to all shifts for manager views (sorted descending)
+export const subscribeToAllShifts = (callback) => {
+    const q = query(collection(db, 'shifts'), orderBy('openedAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const shifts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(shifts);
+    }, (error) => {
+        console.warn("Falling back to client-side sort for shifts:", error.message);
+        // Fallback without orderBy
+        const fallbackQ = query(collection(db, 'shifts'));
+        return onSnapshot(fallbackQ, (snapshot) => {
+            const shifts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => (b.openedAt?.seconds || 0) - (a.openedAt?.seconds || 0));
+            callback(shifts);
+        });
+    });
+};
+
+// Close an active shift (cashier handover summary prepared)
+export const closeCashierShift = async (shiftId, { notes = '', actualCashCounted = null } = {}) => {
+    try {
+        if (!shiftId) return { success: false, error: 'Shift ID required' };
+
+        const shiftRef = doc(db, 'shifts', shiftId);
+        const snap = await getDoc(shiftRef);
+        if (!snap.exists()) return { success: false, error: 'Shift not found' };
+
+        const currentData = snap.data();
+        const expectedCash = (Number(currentData.openingFloat) || 0) +
+            (Number(currentData.counterCashSales) || 0) +
+            (Number(currentData.riderCashCollected) || 0);
+
+        const updatePayload = {
+            status: 'closed',
+            closedAt: serverTimestamp(),
+            totalExpectedCash: expectedCash,
+            ...(actualCashCounted !== null ? { actualCashCounted: Number(actualCashCounted) } : {}),
+            ...(notes ? { closingNotes: notes.trim() } : {})
+        };
+
+        await updateDoc(shiftRef, updatePayload);
+        return { success: true, expectedCash };
+    } catch (error) {
+        console.error('Error closing shift:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Settle shift by Owner / Admin (clears drawer and marks permanently settled)
+export const settleShiftByOwner = async (shiftId, { settledBy = 'Owner', notes = '' } = {}) => {
+    try {
+        if (!shiftId) return { success: false, error: 'Shift ID required' };
+
+        const shiftRef = doc(db, 'shifts', shiftId);
+        await updateDoc(shiftRef, {
+            status: 'settled',
+            settledAt: serverTimestamp(),
+            settledBy: settledBy || auth.currentUser?.email || 'Owner',
+            settlementNotes: (notes || '').trim()
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error settling shift:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// ==========================================
+// RIDER CASH DROPS (RIDER -> CASHIER DRAWER)
+// ==========================================
+
+// Record rider cash collection into active cashier drawer
+export const recordRiderCashDrop = async ({
+    shiftId,
+    cashierId,
+    cashierName,
+    riderId,
+    riderName,
+    amount,
+    orderIds = []
+}) => {
+    try {
+        const dropAmount = Math.max(0, Number(amount) || 0);
+        if (dropAmount <= 0) return { success: false, error: 'Invalid collection amount.' };
+        if (!riderId) return { success: false, error: 'Rider ID required.' };
+
+        // 1. Mark orders as cashSettled
+        let settledIds = orderIds;
+        if (!settledIds || settledIds.length === 0) {
+            const q = query(
+                collection(db, 'orders'),
+                where('assignedRiderId', '==', riderId),
+                where('status', '==', 'delivered')
+            );
+            const snap = await getDocs(q);
+            settledIds = snap.docs
+                .filter(d => {
+                    const data = d.data();
+                    const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
+                    return isCOD && data.cashSettled !== true;
+                })
+                .map(d => d.id);
+        }
+
+        const updatePromises = settledIds.map(oId =>
+            updateDoc(doc(db, 'orders', oId), {
+                cashSettled: true,
+                cashSettledAt: serverTimestamp(),
+                cashSettledByCashierId: cashierId || null,
+                cashSettledByCashierName: cashierName || 'Counter Cashier',
+                shiftId: shiftId || null
+            })
+        );
+        await Promise.all(updatePromises);
+
+        // 2. Write an audit log to cashDrops collection
+        const dropDoc = await addDoc(collection(db, 'cashDrops'), {
+            shiftId: shiftId || null,
+            cashierId: cashierId || null,
+            cashierName: cashierName || 'Counter Cashier',
+            riderId,
+            riderName: riderName || 'Courier',
+            amount: dropAmount,
+            settledOrdersCount: settledIds.length,
+            orderIds: settledIds,
+            createdAt: serverTimestamp()
+        });
+
+        // 3. If there is an active shift, increment riderCashCollected in the cashier's drawer
+        if (shiftId) {
+            try {
+                const shiftRef = doc(db, 'shifts', shiftId);
+                await updateDoc(shiftRef, {
+                    riderCashCollected: increment(dropAmount)
+                });
+            } catch (shiftErr) {
+                console.warn('Could not increment shift cash:', shiftErr);
+            }
+        }
+
+        return { success: true, dropId: dropDoc.id, settledOrdersCount: settledIds.length };
+    } catch (error) {
+        console.error('Error recording rider cash drop:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Subscribe to cash drops
+export const subscribeToCashDrops = (callback) => {
+    const q = query(collection(db, 'cashDrops'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const drops = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(drops);
+    }, (err) => {
+        console.warn('Falling back for cashDrops snapshot:', err.message);
+        const fallbackQ = query(collection(db, 'cashDrops'));
+        return onSnapshot(fallbackQ, (snapshot) => {
+            const drops = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            callback(drops);
+        });
+    });
+};
+
 
 // ============================================
 // EXPENSE MANAGEMENT

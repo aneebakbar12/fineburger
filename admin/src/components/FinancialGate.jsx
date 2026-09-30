@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { getFinancialPassword, updateFinancialPassword } from '../services/firebase';
 
 const DEFAULT_PASSWORD = 'fineburger2024';
-const LS_KEY = 'fb_financial_password';
 const SS_KEY = 'fb_financial_unlocked';
-
-function getPassword() {
-    return localStorage.getItem(LS_KEY) || DEFAULT_PASSWORD;
-}
 
 function FinancialGate({ children }) {
     const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(SS_KEY) === 'true');
+    const [activePassword, setActivePassword] = useState(DEFAULT_PASSWORD);
+    const [passwordLoading, setPasswordLoading] = useState(true);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [showChangeForm, setShowChangeForm] = useState(false);
@@ -18,10 +16,33 @@ function FinancialGate({ children }) {
     const [confirmPw, setConfirmPw] = useState('');
     const [changeError, setChangeError] = useState('');
     const [changeSuccess, setChangeSuccess] = useState('');
+    const [savingPassword, setSavingPassword] = useState(false);
+
+    // Fetch the canonical financial password from Firestore on mount
+    useEffect(() => {
+        let isMounted = true;
+        const fetchPassword = async () => {
+            try {
+                const firestorePw = await getFinancialPassword();
+                if (isMounted) {
+                    setActivePassword(firestorePw || DEFAULT_PASSWORD);
+                    setPasswordLoading(false);
+                }
+            } catch (err) {
+                console.warn('Failed to load password from Firestore, using default:', err);
+                if (isMounted) setPasswordLoading(false);
+            }
+        };
+        fetchPassword();
+        return () => { isMounted = false; };
+    }, []);
 
     const handleUnlock = (e) => {
         e.preventDefault();
-        if (password === getPassword()) {
+        const cleanInput = (password || '').trim();
+        const expectedPw = (activePassword || DEFAULT_PASSWORD).trim();
+
+        if (cleanInput === expectedPw) {
             sessionStorage.setItem(SS_KEY, 'true');
             setUnlocked(true);
             setError('');
@@ -30,33 +51,45 @@ function FinancialGate({ children }) {
         }
     };
 
-    const handleChangePassword = (e) => {
+    const handleChangePassword = async (e) => {
         e.preventDefault();
         setChangeError('');
         setChangeSuccess('');
 
-        if (currentPw !== getPassword()) {
+        const cleanCurrent = (currentPw || '').trim();
+        const expectedPw = (activePassword || DEFAULT_PASSWORD).trim();
+
+        if (cleanCurrent !== expectedPw) {
             setChangeError('Current password is incorrect.');
             return;
         }
-        if (!newPw || newPw.length < 4) {
+        if (!newPw || newPw.trim().length < 4) {
             setChangeError('New password must be at least 4 characters.');
             return;
         }
-        if (newPw !== confirmPw) {
+        if (newPw.trim() !== confirmPw.trim()) {
             setChangeError('New passwords do not match.');
             return;
         }
 
-        localStorage.setItem(LS_KEY, newPw);
-        setChangeSuccess('Password updated successfully.');
-        setCurrentPw('');
-        setNewPw('');
-        setConfirmPw('');
-        setTimeout(() => {
-            setShowChangeForm(false);
-            setChangeSuccess('');
-        }, 1800);
+        setSavingPassword(true);
+        const nextPassword = newPw.trim();
+        const res = await updateFinancialPassword(nextPassword);
+        setSavingPassword(false);
+
+        if (res.success) {
+            setActivePassword(nextPassword);
+            setChangeSuccess('Password updated successfully across all devices!');
+            setCurrentPw('');
+            setNewPw('');
+            setConfirmPw('');
+            setTimeout(() => {
+                setShowChangeForm(false);
+                setChangeSuccess('');
+            }, 1800);
+        } else {
+            setChangeError('Failed to update password in database: ' + (res.error || 'Network error'));
+        }
     };
 
     const handleLock = () => {
@@ -98,7 +131,10 @@ function FinancialGate({ children }) {
                     )}
                     {showChangeForm && (
                         <div style={styles.changeCard}>
-                            <div style={styles.changeTitle}>Change Financial Password</div>
+                            <div style={styles.changeTitle}>Change Financial Password (Cloud Synced)</div>
+                            <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                This updates the password for all devices and browsers in real time.
+                            </p>
                             <form onSubmit={handleChangePassword}>
                                 <input
                                     type="password"
@@ -107,14 +143,16 @@ function FinancialGate({ children }) {
                                     onChange={(e) => setCurrentPw(e.target.value)}
                                     style={styles.input}
                                     autoComplete="current-password"
+                                    required
                                 />
                                 <input
                                     type="password"
-                                    placeholder="New password"
+                                    placeholder="New password (min 4 chars)"
                                     value={newPw}
                                     onChange={(e) => setNewPw(e.target.value)}
                                     style={styles.input}
                                     autoComplete="new-password"
+                                    required
                                 />
                                 <input
                                     type="password"
@@ -123,15 +161,19 @@ function FinancialGate({ children }) {
                                     onChange={(e) => setConfirmPw(e.target.value)}
                                     style={styles.input}
                                     autoComplete="new-password"
+                                    required
                                 />
                                 {changeError && <div style={styles.error}>{changeError}</div>}
                                 {changeSuccess && <div style={styles.success}>{changeSuccess}</div>}
                                 <div style={styles.changeBtnRow}>
-                                    <button type="submit" style={styles.saveBtn}>Save</button>
+                                    <button type="submit" style={styles.saveBtn} disabled={savingPassword}>
+                                        {savingPassword ? 'Updating...' : 'Save to Cloud'}
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={() => { setShowChangeForm(false); setChangeError(''); setChangeSuccess(''); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}
                                         style={styles.cancelBtn}
+                                        disabled={savingPassword}
                                     >
                                         Cancel
                                     </button>
@@ -159,9 +201,12 @@ function FinancialGate({ children }) {
                         style={styles.input}
                         autoFocus
                         autoComplete="current-password"
+                        disabled={passwordLoading}
                     />
                     {error && <div style={styles.error}>{error}</div>}
-                    <button type="submit" style={styles.unlockBtn}>Unlock</button>
+                    <button type="submit" style={styles.unlockBtn} disabled={passwordLoading}>
+                        {passwordLoading ? 'Checking...' : 'Unlock'}
+                    </button>
                 </form>
             </div>
         </div>
@@ -268,14 +313,14 @@ const styles = {
         border: '1px solid var(--surface-border)',
         borderRadius: '14px',
         padding: '24px 22px 20px',
-        width: 'min(320px, 90vw)',
+        width: 'min(340px, 92vw)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
     },
     changeTitle: {
         color: 'var(--text-primary)',
         fontSize: '15px',
         fontWeight: 700,
-        marginBottom: '16px',
+        marginBottom: '4px',
     },
     changeBtnRow: {
         display: 'flex',
