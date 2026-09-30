@@ -69,7 +69,8 @@ const Cart = ({
         phone: '',
         address: '',
         location: null,
-        tableNumber: ''
+        tableNumber: '',
+        orderTaker: ''
     });
     const [orderType, setOrderType] = useState('Delivery'); // 'Delivery', 'Takeaway', 'Dine-in'
     const [loading, setLoading] = useState(false);
@@ -297,11 +298,13 @@ const Cart = ({
             phone: customerDetails.phone?.trim() || '',
             address: orderType === 'Delivery' ? customerDetails.address?.trim() : '',
             location: orderType === 'Delivery' ? customerDetails.location : null,
-            tableNumber: orderType === 'Dine-in' ? customerDetails.tableNumber?.trim() : ''
+            tableNumber: orderType === 'Dine-in' ? customerDetails.tableNumber?.trim() : '',
+            orderTaker: customerDetails.orderTaker?.trim() || ''
         };
 
         const orderData = {
             customer: cleanCustomer,
+            orderTaker: customerDetails.orderTaker?.trim() || '',
             items: orderItems,
             subtotal: grossSubtotal > netSubtotal ? grossSubtotal : netSubtotal,
             discount: totalDiscountSavings,
@@ -369,7 +372,7 @@ const Cart = ({
         setConfirmedOrder(null);
         setIsCheckout(false);
         setAuthChoice(false);
-        setCustomerDetails({ name: '', phone: '', address: '', location: null, tableNumber: '' });
+        setCustomerDetails({ name: '', phone: '', address: '', location: null, tableNumber: '', orderTaker: '' });
         onClose();
     };
 
@@ -506,6 +509,14 @@ ${trackUrl}`
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                                     <span>Table:</span>
                                     <strong style={{ color: 'var(--color-white)' }}>Table #{confirmedOrder.customer.tableNumber}</strong>
+                                </div>
+                            )}
+
+                            {/* Order Taker / Waiter */}
+                            {(confirmedOrder.orderTaker || confirmedOrder.customer?.orderTaker) && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    <span>Order Taker:</span>
+                                    <strong style={{ color: '#10b981' }}>{confirmedOrder.orderTaker || confirmedOrder.customer?.orderTaker}</strong>
                                 </div>
                             )}
 
@@ -858,6 +869,18 @@ ${trackUrl}`
                                         />
                                     </div>
                                     <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Order Taker / Staff Name</label>
+                                        <input
+                                            type="text"
+                                            name="orderTaker"
+                                            className="form-input"
+                                            placeholder="e.g. Counter Staff / Rashid"
+                                            value={customerDetails.orderTaker}
+                                            onChange={handleInputChange}
+                                            style={{ fontSize: '15px' }}
+                                        />
+                                    </div>
+                                    <div className="form-group">
                                         <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Mobile Phone (Optional)</label>
                                         <input
                                             type="tel"
@@ -909,20 +932,40 @@ ${trackUrl}`
 
                             {/* Unified Table Number for Dine-in (both POS and Online customer) */}
                             {orderType === 'Dine-in' && (
-                                <div className="form-group">
-                                    <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
-                                    <input
-                                        type="text"
-                                        name="tableNumber"
-                                        className="form-input"
-                                        placeholder="e.g. Table 4"
-                                        value={customerDetails.tableNumber}
-                                        onChange={handleInputChange}
-                                        autoFocus={isStaffMode}
-                                        required
-                                        style={{ fontSize: isStaffMode ? '18px' : 'inherit', fontWeight: isStaffMode ? 'bold' : 'normal' }}
-                                    />
-                                </div>
+                                <>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Table Number *</label>
+                                        <input
+                                            type="text"
+                                            name="tableNumber"
+                                            className="form-input"
+                                            placeholder="e.g. Table 4"
+                                            value={customerDetails.tableNumber}
+                                            onChange={handleInputChange}
+                                            autoFocus={isStaffMode}
+                                            required
+                                            style={{ fontSize: isStaffMode ? '18px' : 'inherit', fontWeight: isStaffMode ? 'bold' : 'normal' }}
+                                        />
+                                    </div>
+
+                                    {isStaffMode && (
+                                        <div className="form-group">
+                                            <label className="form-label" style={{ color: 'var(--color-text-secondary)' }}>Order Taker / Waiter Name</label>
+                                            <input
+                                                type="text"
+                                                name="orderTaker"
+                                                className="form-input"
+                                                placeholder="e.g. Rashid / Waiter 2"
+                                                value={customerDetails.orderTaker}
+                                                onChange={handleInputChange}
+                                                style={{ fontSize: '15px' }}
+                                            />
+                                            <small style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginTop: '2px', display: 'block' }}>
+                                                Will be printed on the kitchen token & customer bill
+                                            </small>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* Online Customer: Delivery Address & Map */}

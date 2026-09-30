@@ -273,7 +273,7 @@ function App() {
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/orders" element={<OrderManager />} />
                                 <Route path="/riders" element={<RiderManager />} />
-                                <Route path="/cashiers" element={<CashierManager />} />
+                                <Route path="/cashiers" element={<FinancialGate><CashierManager /></FinancialGate>} />
                                 <Route path="/reports" element={<FinancialGate><Reports /></FinancialGate>} />
                                 <Route path="/categories" element={<CategoryManager />} />
                                 <Route path="/menu-items" element={<MenuItemManager />} />

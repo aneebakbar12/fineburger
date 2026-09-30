@@ -33,9 +33,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Security & Financial access configuration: STRICTLY Admin only
+    match /settings/security {
+      allow read, write: if isAdmin();
+    }
+
     // Settings (operating hours, store info): Publicly viewable, editable only by admins
-    match /settings/{document=**} {
-      allow read: if true;
+    match /settings/{settingId} {
+      allow read: if settingId != 'security';
       allow write: if isAdmin();
     }
 
@@ -126,17 +131,17 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Cashiers, Shifts & Cash Drawer Reconciliation: Admin & Cashier staff
+    // Cashiers, Shifts & Cash Drawer Reconciliation: STRICTLY Admin only
     match /cashiers/{cashierId} {
-      allow read, write: if isAdmin() || isAuthenticated();
+      allow read, write: if isAdmin();
     }
 
     match /shifts/{shiftId} {
-      allow read, write: if isAdmin() || isAuthenticated();
+      allow read, write: if isAdmin();
     }
 
     match /cashDrops/{dropId} {
-      allow read, write: if isAdmin() || isAuthenticated();
+      allow read, write: if isAdmin();
     }
 
     // Default catch-all: deny everything else

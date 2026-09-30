@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     getFinancialSummary,
     subscribeToAllShifts,
-    settleShiftByOwner,
+    promptAndSettleShift,
     subscribeToRiders,
     subscribeToOrders
 } from '../services/firebase';
@@ -53,20 +53,9 @@ const FinancialDashboard = () => {
     }, [dateRange]);
 
     const handleSettleShift = async (shift) => {
-        const total = (Number(shift.openingFloat) || 0) + (Number(shift.counterCashSales) || 0) + (Number(shift.riderCashCollected) || 0);
-        const ok = window.confirm(
-            `Owner Shift Settlement:\n\nConfirm receipt of Rs. ${total} from Cashier ${shift.cashierName}?\n\nThis will mark the shift as fully settled and clear the drawer.`
-        );
-        if (!ok) return;
-
         setSettlingShiftId(shift.id);
-        const res = await settleShiftByOwner(shift.id, { settledBy: 'Owner / Admin' });
+        await promptAndSettleShift(shift, { settledBy: 'Owner / Admin', onToast: toast });
         setSettlingShiftId(null);
-        if (res.success) {
-            toast.success(`✓ Shift for ${shift.cashierName} settled! Received Rs. ${total}.`);
-        } else {
-            toast.error('Failed to settle shift: ' + res.error);
-        }
     };
 
     const fetchFinancialData = async () => {
@@ -415,7 +404,10 @@ const FinancialDashboard = () => {
 
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
                                             {closedUnsettledShifts.map(shift => {
-                                                const total = (Number(shift.openingFloat) || 0) + (Number(shift.counterCashSales) || 0) + (Number(shift.riderCashCollected) || 0);
+                                                const expected = (Number(shift.openingFloat) || 0) + (Number(shift.counterCashSales) || 0) + (Number(shift.riderCashCollected) || 0);
+                                                const hasActualCount = shift.actualCashCounted !== undefined && shift.actualCashCounted !== null;
+                                                const total = hasActualCount ? Number(shift.actualCashCounted) : expected;
+                                                const discrepancy = hasActualCount ? total - expected : 0;
                                                 const closedTime = shift.closedAt?.seconds
                                                     ? new Date(shift.closedAt.seconds * 1000).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })
                                                     : 'Just now';
@@ -451,6 +443,19 @@ const FinancialDashboard = () => {
                                                                 {shift.closingNotes && (
                                                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
                                                                         Note: "{shift.closingNotes}"
+                                                                    </div>
+                                                                )}
+                                                                {hasActualCount && discrepancy !== 0 && (
+                                                                    <div style={{
+                                                                        marginTop: '6px',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
+                                                                        backgroundColor: discrepancy < 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                                                        color: discrepancy < 0 ? '#ef4444' : '#10b981',
+                                                                        fontSize: '11px',
+                                                                        fontWeight: 700
+                                                                    }}>
+                                                                        Discrepancy: {discrepancy > 0 ? '+' : ''}Rs. {discrepancy} ({discrepancy < 0 ? 'Shortage' : 'Overage'})
                                                                     </div>
                                                                 )}
                                                             </div>

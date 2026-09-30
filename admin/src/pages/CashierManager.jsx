@@ -5,7 +5,7 @@ import {
     updateCashier,
     deleteCashier,
     subscribeToAllShifts,
-    settleShiftByOwner
+    promptAndSettleShift
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -140,20 +140,9 @@ const CashierManager = () => {
     };
 
     const handleSettleShift = async (shift) => {
-        const expected = (Number(shift.openingFloat) || 0) + (Number(shift.counterCashSales) || 0) + (Number(shift.riderCashCollected) || 0);
-        const ok = window.confirm(
-            `Owner Shift Settlement:\n\nConfirm receipt of Rs. ${expected} from ${shift.cashierName}?\n\nThis will mark the shift as fully settled and clear the drawer.`
-        );
-        if (!ok) return;
-
         setSettlingShiftId(shift.id);
-        const res = await settleShiftByOwner(shift.id, { settledBy: 'Owner / Admin' });
+        await promptAndSettleShift(shift, { settledBy: 'Owner / Admin', onToast: toast });
         setSettlingShiftId(null);
-        if (res.success) {
-            toast.success(`Shift for ${shift.cashierName} settled! Received Rs. ${expected}.`);
-        } else {
-            toast.error('Failed to settle shift: ' + res.error);
-        }
     };
 
     const filteredCashiers = cashiers.filter(c =>
@@ -629,17 +618,42 @@ const CashierManager = () => {
                             </div>
 
                             <div className="form-group" style={{ marginBottom: '14px' }}>
-                                <label className="form-label">Assigned Shift Title</label>
-                                <select
+                                <label className="form-label">Shift Title & Timing *</label>
+                                <input
+                                    type="text"
                                     className="form-input"
+                                    placeholder="e.g. 1st Shift (12:00 PM – 9:00 PM) or Night Shift (7:00 PM – 3:30 AM)"
                                     value={formData.shiftTitle}
                                     onChange={(e) => setFormData({ ...formData, shiftTitle: e.target.value })}
-                                >
-                                    <option value="Shift 1: Morning (12:00 PM – 8:00 PM)">Shift 1: Morning (12:00 PM – 8:00 PM)</option>
-                                    <option value="Shift 2: Night (8:00 PM – 4:00 AM)">Shift 2: Night (8:00 PM – 4:00 AM)</option>
-                                    <option value="Weekend / Special Shift">Weekend / Special Shift</option>
-                                    <option value="General Counter Cashier">General Counter Cashier</option>
-                                </select>
+                                    required
+                                />
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                                    {[
+                                        '1st Shift (12 PM – 8 PM)',
+                                        '2nd Shift (8 PM – 4 AM)',
+                                        'Day Shift (11 AM – 7 PM)',
+                                        'Night Shift (7 PM – 3 AM)',
+                                        'Weekend Shift'
+                                    ].map(preset => (
+                                        <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, shiftTitle: preset })}
+                                            style={{
+                                                padding: '3px 8px',
+                                                borderRadius: '4px',
+                                                border: '1px solid var(--surface-border)',
+                                                backgroundColor: formData.shiftTitle === preset ? 'var(--color-accent)' : 'var(--surface-elevated)',
+                                                color: formData.shiftTitle === preset ? '#000' : 'var(--text-secondary)',
+                                                fontSize: '10px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {preset}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="form-group" style={{ marginBottom: '16px' }}>

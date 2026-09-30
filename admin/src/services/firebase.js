@@ -376,12 +376,6 @@ export const getFinancialPassword = async () => {
             return securitySnap.data().financialPassword;
         }
 
-        // Check fallback in store_config
-        const configSnap = await getDoc(doc(db, 'settings', 'store_config'));
-        if (configSnap.exists() && configSnap.data()?.financialPassword) {
-            return configSnap.data().financialPassword;
-        }
-
         return DEFAULT_FINANCIAL_PASSWORD;
     } catch (error) {
         console.error('Error reading financial password from Firestore:', error);
@@ -397,19 +391,11 @@ export const updateFinancialPassword = async (newPassword) => {
 
         const cleanPw = newPassword.trim();
 
-        // Save to settings/security
+        // Save strictly to settings/security (Admin-only access)
         await setDoc(doc(db, 'settings', 'security'), {
             financialPassword: cleanPw,
             updatedAt: serverTimestamp()
         }, { merge: true });
-
-        // Keep in store_config as well for consistency
-        try {
-            await setDoc(doc(db, 'settings', 'store_config'), {
-                financialPassword: cleanPw,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        } catch (_) {}
 
         return { success: true };
     } catch (error) {
@@ -638,6 +624,23 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
                         ingredientsDeducted: false,
                         deductedIngredients: null
                     });
+                }
+
+                // Reverse credited counterCashSales if this order was already recorded to a shift drawer
+                if (orderData.shiftRecorded && orderData.shiftId) {
+                    try {
+                        const shiftRef = doc(db, 'shifts', orderData.shiftId);
+                        const orderTotal = Number(orderData.total) || 0;
+                        await updateDoc(shiftRef, {
+                            counterCashSales: increment(-orderTotal),
+                            ordersCount: increment(-1)
+                        });
+                        await updateDoc(doc(db, 'orders', id), {
+                            shiftRecorded: false
+                        });
+                    } catch (sErr) {
+                        console.warn('Could not reverse shift counter sales on cancellation:', sErr);
+                    }
                 }
             }
         }
@@ -1511,6 +1514,37 @@ export const settleShiftByOwner = async (shiftId, { settledBy = 'Owner', notes =
     }
 };
 
+// Reusable shift settlement helper that prompts with actualCashCounted discrepancies and closing notes
+export const promptAndSettleShift = async (shift, { settledBy = 'Owner / Admin', onToast } = {}) => {
+    const expected = (Number(shift.openingFloat) || 0) + (Number(shift.counterCashSales) || 0) + (Number(shift.riderCashCollected) || 0);
+    const hasActualCount = shift.actualCashCounted !== undefined && shift.actualCashCounted !== null;
+    const actual = hasActualCount ? Number(shift.actualCashCounted) : expected;
+    const difference = actual - expected;
+
+    let confirmMsg = `Owner Shift Settlement for ${shift.cashierName}:\n\n` +
+        `Expected Drawer Cash: Rs. ${expected}\n` +
+        (hasActualCount ? `Actual Cash Counted by Cashier: Rs. ${actual}\n` : '') +
+        (hasActualCount && difference !== 0 ? `Discrepancy: ${difference > 0 ? '+' : ''}Rs. ${difference} (${difference < 0 ? 'SHORTAGE' : 'OVERAGE'})\n` : '') +
+        (shift.closingNotes ? `Cashier Closing Note: "${shift.closingNotes}"\n` : '') +
+        `\nConfirm receipt of Rs. ${actual} from Cashier ${shift.cashierName}?`;
+
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return { success: false, cancelled: true };
+
+    const notes = [
+        hasActualCount && difference !== 0 ? `Discrepancy: ${difference > 0 ? '+' : ''}Rs. ${difference}` : '',
+        shift.closingNotes ? `Cashier Note: ${shift.closingNotes}` : ''
+    ].filter(Boolean).join(' | ');
+
+    const res = await settleShiftByOwner(shift.id, { settledBy, notes });
+    if (res.success && onToast) {
+        onToast.success(`✓ Shift for ${shift.cashierName} settled! Received Rs. ${actual}.`);
+    } else if (!res.success && onToast) {
+        onToast.error('Failed to settle shift: ' + res.error);
+    }
+    return { ...res, collectedAmount: actual };
+};
+
 // ==========================================
 // RIDER CASH DROPS (RIDER -> CASHIER DRAWER)
 // ==========================================
@@ -1530,22 +1564,39 @@ export const recordRiderCashDrop = async ({
         if (dropAmount <= 0) return { success: false, error: 'Invalid collection amount.' };
         if (!riderId) return { success: false, error: 'Rider ID required.' };
 
-        // 1. Mark orders as cashSettled
-        let settledIds = orderIds;
-        if (!settledIds || settledIds.length === 0) {
+        // 1. Fetch unsettled candidate orders to track individual totals
+        const orderCandidates = [];
+        if (orderIds && orderIds.length > 0) {
+            for (const oId of orderIds) {
+                const oSnap = await getDoc(doc(db, 'orders', oId));
+                if (oSnap.exists()) {
+                    orderCandidates.push({ id: oSnap.id, total: Number(oSnap.data().total) || 0 });
+                }
+            }
+        } else {
             const q = query(
                 collection(db, 'orders'),
                 where('assignedRiderId', '==', riderId),
                 where('status', '==', 'delivered')
             );
             const snap = await getDocs(q);
-            settledIds = snap.docs
-                .filter(d => {
-                    const data = d.data();
-                    const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
-                    return isCOD && data.cashSettled !== true;
-                })
-                .map(d => d.id);
+            snap.docs.forEach(d => {
+                const data = d.data();
+                const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
+                if (isCOD && data.cashSettled !== true) {
+                    orderCandidates.push({ id: d.id, total: Number(data.total) || 0 });
+                }
+            });
+        }
+
+        // Only mark orders as cashSettled up to the actual dropAmount (partial payment support)
+        let remainingDrop = dropAmount;
+        const settledIds = [];
+        for (const candidate of orderCandidates) {
+            if (remainingDrop >= candidate.total) {
+                settledIds.push(candidate.id);
+                remainingDrop -= candidate.total;
+            }
         }
 
         const updatePromises = settledIds.map(oId =>
@@ -1574,13 +1625,31 @@ export const recordRiderCashDrop = async ({
 
         // 3. If there is an active shift, increment riderCashCollected in the cashier's drawer
         if (shiftId) {
+            const shiftRef = doc(db, 'shifts', shiftId);
+            await updateDoc(shiftRef, {
+                riderCashCollected: increment(dropAmount)
+            });
+        } else {
+            // No active shift: Log as a direct Admin / Owner settled collection so it appears in Shift History
             try {
-                const shiftRef = doc(db, 'shifts', shiftId);
-                await updateDoc(shiftRef, {
-                    riderCashCollected: increment(dropAmount)
+                await addDoc(collection(db, 'shifts'), {
+                    cashierId: 'admin_direct',
+                    cashierName: cashierName || 'Admin / Owner (Direct)',
+                    status: 'settled',
+                    openedAt: serverTimestamp(),
+                    closedAt: serverTimestamp(),
+                    settledAt: serverTimestamp(),
+                    settledBy: auth.currentUser?.email || 'Admin / Owner',
+                    openingFloat: 0,
+                    counterCashSales: 0,
+                    riderCashCollected: dropAmount,
+                    totalExpectedCash: dropAmount,
+                    actualCashCounted: dropAmount,
+                    ordersCount: settledIds.length,
+                    notes: `Direct cash collection from courier ${riderName || ''} (No shift cashier active)`
                 });
-            } catch (shiftErr) {
-                console.warn('Could not increment shift cash:', shiftErr);
+            } catch (dirErr) {
+                console.warn('Could not record direct admin shift entry:', dirErr);
             }
         }
 

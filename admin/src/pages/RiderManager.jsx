@@ -7,7 +7,6 @@ import {
     subscribeToUnusedCodes,
     clearAllSignupCodes,
     setRiderPasswordDirect,
-    settleRiderOrdersCash,
     recordRiderCashDrop
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
@@ -30,7 +29,7 @@ const RiderManager = () => {
     const [passwordModal, setPasswordModal] = useState(null); // { show: bool, rider: object, newPassword: '', saving: bool }
 
     // Active Cashier Shift Context
-    const { activeCashier, activeShift } = useCashierShift();
+    const { activeCashier, activeShift, openSwitchModal } = useCashierShift();
 
     // Rider Cash Drop Collection Modal
     const [cashDropModal, setCashDropModal] = useState(null); // { show: bool, rider: object, unsettledCash: number, unsettledOrderIds: array, amount: string, saving: bool }
@@ -616,20 +615,44 @@ const RiderManager = () => {
 
                         {/* Drawer Attribution Callout */}
                         <div style={{
-                            backgroundColor: activeShift ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 180, 0, 0.08)',
-                            border: `1px solid ${activeShift ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 180, 0, 0.3)'}`,
+                            backgroundColor: activeShift ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                            border: `1px solid ${activeShift ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
                             borderRadius: '8px',
                             padding: '12px',
                             marginBottom: '16px'
                         }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
-                                Cashier Drawer Receiving:
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                                    Receiving Authority:
+                                </div>
+                                {!activeShift && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setCashDropModal(null);
+                                            openSwitchModal();
+                                        }}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--color-accent, #FFB400)',
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        Unlock Cashier Shift ➔
+                                    </button>
+                                )}
                             </div>
-                            <div style={{ fontSize: '13px', fontWeight: 800, color: activeShift ? '#10b981' : 'var(--color-accent)', marginTop: '2px' }}>
-                                {activeShift ? `🟢 ${activeCashier?.name} (${activeCashier?.shiftTitle})` : '⚠️ No Cashier Shift Active (Unassigned)'}
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: activeShift ? '#10b981' : '#3b82f6', marginTop: '3px' }}>
+                                {activeShift ? `🟢 Cashier Drawer: ${activeCashier?.name} (${activeCashier?.shiftTitle})` : '👤 Direct Restaurant Owner / Admin Collection'}
                             </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                {activeShift ? 'Collected cash will be added into this cashier shift drawer.' : 'Enter cashier PIN in Orders tab to link with a specific shift.'}
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', lineHeight: 1.4 }}>
+                                {activeShift
+                                    ? 'Collected cash will be added into this active cashier shift drawer.'
+                                    : 'No cashier shift active. This cash drop will be logged directly into Shift History as a Settled Owner Collection.'}
                             </div>
                         </div>
 

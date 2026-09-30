@@ -403,17 +403,11 @@ export const subscribeToCategories = (callback) => {
 
 // Real-time listener for store settings
 export const subscribeToStoreSettings = (callback) => {
-    const q = query(collection(db, 'settings'));
-    return onSnapshot(q, (querySnapshot) => {
-        if (!querySnapshot.empty) {
-            // Find canonical store_config, ignoring placeholder 'app' document
-            const targetDoc = querySnapshot.docs.find(d => d.id === 'store_config')
-                || querySnapshot.docs.find(d => d.data()?.storeInfo?.name && d.id !== 'app')
-                || querySnapshot.docs[0];
-
+    return onSnapshot(doc(db, 'settings', 'store_config'), (docSnapshot) => {
+        if (docSnapshot.exists()) {
             callback({
-                id: targetDoc.id,
-                ...targetDoc.data()
+                id: docSnapshot.id,
+                ...docSnapshot.data()
             });
         }
     }, (error) => {

@@ -3,6 +3,7 @@ import {
     verifyCashierByPin,
     openCashierShift,
     subscribeToActiveShift,
+    getActiveShiftForCashier,
     closeCashierShift
 } from '../services/firebase';
 import { useToast } from './ToastContext';
@@ -71,9 +72,19 @@ export const CashierShiftProvider = ({ children }) => {
         }
 
         const cashier = result.cashier;
-        setPendingCashier(cashier);
 
-        // Check if cashier already has an open shift
+        // Check if cashier already has an active open shift to resume seamlessly
+        const existingShift = await getActiveShiftForCashier(cashier.id);
+        if (existingShift) {
+            setActiveCashier(cashier);
+            setActiveShift(existingShift);
+            setPendingCashier(null);
+            setShiftModalOpen(false);
+            toast.success(`Resumed open shift for ${cashier.name}!`);
+            return { success: true, cashier, resumed: true };
+        }
+
+        setPendingCashier(cashier);
         // If not, ask for opening float (peti)
         setShiftModalMode('open_float');
         return { success: true, cashier };
