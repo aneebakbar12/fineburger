@@ -317,8 +317,11 @@ const Header = ({ cartItemCount, onCartClick, user, onLogout, onSearchClick }) =
                     )}
 
                     <div className="mobile-nav-contact">
-                        <span>Order Line: </span>
-                        <a href="tel:+923214854410" className="mobile-nav-phone">+92 321 4854410</a>
+                        <span>Tel: </span>
+                        <a href="tel:04236840007" className="mobile-nav-phone">042-36840007</a>
+                        <span style={{ margin: '0 6px', opacity: 0.5 }}>•</span>
+                        <span>WA: </span>
+                        <a href="https://wa.me/923251842184" target="_blank" rel="noopener noreferrer" className="mobile-nav-phone" style={{ color: '#25D366' }}>0325-1842184</a>
                     </div>
                 </div>
             </aside>

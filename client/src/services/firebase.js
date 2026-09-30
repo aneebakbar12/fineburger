@@ -464,7 +464,7 @@ export const subscribeToInventory = (callback) => {
     });
 };
 
-// Check if store is currently open
+// Check if store is currently open (robustly handles 24/7, manual overrides, and overnight shifts crossing midnight)
 export const isStoreOpen = (settings) => {
     if (!settings) return true;
     if (settings.storeOpen === false) return false;
@@ -494,30 +494,48 @@ export const isStoreOpen = (settings) => {
     if (hour === '24') hour = '00';
     const currentTime = `${hour}:${getPart('minute') || '00'}`;
 
-    // Case-insensitive lookup for current weekday in operatingHours map
     const operatingHours = settings.operatingHours || {};
-    const matchingKey = Object.keys(operatingHours).find(
-        key => key.toLowerCase().trim() === currentDay
-    );
+    const DAYS_ORDER = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDayIndex = DAYS_ORDER.indexOf(currentDay);
+    const prevDayIndex = (currentDayIndex + 6) % 7;
+    const prevDay = DAYS_ORDER[prevDayIndex];
 
-    const todayHours = matchingKey ? operatingHours[matchingKey] : null;
-    if (!todayHours) {
+    const findHoursForDay = (dayName) => {
+        const matchingKey = Object.keys(operatingHours).find(
+            key => key.toLowerCase().trim() === dayName
+        );
+        return matchingKey ? operatingHours[matchingKey] : null;
+    };
+
+    // 1. Check if YESTERDAY'S overnight shift is still open right now (e.g. 17:00 to 03:00 running past midnight)
+    const yesterdayHours = findHoursForDay(prevDay);
+    if (yesterdayHours && yesterdayHours.open && yesterdayHours.close) {
+        if (yesterdayHours.close < yesterdayHours.open) {
+            // Yesterday had an overnight shift. If current time is before closing, store is STILL open!
+            if (currentTime <= yesterdayHours.close) {
+                return true;
+            }
+        }
+    }
+
+    // 2. Check TODAY'S hours
+    const todayHours = findHoursForDay(currentDay);
+    if (!todayHours || !todayHours.open || !todayHours.close) {
         // If no explicit hours configured for this day, default to open
         return true;
     }
 
     const { open, close } = todayHours;
-    if (!open || !close) return true;
 
     // Special case: 24-hour operation (00:00 to 23:59 or equal)
     if ((open === '00:00' && close === '23:59') || open === close) {
         return true;
     }
 
-    // Check if hours cross midnight (e.g., 17:00 to 03:00)
+    // Check if today's hours cross midnight (e.g., 17:00 to 03:00)
     if (close < open) {
-        // Store is open if current time is after opening OR before closing next morning
-        return currentTime >= open || currentTime <= close;
+        // Store opened today and runs overnight past midnight
+        return currentTime >= open;
     }
 
     // Normal case: opening and closing on the same day (e.g., 10:00 to 22:00)

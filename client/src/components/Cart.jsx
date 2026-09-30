@@ -308,7 +308,7 @@ const Cart = ({
             couponCode: appliedCoupon ? appliedCoupon.code : null,
             deliveryFee: deliveryFee,
             total: finalTotal,
-            paymentMethod: 'COD',
+            paymentMethod: orderType === 'Delivery' ? 'COD' : 'Cash',
             orderType: orderType,
             // In POS mode, do not bind the cashier's private userId to in-store customer orders
             userId: (!isStaffMode && user) ? user.uid : null,
