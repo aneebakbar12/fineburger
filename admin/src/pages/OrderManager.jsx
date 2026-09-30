@@ -1424,6 +1424,52 @@ const OrderManager = () => {
                                             <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                                                 {formatDate(order.createdAt)}
                                             </span>
+
+                                            {/* Quick 1-Tap Print Buttons on Card Header */}
+                                            <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }} onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePrintKitchenToken(order)}
+                                                    style={{
+                                                        padding: '3px 6px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                        border: '1px solid rgba(255, 180, 0, 0.35)',
+                                                        color: 'var(--color-accent, #FFB400)',
+                                                        fontSize: '10px',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
+                                                    }}
+                                                    title="Quick Kitchen / Patora Token"
+                                                >
+                                                    <span>🎟️</span>
+                                                    <span>Token</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePrintReceipt(order)}
+                                                    style={{
+                                                        padding: '3px 6px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: 'var(--surface-elevated)',
+                                                        border: '1px solid var(--surface-border)',
+                                                        color: 'var(--text-secondary)',
+                                                        fontSize: '10px',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
+                                                    }}
+                                                    title="Print 80mm Customer Bill"
+                                                >
+                                                    <PrinterIcon width={11} height={11} />
+                                                    <span>Bill</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1441,6 +1487,22 @@ const OrderManager = () => {
                                                 </span>
                                             )}
                                         </div>
+
+                                        {/* Waiter & Cashier Tags */}
+                                        {((order.orderTaker || order.customer?.orderTaker) || (order.cashierName || order.cashSettledByCashierName)) && (
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                {(order.orderTaker || order.customer?.orderTaker) && (
+                                                    <span style={{ color: '#10b981', fontWeight: 600 }}>
+                                                        👨‍🍳 Waiter: {order.orderTaker || order.customer?.orderTaker}
+                                                    </span>
+                                                )}
+                                                {(order.cashierName || order.cashSettledByCashierName) && (
+                                                    <span>
+                                                        🏷️ {order.cashierName || order.cashSettledByCashierName}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {order.assignedRiderName && (
                                             <div style={{
@@ -1589,14 +1651,26 @@ const OrderManager = () => {
                                         )}
 
                                         {(order.status === 'delivered' || order.status === 'cancelled') && (
-                                            <button
-                                                className="btn-kds-mini"
-                                                style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--surface-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                                                onClick={() => handlePrintReceipt(order)}
-                                            >
-                                                <PrinterIcon width={14} height={14} />
-                                                <span>Print Bill</span>
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                <button
+                                                    className="btn-kds-mini"
+                                                    style={{ flex: 1, padding: '8px 10px', backgroundColor: 'var(--surface-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--surface-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                                    onClick={() => handlePrintReceipt(order)}
+                                                    title="Print 80mm Full Customer Bill"
+                                                >
+                                                    <PrinterIcon width={14} height={14} />
+                                                    <span>Print Bill</span>
+                                                </button>
+                                                <button
+                                                    className="btn-kds-mini"
+                                                    style={{ padding: '8px 12px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.35)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                                    onClick={() => handlePrintKitchenToken(order)}
+                                                    title="Print Quick Kitchen / Patora Token"
+                                                >
+                                                    <span>🎟️</span>
+                                                    <span>Token</span>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -1614,6 +1688,7 @@ const OrderManager = () => {
                 onClose={() => setSelectedOrderId(null)}
                 onUpdateStatus={handleStatusUpdate}
                 onPrint={(order) => handlePrintReceipt(order)}
+                onPrintToken={(order) => handlePrintKitchenToken(order)}
                 riders={riders}
                 onAssignRider={handleAssignRider}
                 onRequestCancel={(id) => setCancellingOrderId(id)}
