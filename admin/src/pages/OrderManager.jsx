@@ -95,6 +95,7 @@ const OrderDetailsModal = ({
     onClose,
     onUpdateStatus,
     onPrint,
+    onPrintToken,
     riders,
     onAssignRider,
     onRequestCancel
@@ -117,6 +118,8 @@ const OrderDetailsModal = ({
     };
 
     const statusColors = getStatusColor(order.status);
+    const orderTakerName = order.orderTaker || order.customer?.orderTaker;
+    const cashierName = order.cashierName || order.cashSettledByCashierName;
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{
@@ -246,6 +249,24 @@ const OrderDetailsModal = ({
                                     </span>
                                 </div>
                             )}
+
+                            {/* Staff Attribution */}
+                            {(orderTakerName || cashierName) && (
+                                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {orderTakerName && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Order Taker / Waiter:</span>
+                                            <strong style={{ color: '#10b981' }}>👨‍🍳 {orderTakerName}</strong>
+                                        </div>
+                                    )}
+                                    {cashierName && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Cashier:</span>
+                                            <strong style={{ color: '#3b82f6' }}>🏷️ {cashierName}</strong>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Order Items & Payment */}
@@ -293,15 +314,40 @@ const OrderDetailsModal = ({
                     </div>
 
                     {/* Footer Actions */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--surface-border)', paddingTop: '16px' }}>
-                        <button
-                            onClick={() => onPrint(order)}
-                            className="btn btn-secondary"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', fontSize: '13px' }}
-                        >
-                            <PrinterIcon width={16} height={16} />
-                            <span>Print Bill</span>
-                        </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--surface-border)', paddingTop: '16px' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={() => onPrint(order)}
+                                className="btn btn-secondary"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px', fontSize: '13px' }}
+                                title="Print Full Customer Bill (80mm)"
+                            >
+                                <PrinterIcon width={16} height={16} />
+                                <span>Print Bill</span>
+                            </button>
+
+                            {onPrintToken && (
+                                <button
+                                    onClick={() => onPrintToken(order)}
+                                    className="btn btn-secondary"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '10px 16px',
+                                        fontSize: '13px',
+                                        backgroundColor: 'rgba(255, 180, 0, 0.12)',
+                                        borderColor: 'var(--color-accent, #FFB400)',
+                                        color: 'var(--color-accent, #FFB400)',
+                                        fontWeight: 700
+                                    }}
+                                    title="Print Quick Kitchen / Patora Station Token"
+                                >
+                                    <span>🎟️</span>
+                                    <span>Print Token (KOT)</span>
+                                </button>
+                            )}
+                        </div>
 
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                             {order.status === 'pending' && (
@@ -611,16 +657,23 @@ const OrderManager = () => {
             return;
         }
 
+        const cashierName = order.cashierName || order.cashSettledByCashierName || activeCashier?.name || (order.placedByStaff ? 'Counter Staff' : 'Online Counter');
+        const orderTaker = order.orderTaker || order.customer?.orderTaker;
+
         const customerSection = order.orderType === 'Dine-in'
             ? `<div class="customer">
-                <p style="font-size: 16px; font-weight: bold; margin: 4px 0;">TABLE #${order.customer?.tableNumber || 'N/A'}</p>
+                <p style="font-size: 15px; font-weight: bold; margin: 3px 0;">TABLE #${order.customer?.tableNumber || 'N/A'}</p>
                 <p><strong>Service:</strong> Dine-in</p>
+                ${orderTaker ? `<p><strong>Order Taker:</strong> ${orderTaker}</p>` : ''}
+                <p><strong>Cashier:</strong> ${cashierName}</p>
                </div>`
             : `<div class="customer">
                 <p><strong>Customer:</strong> ${order.customer?.name || 'Guest'}</p>
                 ${order.customer?.phone ? `<p><strong>Phone:</strong> ${order.customer.phone}</p>` : ''}
                 ${order.orderType === 'Delivery' && order.customer?.address ? `<p><strong>Address:</strong> ${order.customer.address}</p>` : ''}
                 <p><strong>Fulfillment:</strong> ${order.orderType || 'Standard'}</p>
+                ${orderTaker ? `<p><strong>Order Taker:</strong> ${orderTaker}</p>` : ''}
+                <p><strong>Cashier:</strong> ${cashierName}</p>
                 ${order.assignedRiderName ? `<p><strong>Rider:</strong> ${order.assignedRiderName}</p>` : ''}
                </div>`;
 
@@ -746,6 +799,149 @@ const OrderManager = () => {
                                 window.focus();
                                 window.print();
                             }, 250);
+                        };
+                    </script>
+                </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+    };
+
+    const handlePrintKitchenToken = (order) => {
+        const orderRef = getOrderRef(order);
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Please allow popups in your browser to print the kitchen token.');
+            return;
+        }
+
+        const cashierName = order.cashierName || order.cashSettledByCashierName || activeCashier?.name || 'Counter';
+        const orderTaker = order.orderTaker || order.customer?.orderTaker;
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>TOKEN #${orderRef}</title>
+                    <meta charset="utf-8" />
+                    <style>
+                        @page { size: 80mm auto; margin: 0; }
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                            font-family: 'Courier New', Courier, monospace;
+                            width: 80mm;
+                            padding: 3mm 2mm;
+                            color: #000;
+                            font-size: 13px;
+                            line-height: 1.25;
+                        }
+                        .token-header {
+                            text-align: center;
+                            border-bottom: 2px dashed #000;
+                            padding-bottom: 5px;
+                            margin-bottom: 5px;
+                        }
+                        .token-badge {
+                            font-size: 15px;
+                            font-weight: 900;
+                            letter-spacing: 1px;
+                        }
+                        .token-ref {
+                            font-size: 20px;
+                            font-weight: 900;
+                            margin: 2px 0;
+                        }
+                        .token-service {
+                            font-size: 15px;
+                            font-weight: 900;
+                            margin: 2px 0;
+                        }
+                        .token-meta {
+                            font-size: 11px;
+                            color: #222;
+                            margin: 2px 0;
+                        }
+                        .items-box {
+                            padding: 4px 0;
+                            border-bottom: 2px dashed #000;
+                        }
+                        .item-line {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: baseline;
+                            font-size: 14px;
+                            font-weight: 900;
+                            margin: 4px 0;
+                        }
+                        .item-qty {
+                            font-size: 17px;
+                            font-weight: 900;
+                            margin-right: 4px;
+                        }
+                        .item-var {
+                            font-size: 11px;
+                            font-weight: normal;
+                            padding-left: 8px;
+                            color: #333;
+                            margin-bottom: 2px;
+                        }
+                        .token-footer {
+                            text-align: center;
+                            font-size: 11px;
+                            padding-top: 5px;
+                            font-weight: bold;
+                        }
+                        @media print { .no-print { display: none !important; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="token-header">
+                        <div class="token-badge">*** KITCHEN TOKEN ***</div>
+                        <div class="token-ref">#${orderRef}</div>
+                        <div class="token-service">
+                            ${order.orderType === 'Dine-in'
+                                ? `TABLE #${order.customer?.tableNumber || 'N/A'}`
+                                : `${order.orderType || 'Order'} • ${order.customer?.name || 'Guest'}`}
+                        </div>
+                        ${orderTaker ? `<div class="token-meta"><strong>Order Taker:</strong> ${orderTaker}</div>` : ''}
+                        <div class="token-meta">Cashier: ${cashierName}</div>
+                        <div class="token-meta">${new Date().toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', second: '2-digit' })} • ${new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
+                    </div>
+
+                    <div class="items-box">
+                        ${(order.items || []).map(item => `
+                            <div>
+                                <div class="item-line">
+                                    <span><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
+                                    <span>Rs.${(item.unitPrice || item.price) * item.quantity}</span>
+                                </div>
+                                ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
+                                    <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="token-footer">
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900;">
+                            <span>TOTAL ITEMS: ${(order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}</span>
+                            <span>Rs.${order.total}</span>
+                        </div>
+                        <p style="margin-top: 4px; font-size: 10px; font-weight: normal;">⚡ Live Station (Puri Paratha / Kitchen) Pickup Token</p>
+                    </div>
+
+                    <div style="text-align:center; margin-top:10px;" class="no-print">
+                        <button onclick="window.print()" style="padding:6px 16px; font-weight:bold; cursor:pointer; font-size:12px;">Print Token</button>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.focus();
+                                window.print();
+                            }, 200);
                         };
                     </script>
                 </body>
