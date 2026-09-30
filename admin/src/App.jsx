@@ -15,9 +15,12 @@ import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import ExpenseManager from './pages/ExpenseManager';
 import FinancialDashboard from './pages/FinancialDashboard';
+import CashierManager from './pages/CashierManager';
 import FinancialGate from './components/FinancialGate';
+import CashierShiftModal from './components/CashierShiftModal';
 import { onAuthChange, subscribeToOrders, checkIsAdmin, logoutAdmin } from './services/firebase';
 import { ToastProvider } from './context/ToastContext';
+import { CashierShiftProvider } from './context/CashierShiftContext';
 import './styles/admin.css';
 
 function App() {
@@ -254,35 +257,39 @@ function App() {
 
     return (
         <ToastProvider>
-            <Router>
-                <ScrollToTop />
-                <div className="admin-layout">
-                    <Sidebar
-                        onLogout={handleLogout}
-                        pendingCount={pendingCount}
-                        isAudioMuted={isAudioMuted}
-                        onToggleAudio={toggleAudioMute}
-                    />
-                    <main className="admin-main">
-                        <Routes>
-                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/orders" element={<OrderManager />} />
-                            <Route path="/riders" element={<RiderManager />} />
-                            <Route path="/reports" element={<FinancialGate><Reports /></FinancialGate>} />
-                            <Route path="/categories" element={<CategoryManager />} />
-                            <Route path="/menu-items" element={<MenuItemManager />} />
-                            <Route path="/discounts" element={<DiscountManager />} />
-                            <Route path="/inventory" element={<InventoryManager />} />
-                            <Route path="/expenses" element={<FinancialGate><ExpenseManager /></FinancialGate>} />
-                            <Route path="/financial-dashboard" element={<FinancialGate><FinancialDashboard /></FinancialGate>} />
-                            <Route path="/sliders" element={<SliderManager />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                        </Routes>
-                    </main>
-                </div>
-            </Router>
+            <CashierShiftProvider>
+                <Router>
+                    <ScrollToTop />
+                    <div className="admin-layout">
+                        <Sidebar
+                            onLogout={handleLogout}
+                            pendingCount={pendingCount}
+                            isAudioMuted={isAudioMuted}
+                            onToggleAudio={toggleAudioMute}
+                        />
+                        <main className="admin-main">
+                            <Routes>
+                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/orders" element={<OrderManager />} />
+                                <Route path="/riders" element={<RiderManager />} />
+                                <Route path="/cashiers" element={<CashierManager />} />
+                                <Route path="/reports" element={<FinancialGate><Reports /></FinancialGate>} />
+                                <Route path="/categories" element={<CategoryManager />} />
+                                <Route path="/menu-items" element={<MenuItemManager />} />
+                                <Route path="/discounts" element={<DiscountManager />} />
+                                <Route path="/inventory" element={<InventoryManager />} />
+                                <Route path="/expenses" element={<FinancialGate><ExpenseManager /></FinancialGate>} />
+                                <Route path="/financial-dashboard" element={<FinancialGate><FinancialDashboard /></FinancialGate>} />
+                                <Route path="/sliders" element={<SliderManager />} />
+                                <Route path="/settings" element={<Settings />} />
+                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                            </Routes>
+                        </main>
+                    </div>
+                    <CashierShiftModal />
+                </Router>
+            </CashierShiftProvider>
         </ToastProvider>
     );
 }

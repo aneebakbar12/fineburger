@@ -7,9 +7,11 @@ import {
     subscribeToUnusedCodes,
     clearAllSignupCodes,
     setRiderPasswordDirect,
-    settleRiderOrdersCash
+    settleRiderOrdersCash,
+    recordRiderCashDrop
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
+import { useCashierShift } from '../context/CashierShiftContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { SearchIcon, RidersIcon, CheckIcon, CloseIcon } from '../components/Icons';
 import '../styles/admin.css';
@@ -27,7 +29,13 @@ const RiderManager = () => {
     // Change Password Modal state
     const [passwordModal, setPasswordModal] = useState(null); // { show: bool, rider: object, newPassword: '', saving: bool }
 
-    // Settle Cash Modal / State
+    // Active Cashier Shift Context
+    const { activeCashier, activeShift } = useCashierShift();
+
+    // Rider Cash Drop Collection Modal
+    const [cashDropModal, setCashDropModal] = useState(null); // { show: bool, rider: object, unsettledCash: number, unsettledOrderIds: array, amount: string, saving: bool }
+
+    // Settle Cash state
     const [settlingRiderId, setSettlingRiderId] = useState(null);
 
     useEffect(() => {
@@ -98,29 +106,56 @@ const RiderManager = () => {
         setPasswordModal(prev => ({ ...prev, newPassword: generated }));
     };
 
-    const handleCollectCash = async (rider, unsettledCash, unsettledOrderIds) => {
+    const handleOpenCashDrop = (rider, unsettledCash, unsettledOrderIds) => {
         if (unsettledCash <= 0) {
             toast.info(`No pending cash to collect from ${rider.name}.`);
             return;
         }
 
-        const confirmed = window.confirm(
-            `Confirm Cash Handover:\n\nReceived Rs. ${unsettledCash} from ${rider.name}?\n\nThis will clear the rider's "Cash to Handover" balance and record shift settlement.`
-        );
-        if (!confirmed) return;
+        setCashDropModal({
+            show: true,
+            rider,
+            unsettledCash,
+            unsettledOrderIds,
+            amount: String(unsettledCash),
+            saving: false
+        });
+    };
 
-        setSettlingRiderId(rider.id);
+    const handleConfirmCashDrop = async (e) => {
+        e.preventDefault();
+        if (!cashDropModal?.rider?.id) return;
+
+        const enteredAmount = Math.max(0, Number(cashDropModal.amount) || 0);
+        if (enteredAmount <= 0) {
+            toast.error('Please enter a valid amount greater than 0.');
+            return;
+        }
+
+        setCashDropModal(prev => ({ ...prev, saving: true }));
         try {
-            const result = await settleRiderOrdersCash(rider.id, unsettledOrderIds);
+            const result = await recordRiderCashDrop({
+                shiftId: activeShift?.id || null,
+                cashierId: activeCashier?.id || null,
+                cashierName: activeCashier?.name || 'Counter Cashier',
+                riderId: cashDropModal.rider.id,
+                riderName: cashDropModal.rider.name,
+                amount: enteredAmount,
+                orderIds: cashDropModal.unsettledOrderIds
+            });
+
             if (result.success) {
-                toast.success(`✓ Collected Rs. ${unsettledCash} from ${rider.name}! Balance cleared.`);
+                toast.success(
+                    `✓ Received Rs. ${enteredAmount} from ${cashDropModal.rider.name}! ${activeShift ? `Added to ${activeCashier?.name}'s shift drawer.` : 'Rider balance cleared.'}`
+                );
+                setCashDropModal(null);
             } else {
-                toast.error('Failed to settle cash: ' + result.error);
+                toast.error('Failed to collect cash: ' + result.error);
+                setCashDropModal(prev => ({ ...prev, saving: false }));
             }
         } catch (err) {
-            toast.error('Error settling cash: ' + err.message);
-        } finally {
-            setSettlingRiderId(null);
+            toast.error('Error: ' + err.message);
+            setCashDropModal(prev => ({ ...prev, saving: false }));
         }
     };
 
@@ -467,7 +502,7 @@ const RiderManager = () => {
 
                                         {stats.unsettledCash > 0 && (
                                             <button
-                                                onClick={() => handleCollectCash(rider, stats.unsettledCash, stats.unsettledOrderIds)}
+                                                onClick={() => handleOpenCashDrop(rider, stats.unsettledCash, stats.unsettledOrderIds)}
                                                 disabled={settlingRiderId === rider.id}
                                                 style={{
                                                     padding: '8px 14px',
@@ -541,6 +576,133 @@ const RiderManager = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Rider Cash Collection Modal (Attributed to Active Cashier Shift Drawer) */}
+            {cashDropModal?.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000,
+                    padding: '20px'
+                }} onClick={() => setCashDropModal(null)}>
+                    <div style={{
+                        backgroundColor: 'var(--surface-card, #14171f)',
+                        borderRadius: '12px',
+                        padding: '28px',
+                        maxWidth: '440px',
+                        width: '100%',
+                        border: '1px solid var(--color-accent, #FFB400)',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <div style={{ fontSize: '36px', marginBottom: '6px' }}>💵</div>
+                            <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '20px', fontWeight: 800 }}>
+                                Receive Cash from Rider
+                            </h2>
+                            <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                                Courier: <strong>{cashDropModal.rider?.name}</strong>
+                            </p>
+                        </div>
+
+                        {/* Drawer Attribution Callout */}
+                        <div style={{
+                            backgroundColor: activeShift ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 180, 0, 0.08)',
+                            border: `1px solid ${activeShift ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 180, 0, 0.3)'}`,
+                            borderRadius: '8px',
+                            padding: '12px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                                Cashier Drawer Receiving:
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: activeShift ? '#10b981' : 'var(--color-accent)', marginTop: '2px' }}>
+                                {activeShift ? `🟢 ${activeCashier?.name} (${activeCashier?.shiftTitle})` : '⚠️ No Cashier Shift Active (Unassigned)'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                {activeShift ? 'Collected cash will be added into this cashier shift drawer.' : 'Enter cashier PIN in Orders tab to link with a specific shift.'}
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleConfirmCashDrop}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                        Amount Received (PKR) *
+                                    </label>
+                                    <span style={{ fontSize: '12px', color: 'var(--color-accent)', fontWeight: 700 }}>
+                                        Total Held: Rs. {cashDropModal.unsettledCash}
+                                    </span>
+                                </div>
+                                <input
+                                    type="number"
+                                    value={cashDropModal.amount}
+                                    onChange={(e) => setCashDropModal(prev => ({ ...prev, amount: e.target.value }))}
+                                    min="1"
+                                    step="1"
+                                    required
+                                    autoFocus
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--surface-border)',
+                                        backgroundColor: 'var(--surface-elevated)',
+                                        color: '#10b981',
+                                        fontSize: '22px',
+                                        fontWeight: 800,
+                                        outline: 'none'
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCashDropModal(prev => ({ ...prev, amount: String(prev.unsettledCash) }))}
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '4px',
+                                            border: '1px solid var(--surface-border)',
+                                            backgroundColor: 'var(--surface-elevated)',
+                                            color: '#fff',
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Full Amount (Rs. {cashDropModal.unsettledCash})
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    type="submit"
+                                    disabled={cashDropModal.saving || !cashDropModal.amount}
+                                    className="btn btn-primary"
+                                    style={{ flex: 1, padding: '12px', fontWeight: 800 }}
+                                >
+                                    {cashDropModal.saving ? 'Recording...' : '✓ Confirm Cash Receipt'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCashDropModal(null)}
+                                    className="btn btn-secondary"
+                                    style={{ flex: 1, padding: '12px' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 

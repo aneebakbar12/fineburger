@@ -9,6 +9,7 @@ import {
     assignOrderToRider
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
+import { useCashierShift } from '../context/CashierShiftContext';
 import ConfirmModal from '../components/ConfirmModal';
 import {
     SearchIcon,
@@ -409,6 +410,14 @@ const OrderManager = () => {
     // Cancel modal state
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
 
+    // Active Cashier & Shift drawer context
+    const {
+        activeCashier,
+        activeShift,
+        openSwitchModal,
+        openCloseShiftModal
+    } = useCashierShift();
+
     // Low stock inventory tracking & popup alert
     const [inventoryItems, setInventoryItems] = useState([]);
     const [showLowStockModal, setShowLowStockModal] = useState(false);
@@ -548,6 +557,13 @@ const OrderManager = () => {
         try {
             if (newStatus === 'preparing') {
                 additionalData.preparingStartedAt = getServerTimestamp();
+            }
+
+            // Link in-store counter completion to active cashier shift drawer
+            if (activeShift?.id) {
+                additionalData.shiftId = activeShift.id;
+                additionalData.cashierId = activeCashier?.id || null;
+                additionalData.cashierName = activeCashier?.name || 'Counter Cashier';
             }
 
             await updateOrderStatus(id, newStatus, additionalData);
@@ -880,6 +896,106 @@ const OrderManager = () => {
                             ✕
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Active Cashier & Shift Drawer Status Bar */}
+            {activeCashier && activeShift ? (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    backgroundColor: 'var(--surface-card, #14171f)',
+                    border: '1px solid #10b981',
+                    borderRadius: 'var(--radius-md, 8px)',
+                    padding: '12px 18px',
+                    marginBottom: '16px',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '20px' }}>🟢</span>
+                        <div>
+                            <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                                Cashier on Shift: <span style={{ color: '#10b981' }}>{activeCashier.name}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 500 }}>({activeCashier.shiftTitle})</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <span>Peti (Float): <strong style={{ color: '#3b82f6' }}>Rs. {activeShift.openingFloat || 0}</strong></span>
+                                <span>•</span>
+                                <span>Counter Sales: <strong style={{ color: '#10b981' }}>Rs. {activeShift.counterCashSales || 0}</strong></span>
+                                <span>•</span>
+                                <span>Rider Cash Drops: <strong style={{ color: '#10b981' }}>Rs. {activeShift.riderCashCollected || 0}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ textAlign: 'right', marginRight: '6px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Drawer Cash Balance</div>
+                            <div style={{ fontSize: '18px', fontWeight: 900, color: 'var(--color-accent, #FFB400)' }}>
+                                Rs. {(Number(activeShift.openingFloat) || 0) + (Number(activeShift.counterCashSales) || 0) + (Number(activeShift.riderCashCollected) || 0)}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openCloseShiftModal}
+                            style={{
+                                padding: '8px 12px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid rgba(239, 68, 68, 0.35)',
+                                color: '#ef4444',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                            }}
+                            title="Close Shift & Handover to Owner"
+                        >
+                            📊 End Shift
+                        </button>
+                        <button
+                            type="button"
+                            onClick={openSwitchModal}
+                            className="btn btn-secondary"
+                            style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '6px' }}
+                            title="Switch Cashier PIN"
+                        >
+                            ⇄ Switch PIN
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    backgroundColor: 'rgba(255, 180, 0, 0.08)',
+                    border: '1px solid var(--color-accent, #FFB400)',
+                    borderRadius: 'var(--radius-md, 8px)',
+                    padding: '12px 18px',
+                    marginBottom: '16px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '20px' }}>⚠️</span>
+                        <div>
+                            <strong style={{ color: 'var(--color-accent, #FFB400)', fontSize: '13px' }}>No Cashier Shift Active on this Counter Tablet</strong>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                Enter your 4-digit Cashier PIN to open your shift drawer and attribute cash sales.
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={openSwitchModal}
+                        className="btn btn-primary"
+                        style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 800 }}
+                    >
+                        🔑 Unlock Shift Drawer
+                    </button>
                 </div>
             )}
 

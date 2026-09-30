@@ -126,6 +126,19 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Cashiers, Shifts & Cash Drawer Reconciliation: Admin & Cashier staff
+    match /cashiers/{cashierId} {
+      allow read, write: if isAdmin() || isAuthenticated();
+    }
+
+    match /shifts/{shiftId} {
+      allow read, write: if isAdmin() || isAuthenticated();
+    }
+
+    match /cashDrops/{dropId} {
+      allow read, write: if isAdmin() || isAuthenticated();
+    }
+
     // Default catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

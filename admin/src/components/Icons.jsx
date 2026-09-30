@@ -35,6 +35,18 @@ export const RidersIcon = (props) => (
     </svg>
 );
 
+export const CashierIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+        <circle cx="7" cy="8" r="1" />
+        <circle cx="12" cy="8" r="1" />
+        <circle cx="17" cy="8" r="1" />
+        <line x1="6" y1="12" x2="18" y2="12" />
+    </svg>
+);
+
 export const FinanceIcon = (props) => (
     <svg {...defaultProps} {...props}>
         <rect x="2" y="4" width="20" height="16" rx="2" />
