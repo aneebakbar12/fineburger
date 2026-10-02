@@ -84,26 +84,33 @@ const CashierShiftModal = () => {
                     <meta charset="utf-8" />
                     <style>
                         @page { size: 80mm auto; margin: 0; }
-                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        * {
+                            box-sizing: border-box;
+                            margin: 0;
+                            padding: 0;
+                            color: #000000 !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
                         body {
-                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
-                            width: 74mm;
+                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+                            width: 72mm;
+                            max-width: 72mm;
                             margin: 0 auto;
                             padding: 3mm 1mm 6mm;
-                            color: #000;
-                            background: #fff;
-                            font-size: 13.5px;
-                            font-weight: 700;
+                            background: #ffffff;
+                            font-size: 14px;
+                            font-weight: 800;
                             line-height: 1.35;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
+                            -webkit-text-stroke: 0.2px #000000;
+                            text-rendering: optimizeLegibility;
                         }
-                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; }
-                        .header h2 { font-size: 20px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
-                        .title { font-size: 15px; font-weight: 900; text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px dashed #000; border-bottom: 2px dashed #000; letter-spacing: 0.5px; }
-                        .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 13px; }
-                        .total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 900; border-top: 2.5px dashed #000; border-bottom: 2.5px dashed #000; padding: 6px 0; margin-top: 6px; }
-                        .sign-line { margin-top: 28px; border-top: 1.5px solid #000; padding-top: 4px; text-align: center; font-size: 11px; font-weight: 700; }
+                        .header { text-align: center; border-bottom: 2px dashed #000000; padding-bottom: 6px; }
+                        .header h2 { font-size: 22px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
+                        .title { font-size: 16px; font-weight: 900; text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px dashed #000000; border-bottom: 2px dashed #000000; letter-spacing: 0.5px; }
+                        .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 13.5px; font-weight: 800; }
+                        .total-row { display: flex; justify-content: space-between; font-size: 20px; font-weight: 900; border-top: 2.5px dashed #000000; border-bottom: 2.5px dashed #000000; padding: 6px 0; margin-top: 6px; }
+                        .sign-line { margin-top: 28px; border-top: 1.5px solid #000000; padding-top: 4px; text-align: center; font-size: 11px; font-weight: 700; }
                         @media print { .no-print { display: none !important; } }
                     </style>
                 </head>

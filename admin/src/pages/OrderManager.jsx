@@ -685,65 +685,70 @@ const OrderManager = () => {
                     <meta charset="utf-8" />
                     <style>
                         @page { size: 80mm auto; margin: 0; }
-                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        * {
+                            box-sizing: border-box;
+                            margin: 0;
+                            padding: 0;
+                            color: #000000 !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
                         body {
-                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
-                            width: 74mm;
+                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+                            width: 72mm;
+                            max-width: 72mm;
                             margin: 0 auto;
                             padding: 3mm 1mm 6mm;
-                            color: #000000;
                             background: #ffffff;
-                            font-size: 13.5px;
-                            font-weight: 700;
+                            font-size: 14px;
+                            font-weight: 800;
                             line-height: 1.35;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
+                            -webkit-text-stroke: 0.2px #000000;
+                            text-rendering: optimizeLegibility;
                         }
                         .header { text-align: center; padding-bottom: 6px; border-bottom: 2px dashed #000000; }
-                        .header img { width: 44mm; max-width: 90%; height: auto; display: block; margin: 0 auto 5px; }
-                        .header h2 { font-size: 20px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; color: #000000; }
-                        .header .tagline { font-size: 12px; font-weight: 700; margin: 1px 0; color: #000000; }
+                        .header img { width: 44mm; max-width: 85%; height: auto; display: block; margin: 0 auto 5px; filter: grayscale(100%) contrast(300%); }
+                        .header h2 { font-size: 22px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
+                        .header .tagline { font-size: 13px; font-weight: 800; margin: 1px 0; }
                         .bill-ref {
                             text-align: center;
-                            font-size: 17px;
+                            font-size: 18px;
                             font-weight: 900;
                             padding: 5px 0;
                             margin: 6px 0;
                             border-top: 2px dashed #000000;
                             border-bottom: 2px dashed #000000;
                             letter-spacing: 0.5px;
-                            color: #000000;
                         }
-                        .timestamp { text-align: center; font-size: 12px; font-weight: 700; color: #000000; margin-bottom: 6px; }
-                        .customer { padding: 6px 0; border-bottom: 2px dashed #000000; font-size: 13px; font-weight: 700; line-height: 1.45; }
-                        .table-badge { font-size: 19px; font-weight: 900; text-align: center; margin: 2px 0 4px; color: #000000; }
-                        .info-row { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 0; font-size: 13px; }
-                        .info-row span { font-weight: 700; color: #000000; }
-                        .info-row strong { font-weight: 900; color: #000000; text-align: right; }
+                        .timestamp { text-align: center; font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+                        .customer { padding: 6px 0; border-bottom: 2px dashed #000000; font-size: 13.5px; font-weight: 800; line-height: 1.45; }
+                        .table-badge { font-size: 20px; font-weight: 900; text-align: center; margin: 2px 0 4px; }
+                        .info-row { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 0; font-size: 13.5px; font-weight: 800; }
+                        .info-row span { font-weight: 800; }
+                        .info-row strong { font-weight: 900; text-align: right; }
                         .address-row { display: block; }
-                        .address-row strong { display: block; text-align: left; margin-top: 2px; font-size: 12.5px; word-break: break-word; }
+                        .address-row strong { display: block; text-align: left; margin-top: 2px; font-size: 13px; word-break: break-word; }
                         .items { padding: 6px 0; }
-                        .item-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 14.5px; font-weight: 800; margin-bottom: 3px; color: #000000; }
-                        .item-qty { font-size: 16px; font-weight: 900; margin-right: 4px; }
-                        .item-name { font-size: 14px; font-weight: 800; }
-                        .item-price { font-size: 14.5px; font-weight: 900; white-space: nowrap; }
-                        .item-var { font-size: 12px; font-weight: 700; color: #000000; padding-left: 14px; margin-bottom: 4px; }
-                        .sep { border-top: 1.5px dashed #000000; margin: 4px 0; }
-                        .subtotal-row { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; padding: 2px 0; color: #000000; }
+                        .item-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 900; margin-bottom: 3px; }
+                        .item-qty { font-size: 17px; font-weight: 900; margin-right: 4px; }
+                        .item-name { font-size: 15px; font-weight: 900; }
+                        .item-price { font-size: 15px; font-weight: 900; white-space: nowrap; }
+                        .item-var { font-size: 12.5px; font-weight: 800; padding-left: 14px; margin-bottom: 4px; }
+                        .sep { border-top: 2px dashed #000000; margin: 4px 0; }
+                        .subtotal-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; padding: 2px 0; }
                         .total-row {
                             display: flex;
                             justify-content: space-between;
                             align-items: baseline;
-                            font-size: 20px;
+                            font-size: 22px;
                             font-weight: 900;
                             border-top: 2.5px dashed #000000;
                             border-bottom: 2.5px dashed #000000;
                             padding: 6px 0;
                             margin: 6px 0 4px;
-                            color: #000000;
                         }
-                        .payment { text-align: right; font-size: 13px; font-weight: 800; margin-top: 4px; color: #000000; }
-                        .footer { text-align: center; margin-top: 10px; font-size: 12px; font-weight: 700; border-top: 2px dashed #000000; padding-top: 6px; color: #000000; }
+                        .payment { text-align: right; font-size: 13.5px; font-weight: 900; margin-top: 4px; }
+                        .footer { text-align: center; margin-top: 10px; font-size: 13px; font-weight: 800; border-top: 2px dashed #000000; padding-top: 6px; }
                         .footer p { margin: 2px 0; }
                         @media print { .no-print { display: none !important; } }
                     </style>
@@ -848,19 +853,26 @@ const OrderManager = () => {
                     <meta charset="utf-8" />
                     <style>
                         @page { size: 80mm auto; margin: 0; }
-                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        * {
+                            box-sizing: border-box;
+                            margin: 0;
+                            padding: 0;
+                            color: #000000 !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
                         body {
-                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
-                            width: 74mm;
+                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+                            width: 72mm;
+                            max-width: 72mm;
                             margin: 0 auto;
                             padding: 3mm 1mm 6mm;
-                            color: #000000;
                             background: #ffffff;
                             font-size: 14px;
-                            font-weight: 700;
+                            font-weight: 800;
                             line-height: 1.35;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
+                            -webkit-text-stroke: 0.2px #000000;
+                            text-rendering: optimizeLegibility;
                         }
                         .token-header {
                             text-align: center;
@@ -869,23 +881,23 @@ const OrderManager = () => {
                             margin-bottom: 6px;
                         }
                         .token-badge {
-                            font-size: 16px;
+                            font-size: 18px;
                             font-weight: 900;
                             letter-spacing: 1px;
                         }
                         .token-ref {
-                            font-size: 22px;
+                            font-size: 24px;
                             font-weight: 900;
                             margin: 2px 0;
                         }
                         .token-service {
-                            font-size: 17px;
+                            font-size: 18px;
                             font-weight: 900;
                             margin: 2px 0;
                         }
                         .token-meta {
-                            font-size: 12px;
-                            font-weight: 700;
+                            font-size: 13px;
+                            font-weight: 800;
                             color: #000000;
                             margin: 2px 0;
                         }
