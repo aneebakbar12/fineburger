@@ -86,38 +86,43 @@ const CashierShiftModal = () => {
                         @page { size: 80mm auto; margin: 0; }
                         * { box-sizing: border-box; margin: 0; padding: 0; }
                         body {
-                            font-family: 'Courier New', Courier, monospace;
-                            width: 80mm;
-                            padding: 4mm 3mm;
+                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
+                            width: 74mm;
+                            margin: 0 auto;
+                            padding: 3mm 1mm 6mm;
                             color: #000;
-                            font-size: 12px;
+                            background: #fff;
+                            font-size: 13.5px;
+                            font-weight: 700;
                             line-height: 1.35;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
-                        .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; }
-                        .header h2 { font-size: 16px; font-weight: 900; margin: 2px 0; }
-                        .title { font-size: 13px; font-weight: 800; text-align: center; margin: 6px 0; padding: 4px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
-                        .row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 12px; }
-                        .total-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; margin-top: 6px; }
-                        .sign-line { margin-top: 24px; border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 11px; }
+                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; }
+                        .header h2 { font-size: 20px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
+                        .title { font-size: 15px; font-weight: 900; text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px dashed #000; border-bottom: 2px dashed #000; letter-spacing: 0.5px; }
+                        .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 13px; }
+                        .total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 900; border-top: 2.5px dashed #000; border-bottom: 2.5px dashed #000; padding: 6px 0; margin-top: 6px; }
+                        .sign-line { margin-top: 28px; border-top: 1.5px solid #000; padding-top: 4px; text-align: center; font-size: 11px; font-weight: 700; }
                         @media print { .no-print { display: none !important; } }
                     </style>
                 </head>
                 <body>
                     <div class="header">
                         <h2>FINE BURGER</h2>
-                        <p style="font-size: 11px;">Main G.T. Road, Baghbanpura, Lahore</p>
-                        <p style="font-size: 11px;">Tel: 042-36840007 • WA: 0325-1842184</p>
+                        <p style="font-size: 12px; font-weight: 700;">Main G.T. Road, Baghbanpura, Lahore</p>
+                        <p style="font-size: 12px; font-weight: 700;">Tel: 042-36840007 • WA: 0325-1842184</p>
                     </div>
 
                     <div class="title">SHIFT CLOSING STATEMENT</div>
 
                     <div class="row"><span>Cashier:</span><strong>${activeCashier?.name || 'N/A'}</strong></div>
                     <div class="row"><span>Shift:</span><span>${activeCashier?.shiftTitle || 'Standard'}</span></div>
-                    <div class="row" style="font-size: 10px;"><span>Start:</span><span>${openedTimeStr}</span></div>
-                    <div class="row" style="font-size: 10px;"><span>End:</span><span>${closedTimeStr}</span></div>
+                    <div class="row" style="font-size: 11px;"><span>Start:</span><span>${openedTimeStr}</span></div>
+                    <div class="row" style="font-size: 11px;"><span>End:</span><span>${closedTimeStr}</span></div>
                     <div class="row"><span>Orders Done:</span><span>${activeShift?.ordersCount || 0}</span></div>
 
-                    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+                    <div style="border-top: 2px dashed #000; margin: 6px 0;"></div>
 
                     <div class="row">
                         <span>Starting Float (Peti):</span>
@@ -137,15 +142,15 @@ const CashierShiftModal = () => {
                         <span>Rs. ${totalExpectedCash}</span>
                     </div>
 
-                    <div style="margin-top: 8px; font-size: 10px; color: #444;">
+                    <div style="margin-top: 8px; font-size: 11px; font-weight: 600; color: #222;">
                         Cashier verifies full shift earnings and peti amount are counted and physically handed over to restaurant owner.
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 28px;">
-                        <div style="flex: 1; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px;">
+                    <div style="display: flex; justify-content: space-between; gap: 14px; margin-top: 28px;">
+                        <div style="flex: 1; border-top: 1.5px solid #000; text-align: center; font-size: 11px; font-weight: 700; padding-top: 3px;">
                             Cashier Sign
                         </div>
-                        <div style="flex: 1; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px;">
+                        <div style="flex: 1; border-top: 1.5px solid #000; text-align: center; font-size: 11px; font-weight: 700; padding-top: 3px;">
                             Owner Sign
                         </div>
                     </div>

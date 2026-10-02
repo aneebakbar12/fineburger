@@ -662,19 +662,19 @@ const OrderManager = () => {
 
         const customerSection = order.orderType === 'Dine-in'
             ? `<div class="customer">
-                <p style="font-size: 15px; font-weight: bold; margin: 3px 0;">TABLE #${order.customer?.tableNumber || 'N/A'}</p>
-                <p><strong>Service:</strong> Dine-in</p>
-                ${orderTaker ? `<p><strong>Order Taker:</strong> ${orderTaker}</p>` : ''}
-                <p><strong>Cashier:</strong> ${cashierName}</p>
+                <div class="table-badge">TABLE #${order.customer?.tableNumber || 'N/A'}</div>
+                <div class="info-row"><span>Service:</span><strong>Dine-in</strong></div>
+                ${orderTaker ? `<div class="info-row"><span>Order Taker:</span><strong>${orderTaker}</strong></div>` : ''}
+                <div class="info-row"><span>Cashier:</span><strong>${cashierName}</strong></div>
                </div>`
             : `<div class="customer">
-                <p><strong>Customer:</strong> ${order.customer?.name || 'Guest'}</p>
-                ${order.customer?.phone ? `<p><strong>Phone:</strong> ${order.customer.phone}</p>` : ''}
-                ${order.orderType === 'Delivery' && order.customer?.address ? `<p><strong>Address:</strong> ${order.customer.address}</p>` : ''}
-                <p><strong>Fulfillment:</strong> ${order.orderType || 'Standard'}</p>
-                ${orderTaker ? `<p><strong>Order Taker:</strong> ${orderTaker}</p>` : ''}
-                <p><strong>Cashier:</strong> ${cashierName}</p>
-                ${order.assignedRiderName ? `<p><strong>Rider:</strong> ${order.assignedRiderName}</p>` : ''}
+                <div class="info-row"><span>Customer:</span><strong>${order.customer?.name || 'Guest'}</strong></div>
+                ${order.customer?.phone ? `<div class="info-row"><span>Phone:</span><strong>${order.customer.phone}</strong></div>` : ''}
+                ${order.orderType === 'Delivery' && order.customer?.address ? `<div class="info-row address-row"><span>Address:</span><strong>${order.customer.address}</strong></div>` : ''}
+                <div class="info-row"><span>Fulfillment:</span><strong>${order.orderType || 'Standard'}</strong></div>
+                ${orderTaker ? `<div class="info-row"><span>Order Taker:</span><strong>${orderTaker}</strong></div>` : ''}
+                <div class="info-row"><span>Cashier:</span><strong>${cashierName}</strong></div>
+                ${order.assignedRiderName ? `<div class="info-row"><span>Rider:</span><strong>${order.assignedRiderName}</strong></div>` : ''}
                </div>`;
 
         printWindow.document.write(`
@@ -687,46 +687,64 @@ const OrderManager = () => {
                         @page { size: 80mm auto; margin: 0; }
                         * { box-sizing: border-box; margin: 0; padding: 0; }
                         body {
-                            font-family: 'Courier New', Courier, monospace;
-                            width: 80mm;
-                            padding: 3mm 2mm;
-                            color: #000;
-                            font-size: 12px;
-                            line-height: 1.3;
+                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
+                            width: 74mm;
+                            margin: 0 auto;
+                            padding: 3mm 1mm 6mm;
+                            color: #000000;
+                            background: #ffffff;
+                            font-size: 13.5px;
+                            font-weight: 700;
+                            line-height: 1.35;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
-                        .header { text-align: center; padding-bottom: 6px; border-bottom: 1px dashed #000; }
-                        .header img { width: 36mm; height: auto; display: block; margin: 0 auto 4px; }
-                        .header h2 { font-size: 16px; font-weight: 900; margin: 2px 0; letter-spacing: 1px; }
-                        .header .tagline { font-size: 10px; margin: 1px 0; }
+                        .header { text-align: center; padding-bottom: 6px; border-bottom: 2px dashed #000000; }
+                        .header img { width: 44mm; max-width: 90%; height: auto; display: block; margin: 0 auto 5px; }
+                        .header h2 { font-size: 20px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; color: #000000; }
+                        .header .tagline { font-size: 12px; font-weight: 700; margin: 1px 0; color: #000000; }
                         .bill-ref {
                             text-align: center;
-                            font-size: 13px;
-                            font-weight: 800;
-                            padding: 4px 0;
-                            margin: 4px 0;
-                            border-top: 1px dashed #000;
-                            border-bottom: 1px dashed #000;
+                            font-size: 17px;
+                            font-weight: 900;
+                            padding: 5px 0;
+                            margin: 6px 0;
+                            border-top: 2px dashed #000000;
+                            border-bottom: 2px dashed #000000;
+                            letter-spacing: 0.5px;
+                            color: #000000;
                         }
-                        .timestamp { text-align: center; font-size: 10px; color: #333; margin-bottom: 6px; }
-                        .customer { padding: 4px 0 6px; border-bottom: 1px dashed #000; font-size: 11px; }
-                        .customer p { margin: 1px 0; }
+                        .timestamp { text-align: center; font-size: 12px; font-weight: 700; color: #000000; margin-bottom: 6px; }
+                        .customer { padding: 6px 0; border-bottom: 2px dashed #000000; font-size: 13px; font-weight: 700; line-height: 1.45; }
+                        .table-badge { font-size: 19px; font-weight: 900; text-align: center; margin: 2px 0 4px; color: #000000; }
+                        .info-row { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 0; font-size: 13px; }
+                        .info-row span { font-weight: 700; color: #000000; }
+                        .info-row strong { font-weight: 900; color: #000000; text-align: right; }
+                        .address-row { display: block; }
+                        .address-row strong { display: block; text-align: left; margin-top: 2px; font-size: 12.5px; word-break: break-word; }
                         .items { padding: 6px 0; }
-                        .item-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; }
-                        .item-var { font-size: 10px; color: #444; padding-left: 6px; margin-bottom: 4px; }
-                        .sep { border-top: 1px dashed #000; margin: 4px 0; }
-                        .subtotal-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
+                        .item-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 14.5px; font-weight: 800; margin-bottom: 3px; color: #000000; }
+                        .item-qty { font-size: 16px; font-weight: 900; margin-right: 4px; }
+                        .item-name { font-size: 14px; font-weight: 800; }
+                        .item-price { font-size: 14.5px; font-weight: 900; white-space: nowrap; }
+                        .item-var { font-size: 12px; font-weight: 700; color: #000000; padding-left: 14px; margin-bottom: 4px; }
+                        .sep { border-top: 1.5px dashed #000000; margin: 4px 0; }
+                        .subtotal-row { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; padding: 2px 0; color: #000000; }
                         .total-row {
                             display: flex;
                             justify-content: space-between;
-                            font-size: 14px;
+                            align-items: baseline;
+                            font-size: 20px;
                             font-weight: 900;
-                            border-top: 1px dashed #000;
-                            padding-top: 5px;
-                            margin-top: 4px;
+                            border-top: 2.5px dashed #000000;
+                            border-bottom: 2.5px dashed #000000;
+                            padding: 6px 0;
+                            margin: 6px 0 4px;
+                            color: #000000;
                         }
-                        .payment { text-align: right; font-size: 10px; margin-top: 3px; }
-                        .footer { text-align: center; margin-top: 8px; font-size: 10px; border-top: 1px dashed #000; padding-top: 6px; }
-                        .footer p { margin: 1px 0; }
+                        .payment { text-align: right; font-size: 13px; font-weight: 800; margin-top: 4px; color: #000000; }
+                        .footer { text-align: center; margin-top: 10px; font-size: 12px; font-weight: 700; border-top: 2px dashed #000000; padding-top: 6px; color: #000000; }
+                        .footer p { margin: 2px 0; }
                         @media print { .no-print { display: none !important; } }
                     </style>
                 </head>
@@ -746,13 +764,15 @@ const OrderManager = () => {
 
                     <div class="items">
                         ${(order.items || []).map(item => `
-                            <div class="item-row">
-                                <span>${item.quantity}x ${item.name}</span>
-                                <span>Rs.${(item.unitPrice || item.price) * item.quantity}</span>
+                            <div style="margin-bottom: 5px;">
+                                <div class="item-row">
+                                    <span class="item-name"><strong class="item-qty">${item.quantity}x</strong> ${item.name}</span>
+                                    <span class="item-price">Rs.${(item.unitPrice || item.price) * item.quantity}</span>
+                                </div>
+                                ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
+                                    <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
+                                ` : ''}
                             </div>
-                            ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
-                                <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
-                            ` : ''}
                         `).join('')}
                     </div>
 
@@ -762,7 +782,7 @@ const OrderManager = () => {
                             <span>Subtotal</span>
                             <span>Rs.${order.subtotal}</span>
                         </div>
-                        <div class="subtotal-row" style="font-weight:bold;">
+                        <div class="subtotal-row" style="font-weight: 900;">
                             <span>Promo Discount</span>
                             <span>-Rs.${order.discount}</span>
                         </div>
@@ -830,68 +850,86 @@ const OrderManager = () => {
                         @page { size: 80mm auto; margin: 0; }
                         * { box-sizing: border-box; margin: 0; padding: 0; }
                         body {
-                            font-family: 'Courier New', Courier, monospace;
-                            width: 80mm;
-                            padding: 3mm 2mm;
-                            color: #000;
-                            font-size: 13px;
-                            line-height: 1.25;
+                            font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
+                            width: 74mm;
+                            margin: 0 auto;
+                            padding: 3mm 1mm 6mm;
+                            color: #000000;
+                            background: #ffffff;
+                            font-size: 14px;
+                            font-weight: 700;
+                            line-height: 1.35;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
                         .token-header {
                             text-align: center;
-                            border-bottom: 2px dashed #000;
-                            padding-bottom: 5px;
-                            margin-bottom: 5px;
+                            border-bottom: 2.5px dashed #000000;
+                            padding-bottom: 6px;
+                            margin-bottom: 6px;
                         }
                         .token-badge {
-                            font-size: 15px;
+                            font-size: 16px;
                             font-weight: 900;
                             letter-spacing: 1px;
                         }
                         .token-ref {
-                            font-size: 20px;
+                            font-size: 22px;
                             font-weight: 900;
                             margin: 2px 0;
                         }
                         .token-service {
-                            font-size: 15px;
+                            font-size: 17px;
                             font-weight: 900;
                             margin: 2px 0;
                         }
                         .token-meta {
-                            font-size: 11px;
-                            color: #222;
+                            font-size: 12px;
+                            font-weight: 700;
+                            color: #000000;
                             margin: 2px 0;
                         }
                         .items-box {
-                            padding: 4px 0;
-                            border-bottom: 2px dashed #000;
+                            padding: 6px 0;
+                            border-bottom: 2.5px dashed #000000;
                         }
                         .item-line {
                             display: flex;
                             justify-content: space-between;
                             align-items: baseline;
-                            font-size: 14px;
+                            font-size: 15px;
                             font-weight: 900;
-                            margin: 4px 0;
+                            margin: 5px 0;
+                            color: #000000;
                         }
                         .item-qty {
-                            font-size: 17px;
+                            font-size: 19px;
                             font-weight: 900;
-                            margin-right: 4px;
+                            margin-right: 6px;
+                        }
+                        .item-name {
+                            font-size: 15px;
+                            font-weight: 900;
+                        }
+                        .item-price {
+                            font-size: 15px;
+                            font-weight: 900;
+                            white-space: nowrap;
                         }
                         .item-var {
-                            font-size: 11px;
-                            font-weight: normal;
-                            padding-left: 8px;
-                            color: #333;
-                            margin-bottom: 2px;
+                            font-size: 12px;
+                            font-weight: 700;
+                            padding-left: 14px;
+                            color: #000000;
+                            margin-bottom: 3px;
                         }
                         .token-footer {
-                            text-align: center;
-                            font-size: 11px;
-                            padding-top: 5px;
-                            font-weight: bold;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: baseline;
+                            font-size: 15px;
+                            font-weight: 900;
+                            padding-top: 6px;
                         }
                         @media print { .no-print { display: none !important; } }
                     </style>
@@ -914,8 +952,8 @@ const OrderManager = () => {
                         ${(order.items || []).map(item => `
                             <div>
                                 <div class="item-line">
-                                    <span><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
-                                    <span>Rs.${(item.unitPrice || item.price) * item.quantity}</span>
+                                    <span><span class="item-qty">${item.quantity}x</span> <span class="item-name">${item.name}</span></span>
+                                    <span class="item-price">Rs.${(item.unitPrice || item.price) * item.quantity}</span>
                                 </div>
                                 ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
                                     <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
@@ -925,10 +963,8 @@ const OrderManager = () => {
                     </div>
 
                     <div class="token-footer">
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900;">
-                            <span>TOTAL ITEMS: ${(order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}</span>
-                            <span>Rs.${order.total}</span>
-                        </div>
+                        <span>TOTAL ITEMS: ${(order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}</span>
+                        <span>Rs.${order.total}</span>
                     </div>
 
                     <div style="text-align:center; margin-top:10px;" class="no-print">
@@ -1423,52 +1459,6 @@ const OrderManager = () => {
                                             <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                                                 {formatDate(order.createdAt)}
                                             </span>
-
-                                            {/* Quick 1-Tap Print Buttons on Card Header */}
-                                            <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }} onClick={e => e.stopPropagation()}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handlePrintKitchenToken(order)}
-                                                    style={{
-                                                        padding: '3px 6px',
-                                                        borderRadius: '4px',
-                                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
-                                                        border: '1px solid rgba(255, 180, 0, 0.35)',
-                                                        color: 'var(--color-accent, #FFB400)',
-                                                        fontSize: '10px',
-                                                        fontWeight: 700,
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '2px'
-                                                    }}
-                                                    title="Quick Kitchen / Patora Token"
-                                                >
-                                                    <span>🎟️</span>
-                                                    <span>Token</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handlePrintReceipt(order)}
-                                                    style={{
-                                                        padding: '3px 6px',
-                                                        borderRadius: '4px',
-                                                        backgroundColor: 'var(--surface-elevated)',
-                                                        border: '1px solid var(--surface-border)',
-                                                        color: 'var(--text-secondary)',
-                                                        fontSize: '10px',
-                                                        fontWeight: 600,
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '2px'
-                                                    }}
-                                                    title="Print 80mm Customer Bill"
-                                                >
-                                                    <PrinterIcon width={11} height={11} />
-                                                    <span>Bill</span>
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
 
