@@ -294,7 +294,11 @@ const FinancialDashboard = () => {
                                     const isCOD = (o.paymentMethod || 'COD').toUpperCase() === 'COD';
                                     return isCOD && o.cashSettled !== true;
                                 })
-                                .reduce((s, o) => s + (Number(o.total) || 0), 0);
+                                .reduce((s, o) => {
+                                    const total = Number(o.total) || 0;
+                                    const settled = Number(o.cashSettledAmount) || 0;
+                                    return s + Math.max(0, total - settled);
+                                }, 0);
                             return { ...rider, unsettledCash: unsettled };
                         }).filter(r => r.unsettledCash > 0);
 

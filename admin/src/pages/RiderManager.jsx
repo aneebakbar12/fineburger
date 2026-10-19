@@ -223,10 +223,16 @@ const RiderManager = () => {
         const unsettledOrders = riderOrders.filter(o => {
             if (o.status !== 'delivered') return false;
             const isCOD = (o.paymentMethod || 'COD').toUpperCase() === 'COD';
-            return isCOD && o.cashSettled !== true;
+            const total = Number(o.total) || 0;
+            const settled = Number(o.cashSettledAmount) || 0;
+            return isCOD && o.cashSettled !== true && (total - settled > 0);
         });
 
-        const unsettledCash = unsettledOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const unsettledCash = unsettledOrders.reduce((sum, o) => {
+            const total = Number(o.total) || 0;
+            const settled = Number(o.cashSettledAmount) || 0;
+            return sum + Math.max(0, total - settled);
+        }, 0);
         const unsettledOrderIds = unsettledOrders.map(o => o.id);
 
         return { activeOrders, deliveredOrders, unsettledCash, unsettledOrderIds };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCashierShift } from '../context/CashierShiftContext';
+import { THERMAL_80MM_BASE_CSS } from '../utils/printStyles';
 
 const CashierShiftModal = () => {
     const {
@@ -19,6 +20,12 @@ const CashierShiftModal = () => {
     const [openingFloat, setOpeningFloat] = useState('5000');
     const [shiftNotes, setShiftNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Calculate live drawer totals (declared before handler usage to prevent TDZ issues)
+    const floatAmount = Number(activeShift?.openingFloat) || 0;
+    const counterSales = Number(activeShift?.counterCashSales) || 0;
+    const riderCash = Number(activeShift?.riderCashCollected) || 0;
+    const totalExpectedCash = floatAmount + counterSales + riderCash;
 
     if (!shiftModalOpen) return null;
 
@@ -57,12 +64,6 @@ const CashierShiftModal = () => {
         setShiftNotes('');
     };
 
-    // Calculate live drawer totals
-    const floatAmount = Number(activeShift?.openingFloat) || 0;
-    const counterSales = Number(activeShift?.counterCashSales) || 0;
-    const riderCash = Number(activeShift?.riderCashCollected) || 0;
-    const totalExpectedCash = floatAmount + counterSales + riderCash;
-
     // Print Shift Closing Receipt (80mm thermal)
     const handlePrintShiftSlip = () => {
         const printWindow = window.open('', '_blank');
@@ -83,28 +84,7 @@ const CashierShiftModal = () => {
                     <title>Shift Closing Report • ${activeCashier?.name || 'Cashier'}</title>
                     <meta charset="utf-8" />
                     <style>
-                        @page { size: 80mm auto; margin: 0; }
-                        * {
-                            box-sizing: border-box;
-                            margin: 0;
-                            padding: 0;
-                            color: #000000 !important;
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        body {
-                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-                            width: 72mm;
-                            max-width: 72mm;
-                            margin: 0 auto;
-                            padding: 3mm 1mm 6mm;
-                            background: #ffffff;
-                            font-size: 14px;
-                            font-weight: 800;
-                            line-height: 1.35;
-                            -webkit-text-stroke: 0.2px #000000;
-                            text-rendering: optimizeLegibility;
-                        }
+                        ${THERMAL_80MM_BASE_CSS}
                         .header { text-align: center; border-bottom: 2px dashed #000000; padding-bottom: 6px; }
                         .header h2 { font-size: 22px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
                         .title { font-size: 16px; font-weight: 900; text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px dashed #000000; border-bottom: 2px dashed #000000; letter-spacing: 0.5px; }

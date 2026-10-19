@@ -18,7 +18,8 @@ import {
     writeBatch,
     increment,
     sum,
-    getAggregateFromServer
+    getAggregateFromServer,
+    deleteField
 } from 'firebase/firestore';
 
 
@@ -365,21 +366,81 @@ export const updateSettings = async (id, settingsData) => {
 };
 
 // ==========================================
-// FINANCIAL ACCESS PASSWORD (FIRESTORE SYNC)
+// FINANCIAL ACCESS PASSWORD (FIRESTORE SYNC & SHA-256 HASHING)
 // ==========================================
-const DEFAULT_FINANCIAL_PASSWORD = 'fineburger2024';
 
-export const getFinancialPassword = async () => {
+// Secure SHA-256 password hashing via Web Crypto API (zero external dependency)
+export const hashPassword = async (plainPassword) => {
+    if (!plainPassword) return '';
+    const clean = String(plainPassword).trim();
+    if (typeof window !== 'undefined' && window.crypto?.subtle) {
+        const msgBuffer = new TextEncoder().encode(clean);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+        return Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+    // Fallback: simple deterministic hash if crypto.subtle is unavailable
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) {
+        hash = ((hash << 5) - hash) + clean.charCodeAt(i);
+        hash |= 0;
+    }
+    return 'fb_hash_' + Math.abs(hash).toString(16);
+};
+
+export const verifyFinancialPassword = async (inputPassword) => {
     try {
+        const cleanInput = (inputPassword || '').trim();
+        if (!cleanInput) return false;
+
+        const inputHash = await hashPassword(cleanInput);
         const securitySnap = await getDoc(doc(db, 'settings', 'security'));
-        if (securitySnap.exists() && securitySnap.data()?.financialPassword) {
-            return securitySnap.data().financialPassword;
+
+        if (securitySnap.exists()) {
+            const data = securitySnap.data();
+            // 1. Primary: Verify against SHA-256 hash
+            if (data?.financialPasswordHash) {
+                return data.financialPasswordHash === inputHash;
+            }
+            // 2. Legacy fallback: Verify plaintext and auto-migrate to hash in background
+            if (data?.financialPassword) {
+                if (data.financialPassword === cleanInput) {
+                    setDoc(doc(db, 'settings', 'security'), {
+                        financialPasswordHash: inputHash,
+                        financialPassword: deleteField(),
+                        updatedAt: serverTimestamp()
+                    }, { merge: true }).catch(() => {});
+                    return true;
+                }
+                return false;
+            }
         }
 
-        return DEFAULT_FINANCIAL_PASSWORD;
+        // 3. Fallback to optional environment variable (not hardcoded in repository)
+        const envDefault = import.meta.env.VITE_DEFAULT_FINANCIAL_PASSWORD;
+        if (envDefault && envDefault.trim()) {
+            return cleanInput === envDefault.trim();
+        }
+
+        return false;
+    } catch (error) {
+        console.error('Error verifying financial password in Firestore:', error);
+        return false;
+    }
+};
+
+export const getFinancialPassword = async () => {
+    // Kept for backward compatibility, checks Firestore hash or env config
+    try {
+        const securitySnap = await getDoc(doc(db, 'settings', 'security'));
+        if (securitySnap.exists()) {
+            return securitySnap.data()?.financialPassword || '';
+        }
+        return import.meta.env.VITE_DEFAULT_FINANCIAL_PASSWORD || '';
     } catch (error) {
         console.error('Error reading financial password from Firestore:', error);
-        return DEFAULT_FINANCIAL_PASSWORD;
+        return '';
     }
 };
 
@@ -390,10 +451,12 @@ export const updateFinancialPassword = async (newPassword) => {
         }
 
         const cleanPw = newPassword.trim();
+        const hash = await hashPassword(cleanPw);
 
-        // Save strictly to settings/security (Admin-only access)
+        // Save hashed password strictly to settings/security (Admin-only access)
         await setDoc(doc(db, 'settings', 'security'), {
-            financialPassword: cleanPw,
+            financialPasswordHash: hash,
+            financialPassword: deleteField(),
             updatedAt: serverTimestamp()
         }, { merge: true });
 
@@ -495,9 +558,18 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             updatedAt: serverTimestamp()
         });
 
+        // Lazy-fetch and cache order document snapshot to eliminate redundant reads on delivery
+        let cachedOrderSnap = null;
+        const getOrderSnapshot = async () => {
+            if (!cachedOrderSnap) {
+                cachedOrderSnap = await getDoc(doc(db, 'orders', id));
+            }
+            return cachedOrderSnap;
+        };
+
         // Increment rider delivery stats when order is marked delivered
         if (status === 'delivered') {
-            const orderSnap = await getDoc(doc(db, 'orders', id));
+            const orderSnap = await getOrderSnapshot();
             if (orderSnap.exists()) {
                 const oData = orderSnap.data();
                 const riderId = oData.assignedRiderId;
@@ -532,7 +604,7 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
 
         // Deduct inventory ingredients when order enters cooking/preparing stage
         if (['preparing', 'ready', 'delivered'].includes(status)) {
-            const orderSnap = await getDoc(doc(db, 'orders', id));
+            const orderSnap = await getOrderSnapshot();
             if (orderSnap.exists()) {
                 const orderData = orderSnap.data();
                 if (!orderData.ingredientsDeducted && Array.isArray(orderData.items)) {
@@ -582,7 +654,7 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
 
         // Restore inventory when an order is CANCELLED
         if (status === 'cancelled') {
-            const orderSnap = await getDoc(doc(db, 'orders', id));
+            const orderSnap = await getOrderSnapshot();
             if (orderSnap.exists()) {
                 const orderData = orderSnap.data();
 
@@ -1226,17 +1298,29 @@ export const deleteRider = async (riderId) => {
 // CASHIER ACCOUNTS & MULTI-SHIFT MANAGEMENT
 // ==========================================
 
-// Get all registered cashiers
-export const getCashiers = async () => {
+// In-memory cache for cashiers to prevent redundant reads on fast PIN entry / typos
+let cachedCashiers = null;
+let lastCashiersFetch = 0;
+const CASHIERS_CACHE_TTL = 30000; // 30s cache
+
+// Get all registered cashiers (cached with TTL)
+export const getCashiers = async (forceRefresh = false) => {
     try {
+        const now = Date.now();
+        if (!forceRefresh && cachedCashiers && (now - lastCashiersFetch < CASHIERS_CACHE_TTL)) {
+            return cachedCashiers;
+        }
+
         const querySnapshot = await getDocs(collection(db, 'cashiers'));
-        return querySnapshot.docs.map(doc => ({
+        cachedCashiers = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        lastCashiersFetch = now;
+        return cachedCashiers;
     } catch (error) {
         console.error('Error fetching cashiers:', error);
-        return [];
+        return cachedCashiers || [];
     }
 };
 
@@ -1248,6 +1332,8 @@ export const subscribeToCashiers = (callback) => {
             id: doc.id,
             ...doc.data()
         })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        cachedCashiers = cashiers;
+        lastCashiersFetch = Date.now();
         callback(cashiers);
     }, (error) => {
         console.error("Error subscribing to cashiers:", error);
@@ -1279,6 +1365,7 @@ export const addCashier = async (cashierData) => {
             updatedAt: serverTimestamp()
         });
 
+        cachedCashiers = null; // Invalidate cache
         return { success: true, id: docRef.id };
     } catch (error) {
         console.error('Error adding cashier:', error);
@@ -1302,6 +1389,7 @@ export const updateCashier = async (id, cashierData) => {
             ...cashierData,
             updatedAt: serverTimestamp()
         });
+        cachedCashiers = null; // Invalidate cache
         return { success: true };
     } catch (error) {
         console.error('Error updating cashier:', error);
@@ -1313,6 +1401,7 @@ export const updateCashier = async (id, cashierData) => {
 export const deleteCashier = async (id) => {
     try {
         await deleteDoc(doc(db, 'cashiers', id));
+        cachedCashiers = null; // Invalidate cache
         return { success: true };
     } catch (error) {
         console.error('Error deleting cashier:', error);
@@ -1320,7 +1409,7 @@ export const deleteCashier = async (id) => {
     }
 };
 
-// Verify cashier by PIN and fetch their profile
+// Verify cashier by PIN and fetch their profile (uses cached data, avoids roundtrip on typos)
 export const verifyCashierByPin = async (pin) => {
     try {
         const cleanPin = String(pin || '').trim();
@@ -1443,8 +1532,9 @@ export const subscribeToActiveShift = (cashierId, callback) => {
 
 // Subscribe to all shifts for manager views (sorted descending)
 export const subscribeToAllShifts = (callback) => {
+    let fallbackUnsub = null;
     const q = query(collection(db, 'shifts'), orderBy('openedAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+    const primaryUnsub = onSnapshot(q, (snapshot) => {
         const shifts = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -1454,7 +1544,7 @@ export const subscribeToAllShifts = (callback) => {
         console.warn("Falling back to client-side sort for shifts:", error.message);
         // Fallback without orderBy
         const fallbackQ = query(collection(db, 'shifts'));
-        return onSnapshot(fallbackQ, (snapshot) => {
+        fallbackUnsub = onSnapshot(fallbackQ, (snapshot) => {
             const shifts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -1462,6 +1552,11 @@ export const subscribeToAllShifts = (callback) => {
             callback(shifts);
         });
     });
+
+    return () => {
+        if (primaryUnsub) primaryUnsub();
+        if (fallbackUnsub) fallbackUnsub();
+    };
 };
 
 // Close an active shift (cashier handover summary prepared)
@@ -1564,13 +1659,24 @@ export const recordRiderCashDrop = async ({
         if (dropAmount <= 0) return { success: false, error: 'Invalid collection amount.' };
         if (!riderId) return { success: false, error: 'Rider ID required.' };
 
-        // 1. Fetch unsettled candidate orders to track individual totals
+        // 1. Fetch unsettled candidate orders to track individual totals and already-settled portions
         const orderCandidates = [];
+        const processCandidateDoc = (id, data) => {
+            const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
+            const total = Number(data.total) || 0;
+            const alreadySettled = Number(data.cashSettledAmount) || 0;
+            const pending = Math.max(0, total - alreadySettled);
+
+            if (isCOD && data.cashSettled !== true && pending > 0) {
+                orderCandidates.push({ id, total, alreadySettled, pending });
+            }
+        };
+
         if (orderIds && orderIds.length > 0) {
             for (const oId of orderIds) {
                 const oSnap = await getDoc(doc(db, 'orders', oId));
                 if (oSnap.exists()) {
-                    orderCandidates.push({ id: oSnap.id, total: Number(oSnap.data().total) || 0 });
+                    processCandidateDoc(oSnap.id, oSnap.data());
                 }
             }
         } else {
@@ -1581,33 +1687,38 @@ export const recordRiderCashDrop = async ({
             );
             const snap = await getDocs(q);
             snap.docs.forEach(d => {
-                const data = d.data();
-                const isCOD = (data.paymentMethod || 'COD').toUpperCase() === 'COD';
-                if (isCOD && data.cashSettled !== true) {
-                    orderCandidates.push({ id: d.id, total: Number(data.total) || 0 });
-                }
+                processCandidateDoc(d.id, d.data());
             });
         }
 
-        // Only mark orders as cashSettled up to the actual dropAmount (partial payment support)
+        // Apply dropAmount sequentially to orders with partial settlement support
+        // This ensures every rupee handed over reduces order debt, eliminating accounting gaps
         let remainingDrop = dropAmount;
         const settledIds = [];
+        const updatePromises = [];
+
         for (const candidate of orderCandidates) {
-            if (remainingDrop >= candidate.total) {
-                settledIds.push(candidate.id);
-                remainingDrop -= candidate.total;
-            }
+            if (remainingDrop <= 0) break;
+
+            const toApply = Math.min(remainingDrop, candidate.pending);
+            const newSettledAmount = candidate.alreadySettled + toApply;
+            const isFullySettled = newSettledAmount >= candidate.total;
+
+            remainingDrop -= toApply;
+            settledIds.push(candidate.id);
+
+            updatePromises.push(
+                updateDoc(doc(db, 'orders', candidate.id), {
+                    cashSettled: isFullySettled,
+                    cashSettledAmount: newSettledAmount,
+                    cashSettledAt: serverTimestamp(),
+                    cashSettledByCashierId: cashierId || null,
+                    cashSettledByCashierName: cashierName || 'Counter Cashier',
+                    shiftId: shiftId || null
+                })
+            );
         }
 
-        const updatePromises = settledIds.map(oId =>
-            updateDoc(doc(db, 'orders', oId), {
-                cashSettled: true,
-                cashSettledAt: serverTimestamp(),
-                cashSettledByCashierId: cashierId || null,
-                cashSettledByCashierName: cashierName || 'Counter Cashier',
-                shiftId: shiftId || null
-            })
-        );
         await Promise.all(updatePromises);
 
         // 2. Write an audit log to cashDrops collection
@@ -1662,8 +1773,9 @@ export const recordRiderCashDrop = async ({
 
 // Subscribe to cash drops
 export const subscribeToCashDrops = (callback) => {
+    let fallbackUnsub = null;
     const q = query(collection(db, 'cashDrops'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+    const primaryUnsub = onSnapshot(q, (snapshot) => {
         const drops = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -1672,7 +1784,7 @@ export const subscribeToCashDrops = (callback) => {
     }, (err) => {
         console.warn('Falling back for cashDrops snapshot:', err.message);
         const fallbackQ = query(collection(db, 'cashDrops'));
-        return onSnapshot(fallbackQ, (snapshot) => {
+        fallbackUnsub = onSnapshot(fallbackQ, (snapshot) => {
             const drops = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -1680,6 +1792,11 @@ export const subscribeToCashDrops = (callback) => {
             callback(drops);
         });
     });
+
+    return () => {
+        if (primaryUnsub) primaryUnsub();
+        if (fallbackUnsub) fallbackUnsub();
+    };
 };
 
 

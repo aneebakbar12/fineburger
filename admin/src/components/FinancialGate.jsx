@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { getFinancialPassword, updateFinancialPassword } from '../services/firebase';
+import React, { useState } from 'react';
+import { verifyFinancialPassword, updateFinancialPassword } from '../services/firebase';
 
-const DEFAULT_PASSWORD = 'fineburger2024';
 const SS_KEY = 'fb_financial_unlocked';
 
 function FinancialGate({ children }) {
     const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(SS_KEY) === 'true');
-    const [activePassword, setActivePassword] = useState(DEFAULT_PASSWORD);
-    const [passwordLoading, setPasswordLoading] = useState(true);
+    const [verifying, setVerifying] = useState(false);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [showChangeForm, setShowChangeForm] = useState(false);
@@ -18,31 +16,16 @@ function FinancialGate({ children }) {
     const [changeSuccess, setChangeSuccess] = useState('');
     const [savingPassword, setSavingPassword] = useState(false);
 
-    // Fetch the canonical financial password from Firestore on mount
-    useEffect(() => {
-        let isMounted = true;
-        const fetchPassword = async () => {
-            try {
-                const firestorePw = await getFinancialPassword();
-                if (isMounted) {
-                    setActivePassword(firestorePw || DEFAULT_PASSWORD);
-                    setPasswordLoading(false);
-                }
-            } catch (err) {
-                console.warn('Failed to load password from Firestore, using default:', err);
-                if (isMounted) setPasswordLoading(false);
-            }
-        };
-        fetchPassword();
-        return () => { isMounted = false; };
-    }, []);
-
-    const handleUnlock = (e) => {
+    const handleUnlock = async (e) => {
         e.preventDefault();
         const cleanInput = (password || '').trim();
-        const expectedPw = (activePassword || DEFAULT_PASSWORD).trim();
+        if (!cleanInput) return;
 
-        if (cleanInput === expectedPw) {
+        setVerifying(true);
+        const isValid = await verifyFinancialPassword(cleanInput);
+        setVerifying(false);
+
+        if (isValid) {
             sessionStorage.setItem(SS_KEY, 'true');
             setUnlocked(true);
             setError('');
@@ -57,28 +40,35 @@ function FinancialGate({ children }) {
         setChangeSuccess('');
 
         const cleanCurrent = (currentPw || '').trim();
-        const expectedPw = (activePassword || DEFAULT_PASSWORD).trim();
-
-        if (cleanCurrent !== expectedPw) {
-            setChangeError('Current password is incorrect.');
-            return;
-        }
-        if (!newPw || newPw.trim().length < 4) {
-            setChangeError('New password must be at least 4 characters.');
-            return;
-        }
-        if (newPw.trim() !== confirmPw.trim()) {
-            setChangeError('New passwords do not match.');
+        if (!cleanCurrent) {
+            setChangeError('Please enter current password.');
             return;
         }
 
         setSavingPassword(true);
+        const isCurrentValid = await verifyFinancialPassword(cleanCurrent);
+        if (!isCurrentValid) {
+            setSavingPassword(false);
+            setChangeError('Current password is incorrect.');
+            return;
+        }
+
+        if (!newPw || newPw.trim().length < 4) {
+            setSavingPassword(false);
+            setChangeError('New password must be at least 4 characters.');
+            return;
+        }
+        if (newPw.trim() !== confirmPw.trim()) {
+            setSavingPassword(false);
+            setChangeError('New passwords do not match.');
+            return;
+        }
+
         const nextPassword = newPw.trim();
         const res = await updateFinancialPassword(nextPassword);
         setSavingPassword(false);
 
         if (res.success) {
-            setActivePassword(nextPassword);
             setChangeSuccess('Password updated successfully across all devices!');
             setCurrentPw('');
             setNewPw('');
@@ -201,11 +191,11 @@ function FinancialGate({ children }) {
                         style={styles.input}
                         autoFocus
                         autoComplete="current-password"
-                        disabled={passwordLoading}
+                        disabled={verifying}
                     />
                     {error && <div style={styles.error}>{error}</div>}
-                    <button type="submit" style={styles.unlockBtn} disabled={passwordLoading}>
-                        {passwordLoading ? 'Checking...' : 'Unlock'}
+                    <button type="submit" style={styles.unlockBtn} disabled={verifying}>
+                        {verifying ? 'Checking...' : 'Unlock'}
                     </button>
                 </form>
             </div>

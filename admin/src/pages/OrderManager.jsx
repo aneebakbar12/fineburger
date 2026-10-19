@@ -10,6 +10,7 @@ import {
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import { useCashierShift } from '../context/CashierShiftContext';
+import { THERMAL_80MM_BASE_CSS } from '../utils/printStyles';
 import ConfirmModal from '../components/ConfirmModal';
 import {
     SearchIcon,
@@ -606,7 +607,10 @@ const OrderManager = () => {
             }
 
             // Link in-store counter completion to active cashier shift drawer
-            if (activeShift?.id) {
+            // Only attach active cashier shift drawer on counter completion (Dine-in / Takeaway delivered)
+            const targetOrder = orders.find(o => o.id === id);
+            const isCounterOrder = targetOrder?.orderType === 'Dine-in' || targetOrder?.orderType === 'Takeaway';
+            if (activeShift?.id && isCounterOrder && newStatus === 'delivered') {
                 additionalData.shiftId = activeShift.id;
                 additionalData.cashierId = activeCashier?.id || null;
                 additionalData.cashierName = activeCashier?.name || 'Counter Cashier';
@@ -684,28 +688,7 @@ const OrderManager = () => {
                     <title>Bill #${orderRef}</title>
                     <meta charset="utf-8" />
                     <style>
-                        @page { size: 80mm auto; margin: 0; }
-                        * {
-                            box-sizing: border-box;
-                            margin: 0;
-                            padding: 0;
-                            color: #000000 !important;
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        body {
-                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-                            width: 72mm;
-                            max-width: 72mm;
-                            margin: 0 auto;
-                            padding: 3mm 1mm 6mm;
-                            background: #ffffff;
-                            font-size: 14px;
-                            font-weight: 800;
-                            line-height: 1.35;
-                            -webkit-text-stroke: 0.2px #000000;
-                            text-rendering: optimizeLegibility;
-                        }
+                        ${THERMAL_80MM_BASE_CSS}
                         .header { text-align: center; padding-bottom: 6px; border-bottom: 2px dashed #000000; }
                         .header img { width: 44mm; max-width: 85%; height: auto; display: block; margin: 0 auto 5px; filter: grayscale(100%) contrast(300%); }
                         .header h2 { font-size: 22px; font-weight: 900; margin: 2px 0 1px; letter-spacing: 0.5px; }
@@ -852,28 +835,7 @@ const OrderManager = () => {
                     <title>TOKEN #${orderRef}</title>
                     <meta charset="utf-8" />
                     <style>
-                        @page { size: 80mm auto; margin: 0; }
-                        * {
-                            box-sizing: border-box;
-                            margin: 0;
-                            padding: 0;
-                            color: #000000 !important;
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        body {
-                            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-                            width: 72mm;
-                            max-width: 72mm;
-                            margin: 0 auto;
-                            padding: 3mm 1mm 6mm;
-                            background: #ffffff;
-                            font-size: 14px;
-                            font-weight: 800;
-                            line-height: 1.35;
-                            -webkit-text-stroke: 0.2px #000000;
-                            text-rendering: optimizeLegibility;
-                        }
+                        ${THERMAL_80MM_BASE_CSS}
                         .token-header {
                             text-align: center;
                             border-bottom: 2.5px dashed #000000;

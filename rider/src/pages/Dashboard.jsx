@@ -184,7 +184,11 @@ const Dashboard = () => {
 
     const todayCashCollected = todayOrders
         .filter(o => (o.paymentMethod || 'COD').toUpperCase() === 'COD' && o.cashSettled !== true)
-        .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        .reduce((sum, o) => {
+            const total = Number(o.total) || 0;
+            const settled = Number(o.cashSettledAmount) || 0;
+            return sum + Math.max(0, total - settled);
+        }, 0);
 
     const orders = activeTab === 'assigned' ? assignedOrders : pastOrders;
 
