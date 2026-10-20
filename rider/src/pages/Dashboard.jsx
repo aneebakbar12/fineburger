@@ -235,7 +235,11 @@ const Dashboard = () => {
                             <div>
                                 <div className="duty-heading">{isOnline ? 'Online • Ready for Orders' : 'Offline • Shift Paused'}</div>
                                 <div className="duty-caption">
-                                    {isOnline ? 'Kitchen can assign active deliveries' : 'Turn on to receive orders'}
+                                    {isOnline
+                                        ? 'Kitchen can assign active deliveries'
+                                        : (assignedOrders.length > 0
+                                            ? `🛵 ${assignedOrders.length} active ${assignedOrders.length === 1 ? 'order' : 'orders'} assigned by kitchen`
+                                            : 'Turn on to receive orders')}
                                 </div>
                             </div>
                         </div>

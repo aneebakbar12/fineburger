@@ -5,7 +5,7 @@ import {
     subscribeToInventory,
     updateOrderStatus,
     getServerTimestamp,
-    getRiders,
+    subscribeToRiders,
     assignOrderToRider
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
@@ -397,9 +397,15 @@ const OrderDetailsModal = ({
                                                 }}
                                             >
                                                 <option value="">Select Delivery Rider...</option>
-                                                {riders.map(r => (
-                                                    <option key={r.id} value={r.id}>{r.name} {r.isOnline ? '🟢' : '⚪'}</option>
-                                                ))}
+                                                {riders
+                                                    .slice()
+                                                    .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0))
+                                                    .map(r => (
+                                                        <option key={r.id} value={r.id}>
+                                                            {r.isOnline ? '🟢' : '⚪'} {r.name} {r.isOnline ? '(Online)' : '(Offline)'}
+                                                        </option>
+                                                    ))
+                                                }
                                             </select>
                                             <button
                                                 onClick={handleAssignRider}
@@ -531,13 +537,14 @@ const OrderManager = () => {
             prevLowStockCountRef.current = lowItems.length;
         });
 
-        getRiders().then(ridersData => {
+        const unsubscribeRiders = subscribeToRiders((ridersData) => {
             setRiders(ridersData || []);
         });
 
         return () => {
             unsubscribeOrders();
             unsubscribeInventory();
+            if (unsubscribeRiders) unsubscribeRiders();
         };
     }, []);
 
@@ -643,11 +650,20 @@ const OrderManager = () => {
     };
 
     const handleAssignRider = async (orderId, riderId, riderName) => {
+        const assignedRider = riders.find(r => r.id === riderId);
+        if (assignedRider && !assignedRider.isOnline) {
+            const proceed = window.confirm(
+                `Courier "${riderName}" is currently OFFLINE (Shift Paused).\n\nDo you still want to assign and dispatch this delivery to him?`
+            );
+            if (!proceed) return;
+        }
+
         const result = await assignOrderToRider(orderId, riderId, riderName);
         if (result.success) {
             // Also transition to out_for_delivery so lifecycle progresses properly
             await handleStatusUpdate(orderId, 'out_for_delivery', { assignedRiderId: riderId, assignedRiderName: riderName });
-            toast.success(`Dispatched order #${getOrderRef(orders.find(o => o.id === orderId))} to ${riderName}`);
+            const offlineNote = assignedRider && !assignedRider.isOnline ? ' (Courier is offline)' : '';
+            toast.success(`Dispatched order #${getOrderRef(orders.find(o => o.id === orderId))} to ${riderName}${offlineNote}`);
         } else {
             toast.error('Failed to assign rider: ' + result.error);
         }
@@ -1523,32 +1539,80 @@ const OrderManager = () => {
                                     {/* 1-Click Status Action Buttons */}
                                     <div className="card-quick-actions" onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                                         {order.status === 'pending' && (
-                                            <>
+                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                <button
+                                                    className="btn-kds-mini"
+                                                    style={{
+                                                        padding: '8px 12px',
+                                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                        color: 'var(--color-accent, #FFB400)',
+                                                        border: '1px solid rgba(255, 180, 0, 0.4)',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px',
+                                                        fontWeight: 700,
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '4px',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                    onClick={() => handlePrintKitchenToken(order)}
+                                                    title="Print Kitchen Token (KOT)"
+                                                >
+                                                    <span>🎟️</span>
+                                                    <span>Print Token</span>
+                                                </button>
                                                 <button
                                                     className="btn-kds-mini confirm"
                                                     onClick={() => handleStatusUpdate(order.id, 'preparing')}
-                                                    style={{ flex: 2, padding: '8px 12px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                    style={{ flex: 2, padding: '8px 10px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
                                                 >
                                                     Accept & Cook
                                                 </button>
                                                 <button
                                                     className="btn-kds-mini cancel"
                                                     onClick={() => setCancellingOrderId(order.id)}
-                                                    style={{ flex: 1, padding: '8px 10px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}
+                                                    style={{ flex: 1, padding: '8px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
                                                 >
                                                     Cancel
                                                 </button>
-                                            </>
+                                            </div>
                                         )}
 
                                         {order.status === 'preparing' && (
-                                            <button
-                                                className="btn-kds-mini ready"
-                                                onClick={() => handleStatusUpdate(order.id, 'ready')}
-                                                style={{ width: '100%', padding: '8px 12px', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                            >
-                                                ✨ Mark Ready
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                <button
+                                                    className="btn-kds-mini"
+                                                    style={{
+                                                        padding: '8px 12px',
+                                                        backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                        color: 'var(--color-accent, #FFB400)',
+                                                        border: '1px solid rgba(255, 180, 0, 0.4)',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px',
+                                                        fontWeight: 700,
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '4px',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                    onClick={() => handlePrintKitchenToken(order)}
+                                                    title="Print Kitchen Token (KOT)"
+                                                >
+                                                    <span>🎟️</span>
+                                                    <span>Token</span>
+                                                </button>
+                                                <button
+                                                    className="btn-kds-mini ready"
+                                                    onClick={() => handleStatusUpdate(order.id, 'ready')}
+                                                    style={{ flex: 1, padding: '8px 12px', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    ✨ Mark Ready
+                                                </button>
+                                            </div>
                                         )}
 
                                         {order.status === 'ready' && (
@@ -1577,12 +1641,24 @@ const OrderManager = () => {
                                                         }}
                                                     >
                                                         <option value="">🛵 Assign Rider to Dispatch...</option>
-                                                        {riders.map(r => (
-                                                            <option key={r.id} value={r.id}>
-                                                                {r.name} {r.isOnline ? '🟢' : '⚪'}
-                                                            </option>
-                                                        ))}
+                                                        {riders
+                                                            .slice()
+                                                            .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0))
+                                                            .map(r => (
+                                                                <option key={r.id} value={r.id}>
+                                                                    {r.isOnline ? '🟢' : '⚪'} {r.name} {r.isOnline ? '(Online)' : '(Offline)'}
+                                                                </option>
+                                                            ))
+                                                        }
                                                     </select>
+                                                    <button
+                                                        className="btn-kds-mini"
+                                                        style={{ padding: '7px 9px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.4)', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        onClick={() => handlePrintKitchenToken(order)}
+                                                        title="Print Kitchen Token"
+                                                    >
+                                                        🎟️
+                                                    </button>
                                                     <button
                                                         className="btn-kds-mini deliver"
                                                         onClick={() => handleStatusUpdate(order.id, 'delivered')}
@@ -1593,13 +1669,38 @@ const OrderManager = () => {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <button
-                                                    className="btn-kds-mini deliver"
-                                                    onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                                >
-                                                    {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Hand Over / Paid'}
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                    <button
+                                                        className="btn-kds-mini"
+                                                        style={{
+                                                            padding: '8px 12px',
+                                                            backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                            color: 'var(--color-accent, #FFB400)',
+                                                            border: '1px solid rgba(255, 180, 0, 0.4)',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 700,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '4px',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                        onClick={() => handlePrintKitchenToken(order)}
+                                                        title="Print Kitchen Token (KOT)"
+                                                    >
+                                                        <span>🎟️</span>
+                                                        <span>Token</span>
+                                                    </button>
+                                                    <button
+                                                        className="btn-kds-mini deliver"
+                                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                    >
+                                                        {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Hand Over / Paid'}
+                                                    </button>
+                                                </div>
                                             )
                                         )}
 
