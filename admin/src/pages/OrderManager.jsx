@@ -29,6 +29,19 @@ const getOrderRef = (order) => {
     return order.orderReference || (order.id ? `FB-${order.id.slice(0, 5).toUpperCase()}` : 'FB-ORDER');
 };
 
+// Helper for Pakistani WhatsApp chat links
+const formatPakistaniWhatsAppUrl = (phone, text = '') => {
+    if (!phone) return '#';
+    const digits = String(phone).replace(/[^0-9]/g, '');
+    let cleanPhone = digits;
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = '92' + cleanPhone.slice(1);
+    } else if (!cleanPhone.startsWith('92') && cleanPhone.length === 10) {
+        cleanPhone = '92' + cleanPhone;
+    }
+    return `https://wa.me/${cleanPhone}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+};
+
 // --- Countdown Timer Component ---
 const CountdownTimer = ({ startTime, durationMinutes = 45 }) => {
     const [timeLeft, setTimeLeft] = useState('00:00');
@@ -210,11 +223,40 @@ const OrderDetailsModal = ({
                                         <span style={{ color: 'var(--text-secondary)' }}>Customer Name:</span>
                                         <strong style={{ color: '#fff' }}>{order.customer?.name || 'Guest'}</strong>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                                         <span style={{ color: 'var(--text-secondary)' }}>Phone Number:</span>
-                                        <a href={`tel:${order.customer?.phone}`} style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
-                                            {order.customer?.phone || 'N/A'}
-                                        </a>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <a href={`tel:${order.customer?.phone}`} style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
+                                                {order.customer?.phone || 'N/A'}
+                                            </a>
+                                            {order.customer?.phone && (
+                                                <a
+                                                    href={formatPakistaniWhatsAppUrl(
+                                                        order.customer.phone,
+                                                        `Hi ${order.customer?.name || 'Customer'}! This is Fine Burger regarding your order #${orderRef}.`
+                                                    )}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        padding: '3px 8px',
+                                                        backgroundColor: 'rgba(37, 211, 102, 0.15)',
+                                                        color: '#25D366',
+                                                        border: '1px solid rgba(37, 211, 102, 0.35)',
+                                                        borderRadius: '4px',
+                                                        fontSize: '11px',
+                                                        fontWeight: 700,
+                                                        textDecoration: 'none'
+                                                    }}
+                                                    title="Chat with Customer on WhatsApp"
+                                                >
+                                                    <span>💬</span>
+                                                    <span>WhatsApp</span>
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                     {order.orderType === 'Delivery' && (
                                         <>
@@ -453,6 +495,36 @@ const OrderManager = () => {
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [isKdsMode, setIsKdsMode] = useState(false);
 
+    // Auto-Print Kitchen Token preference (persisted in localStorage)
+    const [autoPrintTokens, setAutoPrintTokens] = useState(() => {
+        try {
+            return localStorage.getItem('fb_auto_print_tokens') === 'true';
+        } catch {
+            return false;
+        }
+    });
+    const autoPrintTokensRef = useRef(autoPrintTokens);
+    useEffect(() => {
+        autoPrintTokensRef.current = autoPrintTokens;
+    }, [autoPrintTokens]);
+
+    const handlePrintKitchenTokenRef = useRef();
+    const knownOrderIdsRef = useRef(new Set());
+    const isInitialOrdersLoadRef = useRef(true);
+
+    const handleToggleAutoPrint = () => {
+        const nextVal = !autoPrintTokens;
+        setAutoPrintTokens(nextVal);
+        try {
+            localStorage.setItem('fb_auto_print_tokens', String(nextVal));
+        } catch {}
+        if (nextVal) {
+            toast.success('🖨️ Auto-Print Tokens ACTIVE: Incoming orders will automatically open 80mm print ticket. Please allow popups.');
+        } else {
+            toast.info('Auto-Print Tokens turned OFF.');
+        }
+    };
+
     // Filters
     const [statusFilter, setStatusFilter] = useState('all');
     const [orderTypeFilter, setOrderTypeFilter] = useState('all');
@@ -511,8 +583,24 @@ const OrderManager = () => {
 
     useEffect(() => {
         const unsubscribeOrders = subscribeToOrders((newOrders) => {
-            setOrders(newOrders);
+            const list = newOrders || [];
+            setOrders(list);
             setLoading(false);
+
+            if (isInitialOrdersLoadRef.current) {
+                list.forEach(o => knownOrderIdsRef.current.add(o.id));
+                isInitialOrdersLoadRef.current = false;
+            } else {
+                if (autoPrintTokensRef.current && handlePrintKitchenTokenRef.current) {
+                    const incomingPending = list.filter(o => !knownOrderIdsRef.current.has(o.id) && o.status === 'pending');
+                    incomingPending.forEach(newOrder => {
+                        knownOrderIdsRef.current.add(newOrder.id);
+                        handlePrintKitchenTokenRef.current(newOrder);
+                        toast.success(`🖨️ Auto-printed KOT token for #${getOrderRef(newOrder)}`);
+                    });
+                }
+                list.forEach(o => knownOrderIdsRef.current.add(o.id));
+            }
         });
 
         const unsubscribeInventory = subscribeToInventory((items) => {
@@ -976,6 +1064,7 @@ const OrderManager = () => {
         printWindow.document.close();
         printWindow.focus();
     };
+    handlePrintKitchenTokenRef.current = handlePrintKitchenToken;
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'Just now';
@@ -1018,6 +1107,28 @@ const OrderManager = () => {
                             <span>{lowStockInventory.length} Low Stock</span>
                         </button>
                     )}
+                    <button
+                        type="button"
+                        onClick={handleToggleAutoPrint}
+                        style={{
+                            backgroundColor: autoPrintTokens ? 'rgba(16, 185, 129, 0.15)' : 'var(--surface-elevated, #1d222d)',
+                            color: autoPrintTokens ? '#10b981' : 'var(--text-secondary, #aaa)',
+                            border: autoPrintTokens ? '1px solid #10b981' : '1px solid var(--surface-border)',
+                            padding: '8px 14px',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease'
+                        }}
+                        title={autoPrintTokens ? 'Auto-print is ACTIVE. Click to turn off.' : 'Auto-print is OFF. Click to automatically print kitchen token on new orders.'}
+                    >
+                        <span>🖨️⚡</span>
+                        <span>Auto-Print: {autoPrintTokens ? 'ON' : 'OFF'}</span>
+                    </button>
                     <button
                         type="button"
                         onClick={() => setIsKdsMode(!isKdsMode)}
@@ -1414,7 +1525,9 @@ const OrderManager = () => {
                                     flexDirection: 'column',
                                     justifyContent: 'space-between',
                                     transition: 'transform 0.15s ease, border-color 0.15s ease',
-                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)'
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                                    overflow: 'hidden',
+                                    boxSizing: 'border-box'
                                 }}
                                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-accent)'}
                                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--surface-border)'}
@@ -1461,9 +1574,36 @@ const OrderManager = () => {
                                                     : (order.customer?.name || 'Guest')}
                                             </h4>
                                             {order.customer?.phone && (
-                                                <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                                                    {order.customer.phone}
-                                                </span>
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                                                        {order.customer.phone}
+                                                    </span>
+                                                    <a
+                                                        href={formatPakistaniWhatsAppUrl(
+                                                            order.customer.phone,
+                                                            `Hi ${order.customer?.name || 'there'}! This is Fine Burger regarding your order #${orderRef}.`
+                                                        )}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        onClick={e => e.stopPropagation()}
+                                                        style={{
+                                                            color: '#25D366',
+                                                            fontSize: '11px',
+                                                            textDecoration: 'none',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            padding: '2px 4px',
+                                                            backgroundColor: 'rgba(37, 211, 102, 0.12)',
+                                                            border: '1px solid rgba(37, 211, 102, 0.3)',
+                                                            borderRadius: '3px',
+                                                            lineHeight: 1
+                                                        }}
+                                                        title="WhatsApp Customer"
+                                                    >
+                                                        💬
+                                                    </a>
+                                                </div>
                                             )}
                                         </div>
 
@@ -1537,13 +1677,30 @@ const OrderManager = () => {
                                     </div>
 
                                     {/* 1-Click Status Action Buttons */}
-                                    <div className="card-quick-actions" onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                    <div className="card-quick-actions" onClick={e => e.stopPropagation()} style={{ marginTop: '10px' }}>
                                         {order.status === 'pending' && (
-                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                                                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                    <button
+                                                        className="btn-kds-mini confirm"
+                                                        onClick={() => handleStatusUpdate(order.id, 'preparing')}
+                                                        style={{ flex: 2, padding: '9px 10px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
+                                                    >
+                                                        Accept & Cook
+                                                    </button>
+                                                    <button
+                                                        className="btn-kds-mini cancel"
+                                                        onClick={() => setCancellingOrderId(order.id)}
+                                                        style={{ flex: 1, padding: '9px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
                                                 <button
                                                     className="btn-kds-mini"
                                                     style={{
-                                                        padding: '8px 12px',
+                                                        width: '100%',
+                                                        padding: '8px 10px',
                                                         backgroundColor: 'rgba(255, 180, 0, 0.15)',
                                                         color: 'var(--color-accent, #FFB400)',
                                                         border: '1px solid rgba(255, 180, 0, 0.4)',
@@ -1551,41 +1708,34 @@ const OrderManager = () => {
                                                         cursor: 'pointer',
                                                         fontSize: '12px',
                                                         fontWeight: 700,
-                                                        display: 'inline-flex',
+                                                        display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        gap: '4px',
-                                                        whiteSpace: 'nowrap'
+                                                        gap: '6px'
                                                     }}
                                                     onClick={() => handlePrintKitchenToken(order)}
                                                     title="Print Kitchen Token (KOT)"
                                                 >
                                                     <span>🎟️</span>
-                                                    <span>Print Token</span>
-                                                </button>
-                                                <button
-                                                    className="btn-kds-mini confirm"
-                                                    onClick={() => handleStatusUpdate(order.id, 'preparing')}
-                                                    style={{ flex: 2, padding: '8px 10px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
-                                                >
-                                                    Accept & Cook
-                                                </button>
-                                                <button
-                                                    className="btn-kds-mini cancel"
-                                                    onClick={() => setCancellingOrderId(order.id)}
-                                                    style={{ flex: 1, padding: '8px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
-                                                >
-                                                    Cancel
+                                                    <span>Print Kitchen Token (KOT)</span>
                                                 </button>
                                             </div>
                                         )}
 
                                         {order.status === 'preparing' && (
-                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                                                <button
+                                                    className="btn-kds-mini ready"
+                                                    onClick={() => handleStatusUpdate(order.id, 'ready')}
+                                                    style={{ width: '100%', padding: '9px 12px', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    ✨ Mark Food Ready
+                                                </button>
                                                 <button
                                                     className="btn-kds-mini"
                                                     style={{
-                                                        padding: '8px 12px',
+                                                        width: '100%',
+                                                        padding: '8px 10px',
                                                         backgroundColor: 'rgba(255, 180, 0, 0.15)',
                                                         color: 'var(--color-accent, #FFB400)',
                                                         border: '1px solid rgba(255, 180, 0, 0.4)',
@@ -1593,31 +1743,23 @@ const OrderManager = () => {
                                                         cursor: 'pointer',
                                                         fontSize: '12px',
                                                         fontWeight: 700,
-                                                        display: 'inline-flex',
+                                                        display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        gap: '4px',
-                                                        whiteSpace: 'nowrap'
+                                                        gap: '6px'
                                                     }}
                                                     onClick={() => handlePrintKitchenToken(order)}
                                                     title="Print Kitchen Token (KOT)"
                                                 >
                                                     <span>🎟️</span>
-                                                    <span>Token</span>
-                                                </button>
-                                                <button
-                                                    className="btn-kds-mini ready"
-                                                    onClick={() => handleStatusUpdate(order.id, 'ready')}
-                                                    style={{ flex: 1, padding: '8px 12px', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                                >
-                                                    ✨ Mark Ready
+                                                    <span>Print Token (KOT)</span>
                                                 </button>
                                             </div>
                                         )}
 
                                         {order.status === 'ready' && (
                                             order.orderType === 'Delivery' ? (
-                                                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                                                     <select
                                                         value={order.assignedRiderId || ''}
                                                         onChange={(e) => {
@@ -1629,8 +1771,8 @@ const OrderManager = () => {
                                                             }
                                                         }}
                                                         style={{
-                                                            flex: 1,
-                                                            padding: '7px 8px',
+                                                            width: '100%',
+                                                            padding: '8px 10px',
                                                             backgroundColor: 'var(--surface-elevated)',
                                                             border: '1px solid var(--surface-border)',
                                                             borderRadius: '4px',
@@ -1651,67 +1793,67 @@ const OrderManager = () => {
                                                             ))
                                                         }
                                                     </select>
-                                                    <button
-                                                        className="btn-kds-mini"
-                                                        style={{ padding: '7px 9px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.4)', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                                        onClick={() => handlePrintKitchenToken(order)}
-                                                        title="Print Kitchen Token"
-                                                    >
-                                                        🎟️
-                                                    </button>
-                                                    <button
-                                                        className="btn-kds-mini deliver"
-                                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                                        style={{ padding: '7px 10px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' }}
-                                                        title="Direct deliver without courier"
-                                                    >
-                                                        ✓ Done
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                        <button
+                                                            className="btn-kds-mini"
+                                                            style={{ flex: 1, padding: '8px 10px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.4)', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                                            onClick={() => handlePrintKitchenToken(order)}
+                                                            title="Print Kitchen Token"
+                                                        >
+                                                            <span>🎟️</span>
+                                                            <span>Token</span>
+                                                        </button>
+                                                        <button
+                                                            className="btn-kds-mini deliver"
+                                                            onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                            style={{ flex: 1, padding: '8px 10px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' }}
+                                                            title="Direct deliver without courier"
+                                                        >
+                                                            ✓ Done
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
                                                     <button
+                                                        className="btn-kds-mini deliver"
+                                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                        style={{ flex: 2, padding: '9px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                    >
+                                                        {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Hand Over / Paid'}
+                                                    </button>
+                                                    <button
                                                         className="btn-kds-mini"
-                                                        style={{
-                                                            padding: '8px 12px',
-                                                            backgroundColor: 'rgba(255, 180, 0, 0.15)',
-                                                            color: 'var(--color-accent, #FFB400)',
-                                                            border: '1px solid rgba(255, 180, 0, 0.4)',
-                                                            borderRadius: '4px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: 700,
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '4px',
-                                                            whiteSpace: 'nowrap'
-                                                        }}
+                                                        style={{ flex: 1, padding: '9px 10px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.4)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', whiteSpace: 'nowrap' }}
                                                         onClick={() => handlePrintKitchenToken(order)}
                                                         title="Print Kitchen Token (KOT)"
                                                     >
                                                         <span>🎟️</span>
                                                         <span>Token</span>
                                                     </button>
-                                                    <button
-                                                        className="btn-kds-mini deliver"
-                                                        onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                                        style={{ flex: 1, padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                                    >
-                                                        {order.orderType === 'Dine-in' ? '✓ Paid & Done' : '✓ Hand Over / Paid'}
-                                                    </button>
                                                 </div>
                                             )
                                         )}
 
                                         {order.status === 'out_for_delivery' && (
-                                            <button
-                                                className="btn-kds-mini deliver"
-                                                onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                                                style={{ width: '100%', padding: '8px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                                            >
-                                                ✓ Complete Order
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                                                <button
+                                                    className="btn-kds-mini deliver"
+                                                    onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                                    style={{ flex: 2, padding: '9px 12px', backgroundColor: '#10b981', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    ✓ Complete Order
+                                                </button>
+                                                <button
+                                                    className="btn-kds-mini"
+                                                    style={{ flex: 1, padding: '9px 10px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.4)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                                    onClick={() => handlePrintKitchenToken(order)}
+                                                    title="Print Kitchen Token (KOT)"
+                                                >
+                                                    <span>🎟️</span>
+                                                    <span>Token</span>
+                                                </button>
+                                            </div>
                                         )}
 
                                         {(order.status === 'delivered' || order.status === 'cancelled') && (
@@ -1727,7 +1869,7 @@ const OrderManager = () => {
                                                 </button>
                                                 <button
                                                     className="btn-kds-mini"
-                                                    style={{ padding: '8px 12px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.35)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                                    style={{ flex: 1, padding: '8px 10px', backgroundColor: 'rgba(255, 180, 0, 0.15)', color: 'var(--color-accent, #FFB400)', border: '1px solid rgba(255, 180, 0, 0.35)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                                                     onClick={() => handlePrintKitchenToken(order)}
                                                     title="Print Quick Kitchen / Patora Token"
                                                 >
