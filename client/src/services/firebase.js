@@ -312,15 +312,21 @@ export const getItemsByCategory = async (categoryId) => {
     }
 };
 
-// Fetch store settings
+// Fetch store settings (targets store_config directly to avoid permission errors on restricted settings)
 export const getStoreSettings = async () => {
     try {
-        const querySnapshot = await getDocs(collection(db, 'settings'));
-        if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
+        const storeConfigSnap = await getDoc(doc(db, 'settings', 'store_config'));
+        if (storeConfigSnap.exists()) {
             return {
-                id: doc.id,
-                ...doc.data()
+                id: storeConfigSnap.id,
+                ...storeConfigSnap.data()
+            };
+        }
+        const appSnap = await getDoc(doc(db, 'settings', 'app'));
+        if (appSnap.exists()) {
+            return {
+                id: appSnap.id,
+                ...appSnap.data()
             };
         }
         return null;
@@ -443,9 +449,10 @@ export const getDiscounts = async () => {
     }
 };
 
-// Real-time listener for inventory (to auto-mark menu items Sold Out when ingredients hit 0)
+// Real-time listener for sanitized public inventory stock levels (to auto-mark menu items Sold Out when ingredients hit 0)
+// Listens to the public sanitized 'inventoryStock' projection — wholesale costs and suppliers are never transmitted to clients
 export const subscribeToInventory = (callback) => {
-    const q = query(collection(db, 'inventory'));
+    const q = query(collection(db, 'inventoryStock'));
     return onSnapshot(q, (querySnapshot) => {
         const items = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -453,7 +460,7 @@ export const subscribeToInventory = (callback) => {
         }));
         callback(items);
     }, (error) => {
-        console.error('Error subscribing to inventory:', error);
+        console.warn('Inventory stock projection subscription:', error.message);
         callback([]);
     });
 };

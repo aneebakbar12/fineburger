@@ -109,8 +109,13 @@ service cloud.firestore {
       );
     }
 
-    // Inventory & Raw Materials: Publicly readable so customer app can auto-detect depleted ingredients, editable by admins
+    // Inventory & Raw Materials: STRICTLY admin-only (protects wholesale costs & supplier contacts)
     match /inventory/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Public Sanitized Inventory Stock Projection (for customer app out-of-stock calculations)
+    match /inventoryStock/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }

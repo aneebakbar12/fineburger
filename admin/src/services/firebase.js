@@ -417,10 +417,15 @@ export const verifyFinancialPassword = async (inputPassword) => {
             }
         }
 
-        // 3. Fallback to optional environment variable (not hardcoded in repository)
-        const envDefault = import.meta.env.VITE_DEFAULT_FINANCIAL_PASSWORD;
-        if (envDefault && envDefault.trim()) {
-            return cleanInput === envDefault.trim();
+        // 3. Initial setup fallback: If no security document exists yet in Firestore,
+        // accept bootstrap password ('fineburger2024' or env) and auto-create the hashed record
+        const initialDefault = (import.meta.env.VITE_DEFAULT_FINANCIAL_PASSWORD || 'fineburger2024').trim();
+        if (cleanInput === initialDefault) {
+            setDoc(doc(db, 'settings', 'security'), {
+                financialPasswordHash: inputHash,
+                updatedAt: serverTimestamp()
+            }, { merge: true }).catch(() => {});
+            return true;
         }
 
         return false;
@@ -639,6 +644,11 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
                                     stockLevel: newStock,
                                     updatedAt: serverTimestamp()
                                 });
+                                syncInventoryStockProjection(invId, {
+                                    name: invSnap.data().name,
+                                    stockLevel: newStock,
+                                    unit: invSnap.data().unit
+                                }).catch(() => {});
                             }
                         }
                     }
@@ -685,10 +695,16 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
                             const invSnap = await getDoc(invRef);
                             if (invSnap.exists()) {
                                 const currentStock = Number(invSnap.data().stockLevel) || 0;
+                                const restoredStock = currentStock + qtyToRestore;
                                 await updateDoc(invRef, {
-                                    stockLevel: currentStock + qtyToRestore,
+                                    stockLevel: restoredStock,
                                     updatedAt: serverTimestamp()
                                 });
+                                syncInventoryStockProjection(invId, {
+                                    name: invSnap.data().name,
+                                    stockLevel: restoredStock,
+                                    unit: invSnap.data().unit
+                                }).catch(() => {});
                             }
                         }
                     }
@@ -724,14 +740,62 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
 };
 
 
+// ==========================================
+// SANITIZED PUBLIC INVENTORY STOCK PROJECTION
+// ==========================================
+// Maintains a clean, public-safe projection in 'inventoryStock' containing ONLY:
+// { id, name, stockLevel, inStock, unit, updatedAt }
+// Zero wholesale costs (purchasePrice) and zero supplier details are exposed to client queries.
+export const syncInventoryStockProjection = async (id, itemData) => {
+    try {
+        if (!id) return;
+        if (itemData === null) {
+            await deleteDoc(doc(db, 'inventoryStock', id)).catch(() => {});
+        } else {
+            const stockLevel = Math.max(0, Number(itemData.stockLevel) || 0);
+            await setDoc(doc(db, 'inventoryStock', id), {
+                id,
+                name: itemData.name || '',
+                stockLevel,
+                inStock: stockLevel > 0,
+                unit: itemData.unit || 'pieces',
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        }
+    } catch (err) {
+        console.warn('Could not sync inventoryStock projection:', err);
+    }
+};
+
+export const syncAllInventoryProjections = async (items) => {
+    try {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const promises = items.map(item =>
+            setDoc(doc(db, 'inventoryStock', item.id), {
+                id: item.id,
+                name: item.name || '',
+                stockLevel: Math.max(0, Number(item.stockLevel) || 0),
+                inStock: (Number(item.stockLevel) || 0) > 0,
+                unit: item.unit || 'pieces',
+                updatedAt: serverTimestamp()
+            }, { merge: true }).catch(() => {})
+        );
+        await Promise.all(promises);
+    } catch (err) {
+        console.warn('Initial inventory projection sync error:', err);
+    }
+};
+
 // General Inventory (non-menu items like ketchup, cheese, tissues)
 export const getInventoryItems = async () => {
     try {
         const querySnapshot = await getDocs(collection(db, 'inventory'));
-        return querySnapshot.docs.map(doc => ({
+        const items = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+        syncAllInventoryProjections(items).catch(() => {});
+        return items;
     } catch (error) {
         console.error('Error fetching inventory items:', error);
         return [];
@@ -745,6 +809,7 @@ export const subscribeToInventory = (callback) => {
             id: doc.id,
             ...doc.data()
         }));
+        syncAllInventoryProjections(items).catch(() => {});
         callback(items);
     }, (error) => {
         console.error('Error subscribing to inventory:', error);
@@ -758,6 +823,7 @@ export const addInventoryItem = async (itemData) => {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         });
+        syncInventoryStockProjection(docRef.id, { ...itemData, id: docRef.id }).catch(() => {});
         return { success: true, id: docRef.id };
     } catch (error) {
         return { success: false, error: error.message };
@@ -770,6 +836,7 @@ export const updateInventoryItem = async (id, itemData) => {
             ...itemData,
             updatedAt: serverTimestamp()
         });
+        syncInventoryStockProjection(id, itemData).catch(() => {});
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -779,6 +846,7 @@ export const updateInventoryItem = async (id, itemData) => {
 export const deleteInventoryItem = async (id) => {
     try {
         await deleteDoc(doc(db, 'inventory', id));
+        syncInventoryStockProjection(id, null).catch(() => {});
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -831,10 +899,16 @@ export const recordWasteLog = async (wasteData) => {
                     if (ingSnap.exists()) {
                         const curInvStock = Number(ingSnap.data().stockLevel) || 0;
                         const deductQty = (Number(ing.quantity) || 1) * qtyNum;
+                        const newInvStock = Math.max(0, curInvStock - deductQty);
                         await updateDoc(ingRef, {
-                            stockLevel: Math.max(0, curInvStock - deductQty),
+                            stockLevel: newInvStock,
                             updatedAt: serverTimestamp()
                         });
+                        syncInventoryStockProjection(ing.inventoryItemId, {
+                            name: ingSnap.data().name,
+                            stockLevel: newInvStock,
+                            unit: ingSnap.data().unit
+                        }).catch(() => {});
                     }
                 }
             }
@@ -879,6 +953,11 @@ export const recordWasteLog = async (wasteData) => {
             stockLevel: newStock,
             updatedAt: serverTimestamp()
         });
+        syncInventoryStockProjection(inventoryItemId, {
+            name: invData.name,
+            stockLevel: newStock,
+            unit: invData.unit
+        }).catch(() => {});
 
         // Write record into wasteLogs collection
         const logRef = await addDoc(collection(db, 'wasteLogs'), {

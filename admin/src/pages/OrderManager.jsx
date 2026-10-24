@@ -592,11 +592,21 @@ const OrderManager = () => {
                 isInitialOrdersLoadRef.current = false;
             } else {
                 if (autoPrintTokensRef.current && handlePrintKitchenTokenRef.current) {
-                    const incomingPending = list.filter(o => !knownOrderIdsRef.current.has(o.id) && o.status === 'pending');
-                    incomingPending.forEach(newOrder => {
+                    // Auto-print tokens for both Online customer orders ('pending') AND in-store counter/POS orders ('preparing' placed by staff)
+                    const incomingKitchenOrders = list.filter(o =>
+                        !knownOrderIdsRef.current.has(o.id) &&
+                        (o.status === 'pending' || (o.status === 'preparing' && o.placedByStaff))
+                    );
+
+                    incomingKitchenOrders.forEach((newOrder, idx) => {
                         knownOrderIdsRef.current.add(newOrder.id);
-                        handlePrintKitchenTokenRef.current(newOrder);
-                        toast.success(`🖨️ Auto-printed KOT token for #${getOrderRef(newOrder)}`);
+                        setTimeout(() => {
+                            if (handlePrintKitchenTokenRef.current) {
+                                handlePrintKitchenTokenRef.current(newOrder, true);
+                            }
+                        }, idx * 400);
+                        const channelLabel = newOrder.placedByStaff ? 'Counter' : 'Online';
+                        toast.success(`🖨️ Auto-printed ${channelLabel} KOT token for #${getOrderRef(newOrder)}`);
                     });
                 }
                 list.forEach(o => knownOrderIdsRef.current.add(o.id));
@@ -921,12 +931,16 @@ const OrderManager = () => {
         printWindow.focus();
     };
 
-    const handlePrintKitchenToken = (order) => {
+    const handlePrintKitchenToken = (order, isAutoPrint = false) => {
         const orderRef = getOrderRef(order);
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
-            alert('Please allow popups in your browser to print the kitchen token.');
-            return;
+            if (!isAutoPrint) {
+                alert('Please allow popups in your browser to print the kitchen token.');
+            } else {
+                toast.warning(`⚠️ Popup blocked: Allow popups in browser to auto-print KOT #${orderRef}. Click "Token" button to print.`);
+            }
+            return false;
         }
 
         const cashierName = order.cashierName || order.cashSettledByCashierName || activeCashier?.name || 'Counter';
