@@ -58,9 +58,11 @@ export const calculateItemDiscount = (item, activeDiscounts = []) => {
         };
     }
 
-    // 1. Look for active item-specific discount currently in effect
+    // 1. Look for active item-specific discount currently in effect (supports multi-item selection itemIds array or single itemId)
     const itemDiscount = activeDiscounts.find(
-        d => d.type === 'item' && d.itemId === item.id && isDiscountInEffect(d)
+        d => d.type === 'item' &&
+             ((Array.isArray(d.itemIds) && d.itemIds.includes(item.id)) || d.itemId === item.id) &&
+             isDiscountInEffect(d)
     );
 
     // 2. Look for active global discount currently in effect

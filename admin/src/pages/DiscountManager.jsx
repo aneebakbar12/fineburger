@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     getDiscounts,
     addDiscount,
     updateDiscount,
     deleteDiscount,
-    getMenuItems
+    getMenuItems,
+    getCategories
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -15,10 +16,15 @@ const DiscountManager = () => {
     const toast = useToast();
     const [discounts, setDiscounts] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingDiscount, setEditingDiscount] = useState(null);
     const [discountToDelete, setDiscountToDelete] = useState(null);
+
+    // Filter controls for menu item checkbox selection
+    const [itemSearchQuery, setItemSearchQuery] = useState('');
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
 
     const [formData, setFormData] = useState({
         title: '',
@@ -26,6 +32,7 @@ const DiscountManager = () => {
         code: '',
         itemId: '',
         itemName: '',
+        itemIds: [],
         discountType: 'percentage', // 'percentage' or 'flat'
         value: '',
         minOrderAmount: '',
@@ -42,26 +49,110 @@ const DiscountManager = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [discountsData, itemsData] = await Promise.all([
+            const [discountsData, itemsData, categoriesData] = await Promise.all([
                 getDiscounts(),
-                getMenuItems()
+                getMenuItems(),
+                getCategories()
             ]);
             setDiscounts(discountsData || []);
             setMenuItems(itemsData || []);
+            setCategories(categoriesData || []);
         } catch (err) {
             toast.error('Failed to load discounts: ' + err.message);
         }
         setLoading(false);
     };
 
+    // Filtered menu items for multi-select checkbox list
+    const visibleItems = useMemo(() => {
+        return menuItems.filter(item => {
+            if (selectedCategoryFilter !== 'all') {
+                const matchCategory = item.categoryId === selectedCategoryFilter ||
+                    (categories.find(c => c.id === selectedCategoryFilter)?.name === item.category);
+                if (!matchCategory) return false;
+            }
+            if (itemSearchQuery.trim()) {
+                const q = itemSearchQuery.toLowerCase().trim();
+                const nameMatch = (item.name || '').toLowerCase().includes(q);
+                const catMatch = (item.category || '').toLowerCase().includes(q);
+                if (!nameMatch && !catMatch) return false;
+            }
+            return true;
+        });
+    }, [menuItems, selectedCategoryFilter, itemSearchQuery, categories]);
+
+    const handleToggleItem = (itemId) => {
+        setFormData(prev => {
+            const currentIds = prev.itemIds || [];
+            const isSelected = currentIds.includes(itemId);
+            const nextIds = isSelected
+                ? currentIds.filter(id => id !== itemId)
+                : [...currentIds, itemId];
+            const firstItem = menuItems.find(i => i.id === nextIds[0]);
+            return {
+                ...prev,
+                itemIds: nextIds,
+                itemId: nextIds[0] || '',
+                itemName: nextIds.length === 1 ? (firstItem?.name || '') : (nextIds.length > 1 ? `${nextIds.length} Items Selected` : '')
+            };
+        });
+    };
+
+    const handleSelectAllVisible = () => {
+        const visibleIds = visibleItems.map(i => i.id);
+        setFormData(prev => {
+            const currentIds = prev.itemIds || [];
+            const merged = Array.from(new Set([...currentIds, ...visibleIds]));
+            const firstItem = menuItems.find(i => i.id === merged[0]);
+            return {
+                ...prev,
+                itemIds: merged,
+                itemId: merged[0] || '',
+                itemName: merged.length === 1 ? (firstItem?.name || '') : `${merged.length} Items Selected`
+            };
+        });
+    };
+
+    const handleDeselectVisible = () => {
+        const visibleIds = visibleItems.map(i => i.id);
+        setFormData(prev => {
+            const currentIds = prev.itemIds || [];
+            const nextIds = currentIds.filter(id => !visibleIds.includes(id));
+            const firstItem = menuItems.find(i => i.id === nextIds[0]);
+            return {
+                ...prev,
+                itemIds: nextIds,
+                itemId: nextIds[0] || '',
+                itemName: nextIds.length === 1 ? (firstItem?.name || '') : (nextIds.length > 1 ? `${nextIds.length} Items Selected` : '')
+            };
+        });
+    };
+
+    const handleClearAllItems = () => {
+        setFormData(prev => ({
+            ...prev,
+            itemIds: [],
+            itemId: '',
+            itemName: ''
+        }));
+    };
+
     const handleEdit = (discount) => {
         setEditingDiscount(discount);
+        let initialItemIds = [];
+        if (Array.isArray(discount.itemIds) && discount.itemIds.length > 0) {
+            initialItemIds = [...discount.itemIds];
+        } else if (discount.itemId) {
+            initialItemIds = [discount.itemId];
+        }
+
         setFormData({
             title: discount.title || '',
             type: discount.type || 'global',
             code: discount.code || '',
-            itemId: discount.itemId || '',
+            itemId: discount.itemId || (initialItemIds[0] || ''),
             itemName: discount.itemName || '',
+            itemIds: initialItemIds,
             discountType: discount.discountType || 'percentage',
             value: discount.value !== undefined ? discount.value : '',
             minOrderAmount: discount.minOrderAmount !== undefined ? discount.minOrderAmount : '',
@@ -70,6 +161,8 @@ const DiscountManager = () => {
             active: discount.active !== undefined ? discount.active : true,
             description: discount.description || ''
         });
+        setItemSearchQuery('');
+        setSelectedCategoryFilter('all');
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -79,8 +172,9 @@ const DiscountManager = () => {
             title: '',
             type: 'global',
             code: '',
-            itemId: menuItems[0]?.id || '',
-            itemName: menuItems[0]?.name || '',
+            itemId: '',
+            itemName: '',
+            itemIds: [],
             discountType: 'percentage',
             value: '',
             minOrderAmount: '',
@@ -89,6 +183,8 @@ const DiscountManager = () => {
             active: true,
             description: ''
         });
+        setItemSearchQuery('');
+        setSelectedCategoryFilter('all');
         setEditingDiscount(null);
         setShowForm(false);
     };
@@ -111,9 +207,15 @@ const DiscountManager = () => {
             return;
         }
 
-        if (formData.type === 'item' && !formData.itemId) {
-            toast.error('Please select a menu item for item-specific discount');
-            return;
+        if (formData.type === 'item') {
+            const selectedIds = (formData.itemIds && formData.itemIds.length > 0)
+                ? formData.itemIds
+                : (formData.itemId ? [formData.itemId] : []);
+
+            if (selectedIds.length === 0) {
+                toast.error('Please select at least one menu item using the checkboxes');
+                return;
+            }
         }
 
         if (formData.type === 'coupon') {
@@ -141,18 +243,35 @@ const DiscountManager = () => {
             }
         }
 
-        let selectedItemName = '';
+        let selectedItemNames = [];
+        let primaryItemId = null;
+        let primaryItemName = null;
+        let finalItemIds = [];
+
         if (formData.type === 'item') {
-            const matched = menuItems.find(i => i.id === formData.itemId);
-            selectedItemName = matched?.name || formData.itemName || 'Selected Item';
+            finalItemIds = (formData.itemIds && formData.itemIds.length > 0)
+                ? formData.itemIds
+                : (formData.itemId ? [formData.itemId] : []);
+
+            selectedItemNames = finalItemIds.map(id => {
+                const item = menuItems.find(i => i.id === id);
+                return item?.name || id;
+            });
+
+            primaryItemId = finalItemIds[0] || null;
+            primaryItemName = selectedItemNames.length === 1
+                ? selectedItemNames[0]
+                : `${selectedItemNames.length} Items Selected`;
         }
 
         const discountPayload = {
             title: formData.title.trim(),
             type: formData.type,
             code: formData.type === 'coupon' ? formData.code.trim().toUpperCase() : null,
-            itemId: formData.type === 'item' ? formData.itemId : null,
-            itemName: formData.type === 'item' ? selectedItemName : null,
+            itemId: formData.type === 'item' ? primaryItemId : null,
+            itemName: formData.type === 'item' ? primaryItemName : null,
+            itemIds: formData.type === 'item' ? finalItemIds : null,
+            itemNames: formData.type === 'item' ? selectedItemNames : null,
             discountType: formData.discountType,
             value: val,
             minOrderAmount: formData.minOrderAmount ? parseFloat(formData.minOrderAmount) : null,
@@ -345,13 +464,14 @@ const DiscountManager = () => {
                                         setFormData({
                                             ...formData,
                                             type: nextType,
+                                            itemIds: nextType === 'item' ? (formData.itemIds.length > 0 ? formData.itemIds : (menuItems[0]?.id ? [menuItems[0].id] : [])) : [],
                                             itemId: nextType === 'item' ? (formData.itemId || menuItems[0]?.id || '') : '',
                                             code: nextType === 'coupon' ? (formData.code || 'WELCOME10') : ''
                                         });
                                     }}
                                 >
                                     <option value="global">🌐 Entire Menu (All Items Auto-Discounted)</option>
-                                    <option value="item">🍔 Specific Menu Item (Single Item Auto-Discounted)</option>
+                                    <option value="item">🍔 Specific Menu Items (Select Multiple Items with Checkboxes)</option>
                                     <option value="coupon">🎟️ Promo Coupon Code (Customer Enters at Cart Checkout)</option>
                                 </select>
                             </div>
@@ -375,28 +495,291 @@ const DiscountManager = () => {
                             )}
 
                             {formData.type === 'item' && (
-                                <div className="form-group">
-                                    <label className="form-label">Target Menu Item *</label>
-                                    <select
-                                        className="form-select"
-                                        value={formData.itemId}
-                                        onChange={(e) => {
-                                            const item = menuItems.find(i => i.id === e.target.value);
-                                            setFormData({
-                                                ...formData,
-                                                itemId: e.target.value,
-                                                itemName: item?.name || ''
-                                            });
-                                        }}
-                                        required
-                                    >
-                                        <option value="">Select an Item</option>
-                                        {menuItems.map(item => (
-                                            <option key={item.id} value={item.id}>
-                                                {item.name} (Rs. {item.price})
-                                            </option>
-                                        ))}
-                                    </select>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '10px',
+                                        flexWrap: 'wrap',
+                                        gap: '8px'
+                                    }}>
+                                        <div>
+                                            <label className="form-label" style={{ margin: 0, fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>
+                                                Select Menu Items for Discount *
+                                            </label>
+                                            <span style={{ fontSize: '12px', color: 'var(--color-accent, #FFB400)', fontWeight: 700, marginLeft: '8px' }}>
+                                                ({formData.itemIds.length} of {menuItems.length} items selected)
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            <button
+                                                type="button"
+                                                onClick={handleSelectAllVisible}
+                                                style={{
+                                                    padding: '5px 12px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 700,
+                                                    backgroundColor: 'rgba(255, 180, 0, 0.15)',
+                                                    color: 'var(--color-accent, #FFB400)',
+                                                    border: '1px solid rgba(255, 180, 0, 0.4)',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                ✓ Select All {selectedCategoryFilter !== 'all' || itemSearchQuery ? 'Visible' : ''} ({visibleItems.length})
+                                            </button>
+                                            {formData.itemIds.length > 0 && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeselectVisible}
+                                                        style={{
+                                                            padding: '5px 10px',
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            backgroundColor: 'var(--surface-elevated)',
+                                                            color: 'var(--text-secondary)',
+                                                            border: '1px solid var(--surface-border)',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Deselect Visible
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleClearAllItems}
+                                                        style={{
+                                                            padding: '5px 10px',
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                                            color: '#ef4444',
+                                                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Clear All
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Search & Category Filter Header */}
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '10px',
+                                        marginBottom: '12px',
+                                        flexWrap: 'wrap',
+                                        alignItems: 'center'
+                                    }}>
+                                        <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '180px' }}>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="🔍 Search items by name or category..."
+                                                value={itemSearchQuery}
+                                                onChange={(e) => setItemSearchQuery(e.target.value)}
+                                                style={{ fontSize: '13px', padding: '8px 12px', width: '100%' }}
+                                            />
+                                            {itemSearchQuery && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setItemSearchQuery('')}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: '8px',
+                                                        top: '50%',
+                                                        transform: 'translateY(-50%)',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: 'var(--text-muted)',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {categories.length > 0 && (
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '6px',
+                                                overflowX: 'auto',
+                                                paddingBottom: '2px',
+                                                maxWidth: '100%',
+                                                flexWrap: 'wrap'
+                                            }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedCategoryFilter('all')}
+                                                    style={{
+                                                        padding: '5px 10px',
+                                                        borderRadius: '20px',
+                                                        fontSize: '11px',
+                                                        fontWeight: 700,
+                                                        border: selectedCategoryFilter === 'all' ? '1px solid var(--color-accent)' : '1px solid var(--surface-border)',
+                                                        backgroundColor: selectedCategoryFilter === 'all' ? 'var(--color-accent)' : 'var(--surface-elevated)',
+                                                        color: selectedCategoryFilter === 'all' ? '#000' : 'var(--text-secondary)',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    All ({menuItems.length})
+                                                </button>
+                                                {categories.map(cat => {
+                                                    const count = menuItems.filter(i => i.categoryId === cat.id || i.category === cat.name).length;
+                                                    if (count === 0) return null;
+                                                    const isCatActive = selectedCategoryFilter === cat.id;
+                                                    return (
+                                                        <button
+                                                            key={cat.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedCategoryFilter(cat.id)}
+                                                            style={{
+                                                                padding: '5px 10px',
+                                                                borderRadius: '20px',
+                                                                fontSize: '11px',
+                                                                fontWeight: isCatActive ? 800 : 600,
+                                                                border: isCatActive ? '1px solid var(--color-accent)' : '1px solid var(--surface-border)',
+                                                                backgroundColor: isCatActive ? 'var(--color-accent)' : 'var(--surface-elevated)',
+                                                                color: isCatActive ? '#000' : 'var(--text-secondary)',
+                                                                cursor: 'pointer',
+                                                                whiteSpace: 'nowrap'
+                                                            }}
+                                                        >
+                                                            {cat.icon ? `${cat.icon} ` : ''}{cat.name} ({count})
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Selected Items Quick Badges Area */}
+                                    {formData.itemIds.length > 0 && (
+                                        <div style={{
+                                            marginBottom: '10px',
+                                            padding: '10px 12px',
+                                            backgroundColor: 'rgba(255, 180, 0, 0.08)',
+                                            border: '1px solid rgba(255, 180, 0, 0.25)',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-accent, #FFB400)', marginBottom: '6px' }}>
+                                                Selected for this Discount ({formData.itemIds.length}):
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxHeight: '80px', overflowY: 'auto' }}>
+                                                {formData.itemIds.map(id => {
+                                                    const item = menuItems.find(i => i.id === id);
+                                                    return (
+                                                        <span
+                                                            key={id}
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                backgroundColor: 'var(--surface-card)',
+                                                                border: '1px solid var(--surface-border)',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '4px',
+                                                                color: 'var(--text-primary)',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                        >
+                                                            <strong>{item?.name || id}</strong>
+                                                            <span
+                                                                onClick={() => handleToggleItem(id)}
+                                                                style={{ cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}
+                                                                title="Unselect"
+                                                            >
+                                                                ✕
+                                                            </span>
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Items Checkbox Grid */}
+                                    <div style={{
+                                        maxHeight: '340px',
+                                        overflowY: 'auto',
+                                        border: '1px solid var(--surface-border)',
+                                        borderRadius: '8px',
+                                        backgroundColor: 'var(--surface-elevated)',
+                                        padding: '10px'
+                                    }}>
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                                            gap: '8px'
+                                        }}>
+                                            {visibleItems.map(item => {
+                                                const isSelected = formData.itemIds.includes(item.id);
+                                                return (
+                                                    <label
+                                                        key={item.id}
+                                                        onClick={() => handleToggleItem(item.id)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '10px',
+                                                            padding: '8px 12px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: isSelected ? 'rgba(255, 180, 0, 0.12)' : 'var(--surface-card)',
+                                                            border: isSelected ? '1px solid var(--color-accent, #FFB400)' : '1px solid var(--surface-border)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            userSelect: 'none'
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => {}} // Handled by label onClick for reliable tablet touch
+                                                            style={{
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                accentColor: 'var(--color-accent, #FFB400)',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        />
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{
+                                                                fontSize: '13px',
+                                                                fontWeight: isSelected ? 700 : 500,
+                                                                color: isSelected ? 'var(--color-accent, #FFB400)' : 'var(--text-primary)',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}>
+                                                                {item.name}
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                                                                <span>Rs. {item.price}</span>
+                                                                {item.category && <span style={{ opacity: 0.8 }}>{item.category}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        {visibleItems.length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '28px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                                No menu items match your search or category filter.
+                                            </div>
+                                        )}
+                                    </div>
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '6px', display: 'block' }}>
+                                        Check any number of items (e.g. 10, 20, or an entire category). All selected items will automatically display discounted prices on the customer site.
+                                    </small>
                                 </div>
                             )}
 
@@ -542,13 +925,16 @@ const DiscountManager = () => {
                             discounts.map(discount => {
                                 const isGlobal = discount.type === 'global';
                                 const isCoupon = discount.type === 'coupon';
+                                const isMultiItem = discount.type === 'item' && Array.isArray(discount.itemIds) && discount.itemIds.length > 1;
                                 const item = discount.type === 'item' ? menuItems.find(i => i.id === discount.itemId) : null;
 
                                 const targetLabel = isGlobal
                                     ? '🌐 Entire Menu'
                                     : (isCoupon
                                         ? `🎟️ Coupon: ${discount.code || 'CODE'}`
-                                        : (item ? `🍔 ${item.name}` : `🍔 ${discount.itemName || 'Single Item'}`));
+                                        : (isMultiItem
+                                            ? `🍔 ${discount.itemIds.length} Items Selected`
+                                            : (item ? `🍔 ${item.name}` : `🍔 ${discount.itemName || 'Single Item'}`)));
 
                                 const discountBadge = discount.discountType === 'percentage'
                                     ? `${discount.value}% OFF`
@@ -588,6 +974,12 @@ const DiscountManager = () => {
                                             }}>
                                                 {targetLabel}
                                             </span>
+                                            {isMultiItem && (
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', maxWidth: '240px', lineHeight: 1.3 }}>
+                                                    {(discount.itemNames || discount.itemIds.map(id => menuItems.find(i => i.id === id)?.name || id)).slice(0, 3).join(', ')}
+                                                    {discount.itemIds.length > 3 ? ` +${discount.itemIds.length - 3} more` : ''}
+                                                </div>
+                                            )}
                                         </td>
                                         <td>
                                             <span style={{
