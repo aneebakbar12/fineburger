@@ -54,7 +54,8 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
 
     const currentUnitPrice = computeUnitPrice();
     const originalUnitPrice = computeOriginalUnitPrice();
-    const currentTotalPrice = currentUnitPrice * quantity;
+    const effectiveQuantity = Math.max(1, Number(quantity) || 1);
+    const currentTotalPrice = currentUnitPrice * effectiveQuantity;
 
     const handleVariationChange = (variationName, option) => {
         setSelectedVariations(prev => ({
@@ -65,12 +66,37 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
     };
 
     const incrementQuantity = () => {
-        if (item.stockLevel !== undefined && quantity >= item.stockLevel) return;
-        setQuantity(prev => prev + 1);
+        const current = Number(quantity) || 1;
+        if (item.stockLevel !== undefined && current >= item.stockLevel) return;
+        setQuantity(current + 1);
     };
 
     const decrementQuantity = () => {
-        setQuantity(prev => (prev > 1 ? prev - 1 : 1));
+        const current = Number(quantity) || 1;
+        setQuantity(current > 1 ? current - 1 : 1);
+    };
+
+    const handleQuantityChange = (e) => {
+        const valStr = e.target.value;
+        if (valStr === '') {
+            setQuantity('');
+            return;
+        }
+        const val = parseInt(valStr, 10);
+        if (isNaN(val)) return;
+        if (val < 1) {
+            setQuantity(1);
+        } else if (item.stockLevel !== undefined && val > item.stockLevel) {
+            setQuantity(item.stockLevel);
+        } else {
+            setQuantity(val);
+        }
+    };
+
+    const handleQuantityBlur = () => {
+        if (!quantity || Number(quantity) < 1) {
+            setQuantity(1);
+        }
     };
 
     const handleAddToCart = () => {
@@ -83,21 +109,23 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
         }
         setVariationError('');
 
+        const finalQty = Math.max(1, Number(quantity) || 1);
+
         const cartItem = {
             ...item,
             price: currentUnitPrice,
             originalUnitPrice: originalUnitPrice,
             basePrice: item.hasDiscount ? item.discountedPrice : item.price,
-            quantity,
+            quantity: finalQty,
             selectedVariations,
-            totalPrice: currentTotalPrice,
+            totalPrice: currentUnitPrice * finalQty,
             hasDiscount: Boolean(item.hasDiscount),
             discountAmountPerUnit: item.hasDiscount ? Math.max(0, originalUnitPrice - currentUnitPrice) : 0,
             badge: item.badge
         };
 
         // Pass both full item object and explicit quantity/variations for maximum compatibility
-        onAddToCart(cartItem, quantity, selectedVariations);
+        onAddToCart(cartItem, finalQty, selectedVariations);
         onClose();
     };
 
@@ -180,19 +208,31 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                             <label className="quantity-label">Quantity</label>
                             <div className="quantity-controls">
                                 <button
+                                    type="button"
                                     className="quantity-btn"
                                     onClick={decrementQuantity}
                                     aria-label="Decrease quantity"
+                                    disabled={Number(quantity) <= 1}
+                                    style={{ opacity: Number(quantity) <= 1 ? 0.4 : 1 }}
                                 >
                                     −
                                 </button>
-                                <span className="quantity-value">{quantity}</span>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className="quantity-input"
+                                    value={quantity}
+                                    onChange={handleQuantityChange}
+                                    onBlur={handleQuantityBlur}
+                                    aria-label="Item quantity"
+                                />
                                 <button
+                                    type="button"
                                     className="quantity-btn"
                                     onClick={incrementQuantity}
                                     aria-label="Increase quantity"
-                                    disabled={quantity >= 20 || (item.stockLevel !== undefined && quantity >= item.stockLevel)}
-                                    style={{ opacity: quantity >= 20 || (item.stockLevel !== undefined && quantity >= item.stockLevel) ? 0.5 : 1 }}
+                                    disabled={item.stockLevel !== undefined && Number(quantity) >= item.stockLevel}
+                                    style={{ opacity: item.stockLevel !== undefined && Number(quantity) >= item.stockLevel ? 0.4 : 1 }}
                                 >
                                     +
                                 </button>

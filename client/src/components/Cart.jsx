@@ -1097,7 +1097,28 @@ ${trackUrl}`
                                                         >
                                                             −
                                                         </button>
-                                                        <span>{item.quantity}</span>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            className="cart-quantity-input"
+                                                            value={item.quantity}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value, 10);
+                                                                if (!isNaN(val) && val >= 1) {
+                                                                    if (item.stockLevel !== undefined && val > item.stockLevel) {
+                                                                        onUpdateQuantity(index, item.stockLevel);
+                                                                    } else {
+                                                                        onUpdateQuantity(index, val);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                if (!e.target.value || parseInt(e.target.value, 10) < 1) {
+                                                                    onUpdateQuantity(index, 1);
+                                                                }
+                                                            }}
+                                                            aria-label="Item quantity"
+                                                        />
                                                         <button
                                                             className="quantity-btn-small"
                                                             onClick={() => {

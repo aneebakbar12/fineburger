@@ -176,12 +176,32 @@
     transform: scale(1.1);
 }
 
-.quantity-value {
+.quantity-value,
+.quantity-input {
     font-size: var(--font-size-2xl);
     font-weight: 700;
     color: var(--color-white);
-    min-width: 40px;
+    min-width: 48px;
+    width: 64px;
+    height: 44px;
     text-align: center;
+    background-color: var(--color-surface, #1e1e1e);
+    border: 2px solid var(--color-medium-gray, #333);
+    border-radius: var(--radius-md, 8px);
+    outline: none;
+    transition: all var(--transition-fast, 0.2s ease);
+    -moz-appearance: textfield;
+}
+
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.quantity-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(255, 180, 0, 0.25);
 }
 
 /* Store Closed Message */
