@@ -330,9 +330,13 @@ export const getSettings = async () => {
     try {
         const storeConfigSnap = await getDoc(doc(db, 'settings', 'store_config'));
         if (storeConfigSnap.exists()) {
+            const data = storeConfigSnap.data();
+            if (data?.storeInfo?.phone) {
+                data.storeInfo.phone = data.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+            }
             return {
                 id: storeConfigSnap.id,
-                ...storeConfigSnap.data()
+                ...data
             };
         }
 
@@ -341,9 +345,13 @@ export const getSettings = async () => {
             const targetDoc = querySnapshot.docs.find(d => d.id === 'store_config')
                 || querySnapshot.docs.find(d => d.data()?.storeInfo?.name && d.id !== 'app')
                 || querySnapshot.docs[0];
+            const data = targetDoc.data();
+            if (data?.storeInfo?.phone) {
+                data.storeInfo.phone = data.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+            }
             return {
                 id: targetDoc.id,
-                ...targetDoc.data()
+                ...data
             };
         }
         return null;
@@ -355,8 +363,12 @@ export const getSettings = async () => {
 
 export const updateSettings = async (id, settingsData) => {
     try {
+        const cleanData = { ...settingsData };
+        if (cleanData.storeInfo?.phone) {
+            cleanData.storeInfo.phone = cleanData.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+        }
         await updateDoc(doc(db, 'settings', id), {
-            ...settingsData,
+            ...cleanData,
             updatedAt: serverTimestamp()
         });
         return { success: true };

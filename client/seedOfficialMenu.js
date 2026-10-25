@@ -1114,7 +1114,7 @@ async function seedDatabase() {
         forceOpen: true,
         storeInfo: {
             name: 'Fine Burger & Fast Food (Since 1981)',
-            phone: '0325-1842184 / 0322-4992132',
+            phone: '0325-1842184 / 04236840007',
             email: 'info@fineburgerr.com',
             website: 'www.fineburgerr.com',
             branch1: 'Branch #1: 231 G.T Road, Baghbanpura Near Pakistani Bazar Lahore',

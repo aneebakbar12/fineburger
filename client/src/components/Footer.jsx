@@ -4,7 +4,8 @@ import '../styles/Footer.css';
 
 const Footer = ({ storeSettings }) => {
     const storeInfo = storeSettings?.storeInfo || {};
-    const storePhone = storeInfo.phone || storeSettings?.phone || '042-36840007';
+    const rawPhone = storeInfo.phone || storeSettings?.phone || '042-36840007';
+    const storePhone = rawPhone.replace(/0322[- ]?4992132/g, '04236840007');
     const storeAddress = storeInfo.address || storeSettings?.address || 'Main G.T. Road, Baghbanpura, Lahore, Punjab, Pakistan';
     const storeEmail = storeInfo.email || storeSettings?.email || 'info@fineburger.com';
 

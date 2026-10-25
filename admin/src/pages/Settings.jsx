@@ -76,7 +76,7 @@ const Settings = () => {
                 forceOpen: data.forceOpen !== false,
                 storeInfo: {
                     name: data.storeInfo?.name || '',
-                    phone: data.storeInfo?.phone || '',
+                    phone: (data.storeInfo?.phone || '').replace(/0322[- ]?4992132/g, '04236840007'),
                     email: data.storeInfo?.email || '',
                     address: data.storeInfo?.address || ''
                 },

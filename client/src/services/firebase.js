@@ -317,16 +317,24 @@ export const getStoreSettings = async () => {
     try {
         const storeConfigSnap = await getDoc(doc(db, 'settings', 'store_config'));
         if (storeConfigSnap.exists()) {
+            const data = storeConfigSnap.data();
+            if (data?.storeInfo?.phone) {
+                data.storeInfo.phone = data.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+            }
             return {
                 id: storeConfigSnap.id,
-                ...storeConfigSnap.data()
+                ...data
             };
         }
         const appSnap = await getDoc(doc(db, 'settings', 'app'));
         if (appSnap.exists()) {
+            const data = appSnap.data();
+            if (data?.storeInfo?.phone) {
+                data.storeInfo.phone = data.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+            }
             return {
                 id: appSnap.id,
-                ...appSnap.data()
+                ...data
             };
         }
         return null;
@@ -411,9 +419,13 @@ export const subscribeToCategories = (callback) => {
 export const subscribeToStoreSettings = (callback) => {
     return onSnapshot(doc(db, 'settings', 'store_config'), (docSnapshot) => {
         if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            if (data?.storeInfo?.phone) {
+                data.storeInfo.phone = data.storeInfo.phone.replace(/0322[- ]?4992132/g, '04236840007');
+            }
             callback({
                 id: docSnapshot.id,
-                ...docSnapshot.data()
+                ...data
             });
         }
     }, (error) => {
