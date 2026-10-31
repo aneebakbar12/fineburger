@@ -29,6 +29,17 @@ const getOrderRef = (order) => {
     return order.orderReference || (order.id ? `FB-${order.id.slice(0, 5).toUpperCase()}` : 'FB-ORDER');
 };
 
+// HTML escaping helper for safe thermal receipt rendering
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
 // Helper for Pakistani WhatsApp chat links
 const formatPakistaniWhatsAppUrl = (phone, text = '') => {
     if (!phone) return '#';
@@ -775,24 +786,24 @@ const OrderManager = () => {
             return;
         }
 
-        const cashierName = order.cashierName || order.cashSettledByCashierName || activeCashier?.name || (order.placedByStaff ? 'Counter Staff' : 'Online Counter');
-        const orderTaker = order.orderTaker || order.customer?.orderTaker;
+        const cashierName = escapeHtml(order.cashierName || order.cashSettledByCashierName || activeCashier?.name || (order.placedByStaff ? 'Counter Staff' : 'Online Counter'));
+        const orderTaker = escapeHtml(order.orderTaker || order.customer?.orderTaker);
 
         const customerSection = order.orderType === 'Dine-in'
             ? `<div class="customer">
-                <div class="table-badge">TABLE #${order.customer?.tableNumber || 'N/A'}</div>
+                <div class="table-badge">TABLE #${escapeHtml(order.customer?.tableNumber || 'N/A')}</div>
                 <div class="info-row"><span>Service:</span><strong>Dine-in</strong></div>
                 ${orderTaker ? `<div class="info-row"><span>Order Taker:</span><strong>${orderTaker}</strong></div>` : ''}
                 <div class="info-row"><span>Cashier:</span><strong>${cashierName}</strong></div>
                </div>`
             : `<div class="customer">
-                <div class="info-row"><span>Customer:</span><strong>${order.customer?.name || 'Guest'}</strong></div>
-                ${order.customer?.phone ? `<div class="info-row"><span>Phone:</span><strong>${order.customer.phone}</strong></div>` : ''}
-                ${order.orderType === 'Delivery' && order.customer?.address ? `<div class="info-row address-row"><span>Address:</span><strong>${order.customer.address}</strong></div>` : ''}
-                <div class="info-row"><span>Fulfillment:</span><strong>${order.orderType || 'Standard'}</strong></div>
+                <div class="info-row"><span>Customer:</span><strong>${escapeHtml(order.customer?.name || 'Guest')}</strong></div>
+                ${order.customer?.phone ? `<div class="info-row"><span>Phone:</span><strong>${escapeHtml(order.customer.phone)}</strong></div>` : ''}
+                ${order.orderType === 'Delivery' && order.customer?.address ? `<div class="info-row address-row"><span>Address:</span><strong>${escapeHtml(order.customer.address)}</strong></div>` : ''}
+                <div class="info-row"><span>Fulfillment:</span><strong>${escapeHtml(order.orderType || 'Standard')}</strong></div>
                 ${orderTaker ? `<div class="info-row"><span>Order Taker:</span><strong>${orderTaker}</strong></div>` : ''}
                 <div class="info-row"><span>Cashier:</span><strong>${cashierName}</strong></div>
-                ${order.assignedRiderName ? `<div class="info-row"><span>Rider:</span><strong>${order.assignedRiderName}</strong></div>` : ''}
+                ${order.assignedRiderName ? `<div class="info-row"><span>Rider:</span><strong>${escapeHtml(order.assignedRiderName)}</strong></div>` : ''}
                </div>`;
 
         printWindow.document.write(`
@@ -868,11 +879,11 @@ const OrderManager = () => {
                         ${(order.items || []).map(item => `
                             <div style="margin-bottom: 5px;">
                                 <div class="item-row">
-                                    <span class="item-name"><strong class="item-qty">${item.quantity}x</strong> ${item.name}</span>
+                                    <span class="item-name"><strong class="item-qty">${escapeHtml(item.quantity)}x</strong> ${escapeHtml(item.name)}</span>
                                     <span class="item-price">Rs.${(item.unitPrice || item.price) * item.quantity}</span>
                                 </div>
                                 ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
-                                    <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
+                                    <div class="item-var">${escapeHtml(Object.values(item.selectedVariations).join(', '))}</div>
                                 ` : ''}
                             </div>
                         `).join('')}
@@ -943,14 +954,14 @@ const OrderManager = () => {
             return false;
         }
 
-        const cashierName = order.cashierName || order.cashSettledByCashierName || activeCashier?.name || 'Counter';
-        const orderTaker = order.orderTaker || order.customer?.orderTaker;
+        const cashierName = escapeHtml(order.cashierName || order.cashSettledByCashierName || activeCashier?.name || 'Counter');
+        const orderTaker = escapeHtml(order.orderTaker || order.customer?.orderTaker);
 
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>TOKEN #${orderRef}</title>
+                    <title>TOKEN #${escapeHtml(orderRef)}</title>
                     <meta charset="utf-8" />
                     <style>
                         ${THERMAL_80MM_BASE_CSS}
@@ -1029,11 +1040,11 @@ const OrderManager = () => {
                 <body>
                     <div class="token-header">
                         <div class="token-badge">*** KITCHEN TOKEN ***</div>
-                        <div class="token-ref">#${orderRef}</div>
+                        <div class="token-ref">#${escapeHtml(orderRef)}</div>
                         <div class="token-service">
                             ${order.orderType === 'Dine-in'
-                                ? `TABLE #${order.customer?.tableNumber || 'N/A'}`
-                                : `${order.orderType || 'Order'} • ${order.customer?.name || 'Guest'}`}
+                                ? `TABLE #${escapeHtml(order.customer?.tableNumber || 'N/A')}`
+                                : `${escapeHtml(order.orderType || 'Order')} • ${escapeHtml(order.customer?.name || 'Guest')}`}
                         </div>
                         ${orderTaker ? `<div class="token-meta"><strong>Order Taker:</strong> ${orderTaker}</div>` : ''}
                         <div class="token-meta">Cashier: ${cashierName}</div>
@@ -1044,11 +1055,11 @@ const OrderManager = () => {
                         ${(order.items || []).map(item => `
                             <div>
                                 <div class="item-line">
-                                    <span><span class="item-qty">${item.quantity}x</span> <span class="item-name">${item.name}</span></span>
+                                    <span><span class="item-qty">${escapeHtml(item.quantity)}x</span> <span class="item-name">${escapeHtml(item.name)}</span></span>
                                     <span class="item-price">Rs.${(item.unitPrice || item.price) * item.quantity}</span>
                                 </div>
                                 ${item.selectedVariations && Object.keys(item.selectedVariations).length > 0 ? `
-                                    <div class="item-var">${Object.values(item.selectedVariations).join(', ')}</div>
+                                    <div class="item-var">${escapeHtml(Object.values(item.selectedVariations).join(', '))}</div>
                                 ` : ''}
                             </div>
                         `).join('')}

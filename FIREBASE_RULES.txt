@@ -122,18 +122,18 @@ service cloud.firestore {
 
     // Financial Expenses: STRICTLY admin-only
     match /expenses/{document=**} {
-      allow read, write: if isAuthenticated() || isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // Discounts & Promotional Campaigns: Publicly readable so customers see promotions, editable by admins
     match /discounts/{discountId} {
       allow read: if true;
-      allow write: if isAuthenticated() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // Kitchen Spoilage / Wastage Logs: Staff and admin only
     match /wasteLogs/{document=**} {
-      allow read, write: if isAuthenticated() || isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // Cashiers, Shifts & Cash Drawer Reconciliation: STRICTLY Admin only

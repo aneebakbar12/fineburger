@@ -68,7 +68,7 @@ const ReviewCard = ({ review }) => (
     </div>
 );
 
-const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose, showHeroSlider = true, globalDiscount = null }) => {
+const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen, onSearchClose, showHeroSlider = true, globalDiscount = null, menuLoading = false }) => {
     const { isStaffMode } = useStaffMode();
     const [sliders, setSliders] = useState([]);
     const [activeCategory, setActiveCategory] = useState(null);
@@ -185,7 +185,14 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
                         )
                     ))}
 
-                    {menuItems.length === 0 && (
+                    {menuLoading && (
+                        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-secondary)' }}>
+                            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🍔</div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>Loading Fresh Menu...</div>
+                        </div>
+                    )}
+
+                    {!menuLoading && menuItems.length === 0 && (
                         <div className="empty-menu">
                             <p>No menu items available at the moment. Please check back later!</p>
                         </div>

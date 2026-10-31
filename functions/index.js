@@ -187,8 +187,8 @@ exports.onOrderDelivered = functions.firestore
         const before = change.before.data();
         const after = change.after.data();
 
-        // Only act when status transitions TO 'delivered'
-        if (before.status === after.status || after.status !== 'delivered') return null;
+        // Only act when status transitions TO 'delivered' and stats not already recorded
+        if (before.status === after.status || after.status !== 'delivered' || after.riderStatsRecorded) return null;
 
         const riderId = after.assignedRiderId;
         if (!riderId) return null;

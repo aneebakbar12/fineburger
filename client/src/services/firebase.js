@@ -111,10 +111,23 @@ export const createOrder = async (orderData) => {
                                     throw new Error(`"${item.name}" is currently sold out or exceeds available quantity. Please update your cart.`);
                                 }
                             }
+
+                            // Verify that item base price matches live Firestore rate
+                            const liveDbPrice = Number(data.price) || 0;
+                            const submittedOrigPrice = Number(item.originalPrice || item.basePrice || item.price) || 0;
+                            if (liveDbPrice > 0 && submittedOrigPrice > 0 && Math.abs(liveDbPrice - submittedOrigPrice) >= 1) {
+                                throw new Error(`The price of "${item.name}" has been updated to Rs. ${liveDbPrice} by the restaurant. Please review your cart.`);
+                            }
                         }
                     } catch (checkErr) {
-                        // If network/permission issue, rethrow if out-of-stock message
-                        if (checkErr.message.includes('stock')) {
+                        // If network/permission issue, rethrow if out-of-stock or insufficient quantity message
+                        if (checkErr.message && (
+                            checkErr.message.includes('stock') ||
+                            checkErr.message.includes('sold out') ||
+                            checkErr.message.includes('available quantity') ||
+                            checkErr.message.includes('price') ||
+                            checkErr.message.includes('updated')
+                        )) {
                             throw checkErr;
                         }
                     }

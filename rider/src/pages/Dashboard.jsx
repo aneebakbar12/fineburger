@@ -147,9 +147,12 @@ const Dashboard = () => {
 
         setProcessingOrders(prev => new Set(prev).add(orderId));
 
-        const result = await updateOrderStatus(orderId, targetStatus);
-        if (!result?.success) {
-            alert('Failed to update delivery status: ' + (result?.error || 'Network error'));
+        try {
+            const result = await updateOrderStatus(orderId, targetStatus);
+            if (!result?.success) {
+                alert('Failed to update delivery status: ' + (result?.error || 'Network error'));
+            }
+        } finally {
             setProcessingOrders(prev => {
                 const next = new Set(prev);
                 next.delete(orderId);

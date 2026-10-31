@@ -726,7 +726,6 @@ const DiscountManager = () => {
                                                 return (
                                                     <label
                                                         key={item.id}
-                                                        onClick={() => handleToggleItem(item.id)}
                                                         style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -743,7 +742,7 @@ const DiscountManager = () => {
                                                         <input
                                                             type="checkbox"
                                                             checked={isSelected}
-                                                            onChange={() => {}} // Handled by label onClick for reliable tablet touch
+                                                            onChange={() => handleToggleItem(item.id)}
                                                             style={{
                                                                 width: '18px',
                                                                 height: '18px',

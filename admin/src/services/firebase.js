@@ -590,10 +590,13 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             if (orderSnap.exists()) {
                 const oData = orderSnap.data();
                 const riderId = oData.assignedRiderId;
-                if (riderId) {
+                if (riderId && !oData.riderStatsRecorded) {
                     await updateDoc(doc(db, 'riders', riderId), {
                         'stats.deliveredOrders': increment(1),
                         'stats.lastDeliveredAt': serverTimestamp()
+                    });
+                    await updateDoc(doc(db, 'orders', id), {
+                        riderStatsRecorded: true
                     });
                 }
 
@@ -680,15 +683,15 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
             if (orderSnap.exists()) {
                 const orderData = orderSnap.data();
 
-                // Restore menu items stock
-                if (Array.isArray(orderData.items)) {
+                // Restore menu items stock (only if stock was deducted and not already restored)
+                if (orderData.stockDeducted && !orderData.stockRestored && Array.isArray(orderData.items)) {
                     for (const item of orderData.items) {
                         if (!item.id) continue;
                         const menuItemRef = doc(db, 'items', item.id);
                         const menuItemSnap = await getDoc(menuItemRef);
 
-                        if (menuItemSnap.exists()) {
-                            const currentStock = menuItemSnap.data().stockLevel ?? 0;
+                        if (menuItemSnap.exists() && menuItemSnap.data().stockLevel !== undefined && menuItemSnap.data().stockLevel !== null) {
+                            const currentStock = Number(menuItemSnap.data().stockLevel) || 0;
                             const restored = currentStock + (item.quantity || 1);
                             await updateDoc(menuItemRef, {
                                 stockLevel: restored,
@@ -697,6 +700,9 @@ export const updateOrderStatus = async (id, status, additionalData = {}) => {
                             });
                         }
                     }
+                    await updateDoc(doc(db, 'orders', id), {
+                        stockRestored: true
+                    });
                 }
 
                 // Restore deducted inventory ingredients
@@ -764,24 +770,33 @@ export const syncInventoryStockProjection = async (id, itemData) => {
         if (itemData === null) {
             await deleteDoc(doc(db, 'inventoryStock', id)).catch(() => {});
         } else {
-            const stockLevel = Math.max(0, Number(itemData.stockLevel) || 0);
-            await setDoc(doc(db, 'inventoryStock', id), {
+            const payload = {
                 id,
-                name: itemData.name || '',
-                stockLevel,
-                inStock: stockLevel > 0,
-                unit: itemData.unit || 'pieces',
                 updatedAt: serverTimestamp()
-            }, { merge: true });
+            };
+            if (itemData.name !== undefined) {
+                payload.name = itemData.name || '';
+            }
+            if (itemData.unit !== undefined) {
+                payload.unit = itemData.unit || 'pieces';
+            }
+            if (itemData.stockLevel !== undefined) {
+                const stockLevel = Math.max(0, Number(itemData.stockLevel) || 0);
+                payload.stockLevel = stockLevel;
+                payload.inStock = stockLevel > 0;
+            }
+            await setDoc(doc(db, 'inventoryStock', id), payload, { merge: true });
         }
     } catch (err) {
         console.warn('Could not sync inventoryStock projection:', err);
     }
 };
 
+let hasSyncedInitialInventoryProjections = false;
 export const syncAllInventoryProjections = async (items) => {
     try {
-        if (!Array.isArray(items) || items.length === 0) return;
+        if (hasSyncedInitialInventoryProjections || !Array.isArray(items) || items.length === 0) return;
+        hasSyncedInitialInventoryProjections = true;
         const promises = items.map(item =>
             setDoc(doc(db, 'inventoryStock', item.id), {
                 id: item.id,

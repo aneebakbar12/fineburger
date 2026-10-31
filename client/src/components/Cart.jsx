@@ -31,7 +31,10 @@ export const getItemUnitPrice = (item) => {
 };
 
 export const getItemOriginalUnitPrice = (item) => {
-    let basePrice = Number(item.originalUnitPrice !== undefined ? item.originalUnitPrice : (item.originalPrice !== undefined ? item.originalPrice : item.price)) || 0;
+    if (item.originalUnitPrice !== undefined) {
+        return Number(item.originalUnitPrice) || 0;
+    }
+    let basePrice = Number(item.originalPrice !== undefined ? item.originalPrice : item.price) || 0;
     if (item.selectedVariations && typeof item.selectedVariations === 'object') {
         Object.values(item.selectedVariations).forEach(val => {
             if (typeof val === 'string') {
@@ -43,7 +46,7 @@ export const getItemOriginalUnitPrice = (item) => {
         });
         return basePrice;
     }
-    return Number(item.originalPrice || item.price) || 0;
+    return basePrice;
 };
 
 const Cart = ({
@@ -179,7 +182,12 @@ const Cart = ({
     const netSubtotal = Math.max(0, menuDiscountedSubtotal - couponDiscountAmount);
     const totalDiscountSavings = Math.max(0, grossSubtotal - menuDiscountedSubtotal) + couponDiscountAmount;
 
-    const deliveryFee = orderType === 'Delivery' ? (Number(storeSettings?.deliveryFee) || 120) : 0;
+    const parsedDeliveryFee = Number(storeSettings?.deliveryFee);
+    const deliveryFee = orderType === 'Delivery'
+        ? (storeSettings?.deliveryFee !== undefined && storeSettings?.deliveryFee !== null && storeSettings?.deliveryFee !== '' && !isNaN(parsedDeliveryFee)
+            ? parsedDeliveryFee
+            : 120)
+        : 0;
 
     const calculateTotal = () => {
         return netSubtotal + deliveryFee;
@@ -1106,15 +1114,15 @@ ${trackUrl}`
                                                                 const val = parseInt(e.target.value, 10);
                                                                 if (!isNaN(val) && val >= 1) {
                                                                     if (item.stockLevel !== undefined && val > item.stockLevel) {
-                                                                        onUpdateQuantity(index, item.stockLevel);
+                                                                        onUpdateQuantity(index, item.stockLevel, true);
                                                                     } else {
-                                                                        onUpdateQuantity(index, val);
+                                                                        onUpdateQuantity(index, val, true);
                                                                     }
                                                                 }
                                                             }}
                                                             onBlur={(e) => {
                                                                 if (!e.target.value || parseInt(e.target.value, 10) < 1) {
-                                                                    onUpdateQuantity(index, 1);
+                                                                    onUpdateQuantity(index, 1, true);
                                                                 }
                                                             }}
                                                             aria-label="Item quantity"

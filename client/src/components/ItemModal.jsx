@@ -173,11 +173,6 @@ const ItemModal = ({ item, isOpen, onClose, onAddToCart, storeOpen }) => {
                                     🔥 {item.badge}
                                 </span>
                             )}
-                            {!item.hasDiscount && currentUnitPrice > item.price && (
-                                <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', textDecoration: 'line-through', marginLeft: '8px' }}>
-                                    Rs. {item.price}
-                                </span>
-                            )}
                         </div>
 
                         {/* Variations */}

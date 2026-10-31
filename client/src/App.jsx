@@ -21,8 +21,7 @@ import {
 } from './services/firebase';
 import { StaffModeProvider } from './contexts/StaffModeContext';
 import StaffModeActivator from './components/StaffModeActivator';
-import { calculateItemDiscount } from './utils/discountUtils';
-import { DEMO_CATEGORIES, DEMO_MENU_ITEMS } from './data/demoMenu';
+import { calculateItemDiscount, isDiscountInEffect } from './utils/discountUtils';
 import './styles/index.css';
 
 const DEFAULT_STORE_SETTINGS = {
@@ -40,6 +39,7 @@ const DEFAULT_STORE_SETTINGS = {
 function App() {
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
+    const [menuLoading, setMenuLoading] = useState(true);
     const [discounts, setDiscounts] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
     const [storeSettings, setStoreSettings] = useState(null);
@@ -50,19 +50,12 @@ function App() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     // Official Fine Burger Menu State
-    // If Firestore is still buffering on initial load, uses the synchronized local copy.
-    // As soon as Firestore data streams in, it seamlessly renders live updates without any layout jumps.
+    // Synchronized live from Firestore items and categories
     const effectiveCategories = useMemo(() => {
-        if (!categories || categories.length === 0) {
-            return DEMO_CATEGORIES;
-        }
         return [...categories].sort((a, b) => (a.order || 0) - (b.order || 0));
     }, [categories]);
 
     const effectiveMenuItems = useMemo(() => {
-        if (!menuItems || menuItems.length === 0) {
-            return DEMO_MENU_ITEMS;
-        }
         return menuItems;
     }, [menuItems]);
 
@@ -94,7 +87,7 @@ function App() {
 
     // Active global promotion (if any) to display sitewide banner
     const activeGlobalDiscount = useMemo(() => {
-        return (discounts || []).find(d => d.active !== false && d.type === 'global');
+        return (discounts || []).find(d => d.type === 'global' && isDiscountInEffect(d));
     }, [discounts]);
 
     const effectiveSettings = storeSettings || DEFAULT_STORE_SETTINGS;
@@ -112,6 +105,7 @@ function App() {
                 if (prev.length > 0 && data.length === 0) return prev;
                 return data;
             });
+            setMenuLoading(false);
         };
 
         const unsubscribeCategories = subscribeToCategories(handleCategories);
@@ -152,6 +146,68 @@ function App() {
         localStorage.setItem('cart', JSON.stringify(cartItems));
     }, [cartItems]);
 
+    // Auto-synchronize cart item prices, stock levels, and names with live Firestore menu
+    useEffect(() => {
+        if (!enrichedMenuItems || enrichedMenuItems.length === 0) return;
+
+        setCartItems(prevCart => {
+            if (!prevCart || prevCart.length === 0) return prevCart;
+
+            let hasChanges = false;
+            const updatedCart = prevCart.map(cartItem => {
+                const liveItem = enrichedMenuItems.find(m => m.id === cartItem.id);
+                if (!liveItem) return cartItem;
+
+                // Re-evaluate variation price delta
+                let variationDelta = 0;
+                if (cartItem.selectedVariations && typeof cartItem.selectedVariations === 'object') {
+                    Object.values(cartItem.selectedVariations).forEach(val => {
+                        if (typeof val === 'string') {
+                            const match = val.match(/\(\s*\+\s*(?:Rs\.?|PKR)?\s*([0-9]+)\s*\)/i);
+                            if (match && match[1]) {
+                                variationDelta += Number(match[1]);
+                            }
+                        }
+                    });
+                }
+
+                const liveBasePrice = Number(liveItem.hasDiscount ? liveItem.discountedPrice : liveItem.price) || 0;
+                const liveOriginalBasePrice = Number(liveItem.originalPrice || liveItem.price) || 0;
+                const liveUnitPrice = liveBasePrice + variationDelta;
+                const liveOriginalUnitPrice = liveOriginalBasePrice + variationDelta;
+                const liveInStock = liveItem.inStock !== false;
+
+                if (
+                    cartItem.price !== liveUnitPrice ||
+                    cartItem.originalUnitPrice !== liveOriginalUnitPrice ||
+                    cartItem.basePrice !== liveBasePrice ||
+                    cartItem.originalPrice !== liveOriginalBasePrice ||
+                    cartItem.inStock !== liveInStock ||
+                    cartItem.name !== liveItem.name
+                ) {
+                    hasChanges = true;
+                    return {
+                        ...cartItem,
+                        name: liveItem.name,
+                        basePrice: liveBasePrice,
+                        price: liveUnitPrice,
+                        originalUnitPrice: liveOriginalUnitPrice,
+                        originalPrice: liveOriginalBasePrice,
+                        totalPrice: liveUnitPrice * cartItem.quantity,
+                        inStock: liveInStock,
+                        stockLevel: liveItem.stockLevel,
+                        hasDiscount: Boolean(liveItem.hasDiscount),
+                        discountAmountPerUnit: liveItem.hasDiscount ? Math.max(0, liveOriginalUnitPrice - liveUnitPrice) : 0,
+                        badge: liveItem.badge
+                    };
+                }
+                return cartItem;
+            });
+
+            return hasChanges ? updatedCart : prevCart;
+        });
+    }, [enrichedMenuItems]);
+
     const addToCart = (item, maybeQuantity = 1, maybeVariations = {}) => {
         let qty = 1;
         let variations = {};
@@ -174,7 +230,10 @@ function App() {
 
             if (existingItemIndex > -1) {
                 const newItems = [...prevItems];
-                newItems[existingItemIndex].quantity += qty;
+                newItems[existingItemIndex] = {
+                    ...newItems[existingItemIndex],
+                    quantity: newItems[existingItemIndex].quantity + qty
+                };
                 return newItems;
             } else {
                 return [...prevItems, { ...product, quantity: qty, selectedVariations: variations }];
@@ -183,17 +242,23 @@ function App() {
         setIsCartOpen(true);
     };
 
-    const updateQuantity = (index, deltaOrQuantity) => {
+    const updateQuantity = (index, deltaOrQuantity, isAbsolute = false) => {
         setCartItems(prevItems => {
             if (!prevItems[index]) return prevItems;
             const newItems = [...prevItems];
-            if (deltaOrQuantity === 1 || deltaOrQuantity === -1) {
-                newItems[index].quantity += deltaOrQuantity;
+            const currentItem = newItems[index];
+            let nextQty = currentItem.quantity;
+
+            if (!isAbsolute && (deltaOrQuantity === 1 || deltaOrQuantity === -1)) {
+                nextQty += deltaOrQuantity;
             } else if (typeof deltaOrQuantity === 'number') {
-                newItems[index].quantity = deltaOrQuantity;
+                nextQty = deltaOrQuantity;
             }
-            if (newItems[index].quantity <= 0) {
+
+            if (nextQty <= 0) {
                 newItems.splice(index, 1);
+            } else {
+                newItems[index] = { ...currentItem, quantity: nextQty };
             }
             return newItems;
         });
@@ -234,6 +299,7 @@ function App() {
                                     <Home
                                         categories={effectiveCategories}
                                         menuItems={enrichedMenuItems}
+                                        menuLoading={menuLoading}
                                         storeSettings={effectiveSettings}
                                         onAddToCart={addToCart}
                                         isSearchOpen={isSearchOpen}
@@ -248,6 +314,7 @@ function App() {
                                     <Menu
                                         categories={effectiveCategories}
                                         menuItems={enrichedMenuItems}
+                                        menuLoading={menuLoading}
                                         storeSettings={effectiveSettings}
                                         onAddToCart={addToCart}
                                         isSearchOpen={isSearchOpen}

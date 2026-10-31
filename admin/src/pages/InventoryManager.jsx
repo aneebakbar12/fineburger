@@ -11,6 +11,171 @@ import {
 } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 
+const getStockColor = (stock, threshold) => {
+    if (stock <= threshold) return '#ff6b6b';
+    if (stock <= threshold * 2) return '#FFB400';
+    return '#4ade80';
+};
+
+const getStockPercentage = (stock, threshold) => {
+    const max = threshold * 3;
+    return Math.min((stock / max) * 100, 100);
+};
+
+const getCategoryIcon = (category) => {
+    const icons = {
+        'Condiments': '🧴',
+        'Ingredients': '🧀',
+        'Supplies': '📦',
+        'Beverages': '🥤',
+        'Other': '📋'
+    };
+    return icons[category] || '📋';
+};
+
+const InventoryCard = ({ item, onUpdate, onDelete, isMenuItem = false }) => {
+    const stockColor = getStockColor(item.stockLevel || 0, item.lowStockThreshold || 10);
+    const stockPercentage = getStockPercentage(item.stockLevel || 0, item.lowStockThreshold || 10);
+
+    return (
+        <div className="card" style={{ padding: 'var(--spacing-lg)', position: 'relative' }}>
+            {!isMenuItem && (
+                <button
+                    onClick={() => onDelete(item.id)}
+                    style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ff6b6b',
+                        cursor: 'pointer',
+                        fontSize: '20px'
+                    }}
+                    title="Delete item"
+                >
+                    ×
+                </button>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+                <span style={{ fontSize: '32px' }}>
+                    {isMenuItem ? '🍔' : getCategoryIcon(item.category)}
+                </span>
+                <div style={{ flex: 1 }}>
+                    <h3 style={{ color: 'var(--color-white)', margin: 0, fontSize: 'var(--font-size-lg)' }}>
+                        {item.name}
+                    </h3>
+                    {!isMenuItem && (
+                        <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--font-size-sm)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'var(--color-text-secondary)',
+                            marginTop: '4px'
+                        }}>
+                            {item.category}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div style={{ marginBottom: 'var(--spacing-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                        Stock Level
+                    </span>
+                    <span style={{ color: stockColor, fontWeight: 'bold', fontSize: 'var(--font-size-sm)' }}>
+                        {item.stockLevel || 0} {item.unit || 'units'}
+                    </span>
+                </div>
+                <div style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: 'var(--color-medium-gray)',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{
+                        width: `${stockPercentage}%`,
+                        height: '100%',
+                        backgroundColor: stockColor,
+                        transition: 'width 0.3s ease'
+                    }} />
+                </div>
+            </div>
+
+            {/* Stock Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
+                <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                        const newStock = Math.max(0, (item.stockLevel || 0) - 1);
+                        if (isMenuItem) {
+                            onUpdate(item.id, newStock, newStock > 0 ? item.inStock : false);
+                        } else {
+                            onUpdate(item.id, newStock);
+                        }
+                    }}
+                    style={{ padding: '4px 12px' }}
+                >
+                    -
+                </button>
+                <input
+                    type="number"
+                    className="form-input"
+                    value={item.stockLevel || 0}
+                    onChange={(e) => {
+                        const newStock = Math.max(0, parseInt(e.target.value) || 0);
+                        if (isMenuItem) {
+                            onUpdate(item.id, newStock, newStock > 0 ? item.inStock : false);
+                        } else {
+                            onUpdate(item.id, newStock);
+                        }
+                    }}
+                    style={{ textAlign: 'center', width: '80px', padding: '6px' }}
+                    min="0"
+                />
+                <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                        const newStock = (item.stockLevel || 0) + 1;
+                        if (isMenuItem) {
+                            onUpdate(item.id, newStock, item.inStock);
+                        } else {
+                            onUpdate(item.id, newStock);
+                        }
+                    }}
+                    style={{ padding: '4px 12px' }}
+                >
+                    +
+                </button>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginLeft: 'auto' }}>
+                    Min: {item.lowStockThreshold || 10}
+                </span>
+            </div>
+
+            {/* Menu Item Specific: In Stock Toggle */}
+            {isMenuItem && (
+                <div style={{ borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-sm)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={item.inStock !== false}
+                            onChange={(e) => onUpdate(item.id, item.stockLevel || 0, e.target.checked)}
+                        />
+                        <span style={{ color: item.inStock !== false ? '#4ade80' : '#ff6b6b', fontWeight: 'bold', fontSize: '13px' }}>
+                            {item.inStock !== false ? 'In Stock' : 'Sold Out'}
+                        </span>
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const InventoryManager = () => {
     const toast = useToast();
     const [menuItems, setMenuItems] = useState([]);
@@ -172,28 +337,6 @@ const InventoryManager = () => {
         }
     };
 
-    const getStockColor = (stock, threshold) => {
-        if (stock <= threshold) return '#ff6b6b';
-        if (stock <= threshold * 2) return '#FFB400';
-        return '#4ade80';
-    };
-
-    const getStockPercentage = (stock, threshold) => {
-        const max = threshold * 3;
-        return Math.min((stock / max) * 100, 100);
-    };
-
-    const getCategoryIcon = (category) => {
-        const icons = {
-            'Condiments': '🧴',
-            'Ingredients': '🧀',
-            'Supplies': '📦',
-            'Beverages': '🥤',
-            'Other': '📋'
-        };
-        return icons[category] || '📋';
-    };
-
     const selectedWasteInvItem = inventoryItems.find(i => i.id === wasteForm.inventoryItemId);
     const selectedWasteMenuItem = menuItems.find(m => m.id === wasteForm.menuItemId);
 
@@ -206,149 +349,6 @@ const InventoryManager = () => {
             : 0);
 
     const totalLossSum = wasteLogs.reduce((sum, w) => sum + (Number(w.totalLoss) || 0), 0);
-
-    const InventoryCard = ({ item, onUpdate, onDelete, isMenuItem = false }) => {
-        const stockColor = getStockColor(item.stockLevel || 0, item.lowStockThreshold || 10);
-        const stockPercentage = getStockPercentage(item.stockLevel || 0, item.lowStockThreshold || 10);
-
-        return (
-            <div className="card" style={{ padding: 'var(--spacing-lg)', position: 'relative' }}>
-                {!isMenuItem && (
-                    <button
-                        onClick={() => onDelete(item.id)}
-                        style={{
-                            position: 'absolute',
-                            top: '12px',
-                            right: '12px',
-                            background: 'transparent',
-                            border: 'none',
-                            color: '#ff6b6b',
-                            cursor: 'pointer',
-                            fontSize: '20px'
-                        }}
-                        title="Delete item"
-                    >
-                        ×
-                    </button>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
-                    <span style={{ fontSize: '32px' }}>
-                        {isMenuItem ? '🍔' : getCategoryIcon(item.category)}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                        <h3 style={{ color: 'var(--color-white)', margin: 0, fontSize: 'var(--font-size-lg)' }}>
-                            {item.name}
-                        </h3>
-                        {!isMenuItem && (
-                            <span style={{
-                                display: 'inline-block',
-                                padding: '2px 8px',
-                                borderRadius: 'var(--radius-sm)',
-                                fontSize: 'var(--font-size-sm)',
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                color: 'var(--color-text-secondary)',
-                                marginTop: '4px'
-                            }}>
-                                {item.category}
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                            Stock Level
-                        </span>
-                        <span style={{ color: stockColor, fontWeight: 'bold', fontSize: 'var(--font-size-sm)' }}>
-                            {item.stockLevel || 0} {item.unit || 'units'}
-                        </span>
-                    </div>
-                    <div style={{
-                        width: '100%',
-                        height: '8px',
-                        backgroundColor: 'var(--color-medium-gray)',
-                        borderRadius: '4px',
-                        overflow: 'hidden'
-                    }}>
-                        <div style={{
-                            width: `${stockPercentage}%`,
-                            height: '100%',
-                            backgroundColor: stockColor,
-                            transition: 'width 0.3s ease'
-                        }} />
-                    </div>
-                </div>
-
-                {/* Stock Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => {
-                            const newStock = Math.max(0, (item.stockLevel || 0) - 1);
-                            if (isMenuItem) {
-                                onUpdate(item.id, newStock, newStock > 0 ? item.inStock : false);
-                            } else {
-                                onUpdate(item.id, newStock);
-                            }
-                        }}
-                        style={{ padding: '4px 12px' }}
-                    >
-                        -
-                    </button>
-                    <input
-                        type="number"
-                        className="form-input"
-                        value={item.stockLevel || 0}
-                        onChange={(e) => {
-                            const newStock = Math.max(0, parseInt(e.target.value) || 0);
-                            if (isMenuItem) {
-                                onUpdate(item.id, newStock, newStock > 0 ? item.inStock : false);
-                            } else {
-                                onUpdate(item.id, newStock);
-                            }
-                        }}
-                        style={{ textAlign: 'center', width: '80px', padding: '6px' }}
-                        min="0"
-                    />
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => {
-                            const newStock = (item.stockLevel || 0) + 1;
-                            if (isMenuItem) {
-                                onUpdate(item.id, newStock, item.inStock);
-                            } else {
-                                onUpdate(item.id, newStock);
-                            }
-                        }}
-                        style={{ padding: '4px 12px' }}
-                    >
-                        +
-                    </button>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginLeft: 'auto' }}>
-                        Min: {item.lowStockThreshold || 10}
-                    </span>
-                </div>
-
-                {/* Menu Item Specific: In Stock Toggle */}
-                {isMenuItem && (
-                    <div style={{ borderTop: '1px solid var(--color-medium-gray)', paddingTop: 'var(--spacing-sm)' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={item.inStock !== false}
-                                onChange={(e) => onUpdate(item.id, item.stockLevel || 0, e.target.checked)}
-                            />
-                            <span style={{ color: item.inStock !== false ? '#4ade80' : '#ff6b6b', fontWeight: 'bold', fontSize: '13px' }}>
-                                {item.inStock !== false ? 'In Stock' : 'Sold Out'}
-                            </span>
-                        </label>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     return (
         <div>

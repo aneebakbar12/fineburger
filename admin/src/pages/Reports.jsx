@@ -24,14 +24,13 @@ const Reports = () => {
     useEffect(() => {
         const unsubscribe = subscribeToOrders((newOrders) => {
             setOrders(newOrders);
-            applyFilters(newOrders, dateFilter);
         });
         return () => unsubscribe();
     }, []);
 
     useEffect(() => {
         applyFilters(orders, dateFilter);
-    }, [dateFilter, customStartDate, customEndDate]);
+    }, [orders, dateFilter, customStartDate, customEndDate]);
 
     const applyFilters = (allOrders, filter) => {
         let filtered = allOrders;

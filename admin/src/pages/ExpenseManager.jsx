@@ -85,11 +85,9 @@ const ExpenseManager = () => {
         let dateStr = getTodayPKT();
         if (expense.date) {
             const d = expense.date.toDate ? expense.date.toDate() : new Date(expense.date);
-            // Convert to PKT string
-            const pktStr = d.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-            // pktStr is "2/12/2026, 12:00:00 AM"
-            const pktDate = new Date(pktStr);
-            dateStr = pktDate.toISOString().split('T')[0];
+            if (!isNaN(d.getTime())) {
+                dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+            }
         }
 
         setFormData({
