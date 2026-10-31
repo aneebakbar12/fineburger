@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createOrder } from '../services/firebase';
+import { createOrder, isStoreOpen } from '../services/firebase';
 import {
     isNotificationSupported,
     getNotificationPermission,
@@ -64,6 +64,7 @@ const Cart = ({
     const navigate = useNavigate();
     const { isStaffMode } = useStaffMode();
     const activeCartItems = cartItems || items || [];
+    const storeOpen = storeSettings ? isStoreOpen(storeSettings) : true;
 
     const [isCheckout, setIsCheckout] = useState(false);
     const [authChoice, setAuthChoice] = useState(false);
@@ -234,6 +235,10 @@ const Cart = ({
     };
 
     const handleProceedToCheckout = () => {
+        if (!isStaffMode && !storeOpen) {
+            alert('Fine Burger is currently closed. Online orders cannot be placed at this time.');
+            return;
+        }
         if (user || isStaffMode) {
             setIsCheckout(true);
             setAuthChoice(false);
@@ -250,6 +255,11 @@ const Cart = ({
 
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
+
+        if (!isStaffMode && !storeOpen) {
+            alert('Fine Burger is currently closed. Online orders cannot be placed at this time.');
+            return;
+        }
 
         // Validation based on mode and order type
         if (isStaffMode) {
@@ -1205,9 +1215,29 @@ ${trackUrl}`
                                 )}
                             </div>
                         </div>
-                        <button className="cart-checkout-btn" onClick={handleProceedToCheckout}>
-                            Proceed to Checkout ➔
-                        </button>
+                        {!isStaffMode && !storeOpen ? (
+                            <div style={{
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                borderRadius: '8px',
+                                padding: '12px 14px',
+                                color: '#ff6b6b',
+                                textAlign: 'center',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                lineHeight: 1.4
+                            }}>
+                                <div style={{ fontSize: '20px', marginBottom: '4px' }}>🌙</div>
+                                <div><strong>Fine Burger is currently closed</strong></div>
+                                <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                                    Online delivery orders are accepted during operating hours (5:00 PM – 3:00 AM).
+                                </div>
+                            </div>
+                        ) : (
+                            <button className="cart-checkout-btn" onClick={handleProceedToCheckout}>
+                                Proceed to Checkout ➔
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

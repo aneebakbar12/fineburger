@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/SearchModal.css';
 
-const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) => {
+const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick, storeOpen = true }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [addedIds, setAddedIds] = useState({});
     const inputRef = useRef(null);
@@ -44,8 +44,8 @@ const SearchModal = ({ isOpen, onClose, menuItems, onAddToCart, onItemClick }) =
 
     const handleDirectAddToCart = (e, item) => {
         e.stopPropagation(); // Don't trigger card click
-        if (item.variations && item.variations.length > 0) {
-            // Needs customization -> close search and open customization modal
+        if (!storeOpen || (item.variations && item.variations.length > 0)) {
+            // Needs customization or store is closed -> open item modal where status is displayed
             onClose();
             if (onItemClick) onItemClick(item);
         } else {

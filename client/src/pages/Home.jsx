@@ -253,6 +253,7 @@ const Home = ({ categories, menuItems, storeSettings, onAddToCart, isSearchOpen,
                 menuItems={menuItems}
                 onAddToCart={onAddToCart}
                 onItemClick={handleItemClick}
+                storeOpen={storeOpen}
             />
         </div>
     );

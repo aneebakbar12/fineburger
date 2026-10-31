@@ -95,6 +95,20 @@ export const createOrder = async (orderData) => {
 
         const orderReference = orderData.orderReference || generateOrderReference();
 
+        // If an online customer order, verify restaurant is currently open
+        if (!orderData.placedByStaff) {
+            try {
+                const storeConfigSnap = await getDoc(doc(db, 'settings', 'store_config'));
+                if (storeConfigSnap.exists() && !isStoreOpen(storeConfigSnap.data())) {
+                    throw new Error('Fine Burger is currently closed. Online orders cannot be placed at this time.');
+                }
+            } catch (storeErr) {
+                if (storeErr.message && storeErr.message.includes('closed')) {
+                    throw storeErr;
+                }
+            }
+        }
+
         // Validate stock availability before creating order
         if (orderData.items && orderData.items.length > 0) {
             for (const item of orderData.items) {
